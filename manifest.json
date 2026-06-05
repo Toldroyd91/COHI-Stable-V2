@@ -1,14 +1,21 @@
 {
-  "name": "COHI Survey App",
-  "short_name": "Survey App",
+  "name": "Design Survey Pro",
+  "short_name": "Survey Pro",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#121212",
+  "background_color": "#050B14",
+  "theme_color": "#050B14",
+  "orientation": "any",
   "icons": [
     {
       "src": "logo.jpg",
       "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.jpg",
+      "sizes": "512x512",
       "type": "image/jpeg"
     }
   ]
