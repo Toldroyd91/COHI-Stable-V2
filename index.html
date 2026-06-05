@@ -20,7 +20,7 @@
 <body>
     <div id="splashScreen">
         <div class="splash-content">
-            <img src="download (3).svg" alt="Logo" class="splash-logo" onerror="this.style.display='none'">
+            <img src="logo.jpg" alt="Logo" class="splash-logo" onerror="this.style.display='none'">
             <h1 class="splash-title">PREDESIGN ENGINE</h1>
             <div class="loader-bar"><div class="loader-fill"></div></div>
         </div>
@@ -69,9 +69,7 @@
             <div class="canvas-group" data-id="frontelevation">
                 <div class="custom-file-upload">
                     <input type="file" id="front-cam" class="camera-input hidden-input" accept="image/*">
-                    <label for="front-cam" class="upload-label">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Front Elevation
-                    </label>
+                    <label for="front-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Front Elevation</label>
                 </div>
                 <div class="canvas-container"><canvas id="canvas-frontelevation" width="600" height="400"></canvas></div>
                 <div class="canvas-controls">
@@ -95,14 +93,12 @@
             <div class="canvas-group mt-30" data-id="sideelevation">
                 <div class="custom-file-upload">
                     <input type="file" id="side-cam" class="camera-input hidden-input" accept="image/*">
-                    <label for="side-cam" class="upload-label">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Side Elevation
-                    </label>
+                    <label for="side-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Side Elevation</label>
                 </div>
                 <div class="canvas-container"><canvas id="canvas-sideelevation" width="600" height="400"></canvas></div>
                 <div class="canvas-controls">
                     <button type="button" class="tool-btn lock-btn canvas-locked"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
-                    <div class="tool-section"><button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg></button><button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button><div class="divider"></div><button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button><button type="button" class="tool-btn dim-line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.17 3.22a2 2 0 0 0-2.83 0L3.22 18.34a2 2 0 0 0 0 2.83 2 2 0 0 0 2.83 0L21.17 6.05a2 2 0 0 0 0-2.83Z"></path><path d="m5 16 2 2"></path><path d="m8.5 12.5 2 2"></path><path d="m12 9 2 2"></path><path d="m15.5 5.5 2 2"></path></svg></button><button type="button" class="tool-btn calibrate-btn accent-btn">Set Scale</button></div>
+                    <div class="tool-section"><button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path></svg></button><button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button><div class="divider"></div><button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button><button type="button" class="tool-btn dim-line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.17 3.22a2 2 0 0 0-2.83 0L3.22 18.34a2 2 0 0 0 0 2.83 2 2 0 0 0 2.83 0L21.17 6.05a2 2 0 0 0 0-2.83Z"></path></svg></button><button type="button" class="tool-btn calibrate-btn accent-btn">Set Scale</button></div>
                     <div class="tool-section flex-right"><button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button><button type="button" class="tool-btn maximize-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg></button></div>
                 </div>
             </div>
@@ -110,14 +106,12 @@
             <div class="canvas-group mt-30" data-id="rearelevation">
                 <div class="custom-file-upload">
                     <input type="file" id="rear-cam" class="camera-input hidden-input" accept="image/*">
-                    <label for="rear-cam" class="upload-label">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Rear Elevation
-                    </label>
+                    <label for="rear-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Rear Elevation</label>
                 </div>
                 <div class="canvas-container"><canvas id="canvas-rearelevation" width="600" height="400"></canvas></div>
                 <div class="canvas-controls">
                     <button type="button" class="tool-btn lock-btn canvas-locked"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
-                    <div class="tool-section"><button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg></button><button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button><div class="divider"></div><button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button><button type="button" class="tool-btn dim-line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.17 3.22a2 2 0 0 0-2.83 0L3.22 18.34a2 2 0 0 0 0 2.83 2 2 0 0 0 2.83 0L21.17 6.05a2 2 0 0 0 0-2.83Z"></path><path d="m5 16 2 2"></path><path d="m8.5 12.5 2 2"></path><path d="m12 9 2 2"></path><path d="m15.5 5.5 2 2"></path></svg></button><button type="button" class="tool-btn calibrate-btn accent-btn">Set Scale</button></div>
+                    <div class="tool-section"><button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path></svg></button><button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button><div class="divider"></div><button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button><button type="button" class="tool-btn dim-line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.17 3.22a2 2 0 0 0-2.83 0L3.22 18.34a2 2 0 0 0 0 2.83 2 2 0 0 0 2.83 0L21.17 6.05a2 2 0 0 0 0-2.83Z"></path></svg></button><button type="button" class="tool-btn calibrate-btn accent-btn">Set Scale</button></div>
                     <div class="tool-section flex-right"><button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button><button type="button" class="tool-btn maximize-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg></button></div>
                 </div>
             </div>
@@ -145,7 +139,7 @@
                 <div class="canvas-container"><canvas id="canvas-housematerialphoto" width="600" height="400"></canvas></div>
                 <div class="canvas-controls">
                     <button type="button" class="tool-btn lock-btn canvas-locked"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
-                    <div class="tool-section"><button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg></button><div class="divider"></div><button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button><button type="button" class="tool-btn dim-line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.17 3.22a2 2 0 0 0-2.83 0L3.22 18.34a2 2 0 0 0 0 2.83 2 2 0 0 0 2.83 0L21.17 6.05a2 2 0 0 0 0-2.83Z"></path></svg></button></div>
+                    <div class="tool-section"><button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path></svg></button><div class="divider"></div><button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button><button type="button" class="tool-btn dim-line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.17 3.22a2 2 0 0 0-2.83 0L3.22 18.34a2 2 0 0 0 0 2.83 2 2 0 0 0 2.83 0L21.17 6.05a2 2 0 0 0 0-2.83Z"></path></svg></button></div>
                     <div class="tool-section flex-right"><button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button></div>
                 </div>
             </div>
@@ -164,7 +158,7 @@
                 <div class="canvas-container"><canvas id="canvas-treelocations" width="600" height="400"></canvas></div>
                 <div class="canvas-controls">
                     <button type="button" class="tool-btn lock-btn canvas-locked"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
-                    <div class="tool-section"><button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path></svg></button><button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button></div>
+                    <div class="tool-section"><button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button></div>
                     <div class="tool-section flex-right"><button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button></div>
                 </div>
             </div>
@@ -174,7 +168,7 @@
                 <div class="canvas-container"><canvas id="canvas-manhole" width="600" height="400"></canvas></div>
                 <div class="canvas-controls">
                     <button type="button" class="tool-btn lock-btn canvas-locked"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
-                    <div class="tool-section"><button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path></svg></button><button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button></div><div class="tool-section flex-right"><button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button></div>
+                    <div class="tool-section"><button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button></div><div class="tool-section flex-right"><button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button></div>
                 </div>
             </div>
 
@@ -183,7 +177,7 @@
                 <div class="canvas-container"><canvas id="canvas-weepvents" width="600" height="400"></canvas></div>
                 <div class="canvas-controls">
                     <button type="button" class="tool-btn lock-btn canvas-locked"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
-                    <div class="tool-section"><button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path></svg></button><button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button></div><div class="tool-section flex-right"><button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button></div>
+                    <div class="tool-section"><button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button></div><div class="tool-section flex-right"><button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button></div>
                 </div>
             </div>
 
@@ -192,7 +186,7 @@
                 <div class="canvas-container"><canvas id="canvas-rwpsvp" width="600" height="400"></canvas></div>
                 <div class="canvas-controls">
                     <button type="button" class="tool-btn lock-btn canvas-locked"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
-                    <div class="tool-section"><button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path></svg></button><button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button></div><div class="tool-section flex-right"><button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button></div>
+                    <div class="tool-section"><button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button><button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button></div><div class="tool-section flex-right"><button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button></div>
                 </div>
             </div>
 
@@ -211,6 +205,9 @@
                 </div>
                 <div class="form-group"><label class="form-group__label">Base Material</label><select id="newBuildMaterial" class="form-group__input"><option value="">Select...</option><option value="Brick">Brick</option><option value="Block only">Block only</option><option value="Natural Stone">Natural Stone</option><option value="HUP Wall System">HUP Wall System</option></select></div>
                 <div class="form-group"><label class="form-group__label">Budget</label><input type="text" id="budget" class="form-group__input"></div>
+                <div class="form-group"><label class="form-group__label">Building Regs?</label><select id="buildingRegs" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Planning Perms?</label><select id="planningPerms" class="form-group__input"><option value="">Select...</option><option value="No">No</option><option value="Full Planning">Full Planning</option><option value="Pre Approved Planning">Pre Approved</option></select></div>
+                <div class="form-group"><label class="form-group__label">SAP Calcs?</label><select id="sapCalcs" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
             </div>
 
             <div class="form-group mt-30">
@@ -219,6 +216,12 @@
                     <button type="button" id="dictateBtn" class="tool-btn w-auto" style="margin:0; background:rgba(230, 57, 70, 0.15); color:#ff6b6b; border:none;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px; vertical-align:middle;"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg> Dictate</button>
                 </div>
                 <textarea id="designerNotes" class="form-group__input" rows="4" placeholder="Brief design summary..."></textarea>
+            </div>
+            <div class="form-group mt-10"><label class="form-group__label">Misc Notes</label><textarea id="miscNotes" class="form-group__input" rows="2"></textarea></div>
+
+            <div class="custom-file-upload mt-10">
+                <input type="file" id="miscPhotos" class="hidden-input" accept="image/*" multiple>
+                <label for="miscPhotos" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> Upload Misc Photos</label>
             </div>
 
             <div class="canvas-group mt-30" data-id="designersketch">
@@ -252,11 +255,92 @@
         </div>
     </div>
 
-    <div id="pdfTemplateInternal" style="display:none; width:800px; padding:40px; background:#fff; color:#333; font-family:sans-serif;">
-        <div class="pdf-page" style="page-break-after:always;text-align:center;"><h1 style="color:#0F3759;">Technical Survey</h1></div>
+    <div id="pdfTemplateInternal" style="display: none; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
+        <div class="pdf-page" style="page-break-after: always; text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding-top: 20px;">
+            <div>
+                <img class="brand-logo-img" src="logo.jpg" style="max-height: 90px; margin-bottom: 25px;">
+                <h1 style="color: #0F3759; font-size: 34px; margin: 0 0 10px 0; font-weight: 700; text-transform: uppercase;">Technical Survey Report</h1>
+            </div>
+            <div style="width: 100%; border: 1px solid #e1e4e6; border-radius: 6px; overflow: hidden; background: #f8f9fa; margin: 20px auto; padding: 10px; box-sizing: border-box;">
+                <p style="margin: 0 0 8px 0; text-align: left; font-size: 13px; font-weight: bold; color: #0F3759;">Front Elevation</p>
+                <img id="pdfImgInternal-frontelevation" style="width: 100%; height: 380px; object-fit: contain;">
+            </div>
+            <div style="background: #f8f9fa; border-left: 5px solid #0F3759; padding: 25px; text-align: left; border-radius: 4px; margin-top: 30px;">
+                <h3 style="margin: 0 0 15px 0; color: #0F3759;">Customer Details</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px 30px; font-size: 14px;">
+                    <div><strong>Name:</strong> <span class="bind-name"></span></div>
+                    <div><strong>Date:</strong> <span class="bind-date"></span></div>
+                    <div><strong>Number:</strong> <span class="bind-num"></span></div>
+                    <div><strong>Designer:</strong> <span id="pdfPrintDesigner"></span></div>
+                    <div style="grid-column: span 2;"><strong>Address:</strong> <span class="bind-address"></span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pdf-page" style="page-break-after: always; padding-top: 10px;">
+            <h3 style="background: #0F3759; color: white; padding: 8px; font-size: 14px;">1. Design Scope</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px;">
+                <tr><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">Build Type:</td><td id="pdfBuildType" style="padding: 10px; border: 1px solid #dee2e6;"></td><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">Roof Type:</td><td id="pdfRoofType" style="padding: 10px; border: 1px solid #dee2e6;"></td></tr>
+                <tr><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">Size:</td><td id="pdfProposedSize" style="padding: 10px; border: 1px solid #dee2e6;"></td><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">Frame:</td><td id="pdfFrameColour" style="padding: 10px; border: 1px solid #dee2e6;"></td></tr>
+                <tr><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">Regs:</td><td id="pdfBuildingRegs" style="padding: 10px; border: 1px solid #dee2e6;"></td><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">Planning:</td><td id="pdfPlanningPerms" style="padding: 10px; border: 1px solid #dee2e6;"></td></tr>
+                <tr><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">SAP:</td><td id="pdfSapCalcs" style="padding: 10px; border: 1px solid #dee2e6;"></td><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">Budget:</td><td id="pdfBudget" style="padding: 10px; border: 1px solid #dee2e6;"></td></tr>
+            </table>
+            
+            <h3 style="background: #0F3759; color: white; padding: 8px; font-size: 14px;">2. Structural Matrix</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px;">
+                <tr><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">Access Difficulty:</td><td id="pdfAccessDifficult" style="padding: 10px; border: 1px solid #dee2e6;"></td><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">Access Width:</td><td id="pdfAccessWidth" style="padding: 10px; border: 1px solid #dee2e6;"></td></tr>
+                <tr><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">DPC Depth:</td><td id="pdfDpcDepth" style="padding: 10px; border: 1px solid #dee2e6;"></td><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">House Material:</td><td id="pdfHouseMaterial" style="padding: 10px; border: 1px solid #dee2e6;"></td></tr>
+                <tr><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">Fascia Height:</td><td id="pdfFasciaHeight" style="padding: 10px; border: 1px solid #dee2e6;"></td><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">Air Bricks:</td><td id="pdfAirBricks" style="padding: 10px; border: 1px solid #dee2e6;"></td></tr>
+                <tr><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">Obstacles:</td><td colspan="3" id="pdfWallObstacles" style="padding: 10px; border: 1px solid #dee2e6;"></td></tr>
+            </table>
+
+            <h3 style="background: #495057; color: white; padding: 6px; font-size: 12px;">Notes</h3>
+            <div style="border: 1px solid #dee2e6; padding: 12px; margin-bottom: 10px;"><strong style="display:block;">Designer Notes:</strong><span id="pdfDesignerNotes"></span></div>
+            <div style="border: 1px solid #dee2e6; padding: 12px;"><strong style="display:block;">Misc Notes:</strong><span id="pdfMiscNotes"></span></div>
+        </div>
+
+        <div class="pdf-page" style="page-break-after: always; padding-top: 10px;">
+            <h3 style="color: #0F3759; margin-bottom: 15px;">Site Technical Photos</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div style="border: 1px solid #dee2e6; padding: 8px;"><p style="font-size:11px; font-weight:bold;">House Material</p><img id="pdfImgInternal-housematerialphoto" style="width:100%; height:150px; object-fit:contain;"></div>
+                <div style="border: 1px solid #dee2e6; padding: 8px;"><p style="font-size:11px; font-weight:bold;">Manhole / Chamber</p><img id="pdfImgInternal-manhole" style="width:100%; height:150px; object-fit:contain;"></div>
+                <div style="border: 1px solid #dee2e6; padding: 8px;"><p style="font-size:11px; font-weight:bold;">Weep Vents</p><img id="pdfImgInternal-weepvents" style="width:100%; height:150px; object-fit:contain;"></div>
+                <div style="border: 1px solid #dee2e6; padding: 8px;"><p style="font-size:11px; font-weight:bold;">Pipes (RWP/SVP)</p><img id="pdfImgInternal-rwpsvp" style="width:100%; height:150px; object-fit:contain;"></div>
+                <div style="border: 1px solid #dee2e6; padding: 8px;"><p style="font-size:11px; font-weight:bold;">Trees</p><img id="pdfImgInternal-treelocations" style="width:100%; height:150px; object-fit:contain;"></div>
+                <div style="border: 1px solid #dee2e6; padding: 8px;"><p style="font-size:11px; font-weight:bold;">Side Elevation</p><img id="pdfImgInternal-sideelevation" style="width:100%; height:150px; object-fit:contain;"></div>
+            </div>
+        </div>
+
+        <div class="pdf-page" style="page-break-before: always; padding-top: 10px;">
+            <h3 style="color: #0F3759; margin-bottom: 15px;">Additional Media & Sketch</h3>
+            <div style="border: 1px solid #dee2e6; padding: 12px; margin-bottom: 20px;">
+                <p style="font-weight: bold; font-size: 12px;">Designer Sketch</p>
+                <img id="pdfImgInternal-designersketch" style="width: 100%; height: 300px; object-fit: contain;">
+            </div>
+            <p style="font-weight: bold; font-size: 12px;">Access Route Uploads</p>
+            <div id="pdfAccessPhotosGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;"></div>
+            <p style="font-weight: bold; font-size: 12px;">Misc Uploads</p>
+            <div id="pdfMiscPhotosGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;"></div>
+        </div>
     </div>
-    <div id="pdfTemplateCustomer" style="display:none; width:800px; padding:40px; background:#fff; color:#333; font-family:sans-serif;">
-        <div class="pdf-page" style="page-break-after:always;"><h1 style="color:#0F3759;">Design Consultation</h1></div>
+
+    <div id="pdfTemplateCustomer" style="display: none; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
+        <div class="pdf-page" style="page-break-after: always; text-align: left; padding: 30px 50px; font-size: 15px; line-height: 1.8;">
+            <div style="text-align: center; margin-bottom: 40px;">
+                <img class="brand-logo-img" src="logo.jpg" style="max-height: 80px; margin-bottom: 25px;">
+                <h1 style="color: #0F3759; margin-bottom: 0; font-size: 22px;">PREDESIGN SURVEY REPORT</h1>
+            </div>
+            <p id="lp-greeting" style="margin-bottom: 25px;"></p>
+            <p id="lp-size" style="margin-bottom: 25px;"></p>
+            <p id="lp-roof" style="margin-bottom: 25px;"></p>
+            <p id="lp-frame" style="margin-bottom: 25px;"></p>
+            <p id="lp-compliance" style="margin-bottom: 25px;"></p>
+            <p id="lp-revisit" style="margin-bottom: 40px;"></p>
+            <p style="margin-bottom: 20px;">Best regards,</p>
+            <p style="margin-bottom: 5px; font-weight: bold; font-size: 18px; color: #0F3759;" id="lp-designer-name"></p>
+            <p style="margin-bottom: 15px; font-size: 15px; color: #666;">Design Consultant</p>
+            <p style="margin-top: 5px; font-size: 14px;" id="lp-designer-contact"></p>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
