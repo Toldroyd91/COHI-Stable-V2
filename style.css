@@ -1,15 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-    --base-bg: #050B14; /* Deep midnight app background */
-    --card-bg: rgba(14, 22, 33, 0.7); /* Glassmorphism base */
+    --base-bg: #050B14; 
+    --card-bg: rgba(14, 22, 33, 0.7); 
     --card-border: rgba(255, 255, 255, 0.06);
     --input-bg: rgba(0, 0, 0, 0.2);
     --input-border: rgba(255, 255, 255, 0.1);
     
     --primary-text: #FFFFFF;
     --secondary-text: #8b9eb0; 
-    --accent: #00E5FF; /* Premium electric cyan */
+    --accent: #00E5FF; 
     --accent-glow: rgba(0, 229, 255, 0.3);
 }
 
@@ -20,19 +20,18 @@ html, body {
 }
 *, *::before, *::after { box-sizing: inherit; margin: 0; padding: 0; }
 
-/* Splash Screen */
 #splashScreen {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     background: var(--base-bg); z-index: 9999999; display: flex;
     align-items: center; justify-content: center; transition: opacity 0.6s ease;
 }
 .splash-content { text-align: center; }
+.splash-logo { max-width: 200px; height: auto; margin-bottom: 20px; }
 .splash-title { font-weight: 700; letter-spacing: 4px; font-size: 1.2rem; color: var(--secondary-text); margin-bottom: 20px; }
 .loader-bar { width: 150px; height: 2px; background: rgba(255,255,255,0.1); margin: 0 auto; overflow: hidden; border-radius: 2px; }
 .loader-fill { width: 50%; height: 100%; background: var(--accent); animation: loading 1.5s infinite ease-in-out; }
 @keyframes loading { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
 
-/* Dynamic Shrinking Navbar */
 .navbar {
     position: sticky; top: 0; background: rgba(5, 11, 20, 0.85); backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--card-border); z-index: 100; padding: 20px 0; transition: all 0.3s ease;
@@ -44,7 +43,6 @@ html, body {
 .nav-select, .nav-input { width: 140px !important; min-height: 38px !important; padding: 0 12px !important; font-size: 0.85rem !important; margin:0; }
 .btn-icon { background: transparent; border: 1px solid var(--input-border); color: var(--primary-text); width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
-/* Layout & Cards */
 .main-container { max-width: 900px; margin: 40px auto; padding: 0 20px; width: 100%; padding-bottom: 80px; }
 .card {
     background: var(--card-bg); backdrop-filter: blur(20px); border: 1px solid var(--card-border);
@@ -53,7 +51,6 @@ html, body {
 .card__title { font-size: 1.1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 25px; display: flex; align-items: center; }
 .card__title::after { content: ""; flex: 1; height: 1px; background: var(--card-border); margin-left: 15px; }
 
-/* Form Elements */
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
 .form-group { display: flex; flex-direction: column; }
 .form-group__label { font-size: 0.8rem; color: var(--secondary-text); margin-bottom: 8px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -69,13 +66,11 @@ html, body {
 .form-group__input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); background: rgba(0,0,0,0.4); }
 select.form-group__input { padding-right: 38px; cursor: pointer; }
 
-/* Custom Upload Button Styling */
 .hidden-input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
 .custom-file-upload { margin-bottom: 15px; }
 .upload-label { display: flex; align-items: center; justify-content: center; gap: 10px; background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.2); border-radius: 10px; padding: 15px; color: var(--secondary-text); cursor: pointer; transition: all 0.2s; font-size: 0.9rem; font-weight: 500; }
 .upload-label:hover { background: rgba(0, 229, 255, 0.05); border-color: var(--accent); color: var(--accent); }
 
-/* Buttons */
 .action-block { display: flex; gap: 15px; width: 100%; }
 .button {
     background: var(--primary-text); color: var(--base-bg); border: none; border-radius: 10px;
@@ -86,7 +81,6 @@ select.form-group__input { padding-right: 38px; cursor: pointer; }
 .btn-outline { background: transparent; border: 1px solid var(--input-border); color: var(--primary-text); }
 .btn-danger { background: rgba(230, 57, 70, 0.1); color: #e63946; border: 1px solid rgba(230, 57, 70, 0.3); }
 
-/* Canvas & Toolbar Overhaul */
 .canvas-container { background-color: #0b1118; border-radius: 12px; overflow: hidden; border: 1px solid var(--input-border); box-shadow: inset 0 4px 20px rgba(0,0,0,0.5); }
 .canvas-controls { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .tool-section { display: flex; gap: 4px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 10px; align-items: center; border: 1px solid var(--input-border); }
@@ -106,14 +100,11 @@ select.form-group__input { padding-right: 38px; cursor: pointer; }
 .tool-btn.accent-btn { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); margin-left: 4px; }
 .tool-btn.accent-btn.active { background: var(--accent); color: var(--base-bg); border-color: var(--accent); }
 
-/* Loupe */
 #precisionLoupe { position: fixed; border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: none; pointer-events: none; z-index: 999999; background: #0b1118; }
 
-/* Conditional Animation */
 .conditional-field { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); margin-top: 0; }
 .conditional-field.visible { max-height: 1200px; opacity: 1; margin-top: 25px; }
 
-/* Modals */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 999999; backdrop-filter: blur(10px); }
 .modal-content { background: var(--card-bg); border: 1px solid var(--card-border); padding: 30px; border-radius: 16px; width: 90%; max-width: 400px; }
 .modal-content h2 { margin-bottom: 20px; font-size: 1.2rem; }
