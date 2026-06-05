@@ -1,6 +1,26 @@
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("[Diagnostics] Blueprint Enterprise Engine Loaded (Offline/Stable).");
+    console.log("[Diagnostics] Blueprint Enterprise Engine Loaded (Offline/Stable v2).");
     const { jsPDF } = window.jspdf;
+
+    // --- SHRINKING HEADER ---
+    window.addEventListener('scroll', () => {
+        const header = document.getElementById('mainHeader');
+        if(window.scrollY > 50) header.classList.add('shrunk');
+        else header.classList.remove('shrunk');
+    });
+
+    // --- CONDITIONAL VISIBILITY LOGIC ---
+    function evaluateConditionals() {
+        document.querySelectorAll('.conditional-field').forEach(field => {
+            const conditionId = field.getAttribute('data-condition');
+            const selectEl = document.getElementById(conditionId);
+            if(selectEl) {
+                if(selectEl.value === 'Yes') field.classList.add('visible');
+                else field.classList.remove('visible');
+            }
+        });
+    }
+    document.querySelectorAll('select').forEach(sel => sel.addEventListener('change', evaluateConditionals));
 
     // --- 1. PROFILE MANAGER ---
     window.designerProfiles = JSON.parse(localStorage.getItem('savedDesignerProfiles')) || {};
@@ -33,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('profileModal').style.display = 'none';
     });
 
-    // --- 2. AUTOSAVE ENGINE ---
+    // --- 2. AUTOSAVE ENGINE (Inputs) ---
     document.querySelectorAll('input:not([type="file"]), select, textarea').forEach(input => {
         const saved = JSON.parse(localStorage.getItem('surveyAppData')) || {};
         if (saved[input.id]) input.value = saved[input.id];
@@ -43,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.setItem('surveyAppData', JSON.stringify(data));
         });
     });
+    evaluateConditionals(); // Run once after inputs are loaded from save
 
     document.getElementById('resetFormBtn')?.addEventListener('click', () => {
         if(confirm("Are you sure you want to clear the entire form for a new appointment?")) {
@@ -76,6 +97,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // --- LOUPE ELEMENT SETUP ---
+    const loupeEl = document.getElementById('precisionLoupe');
+    const lCtx = loupeEl.getContext('2d');
+
     // --- 4. INTERACTIVE FABRIC VECTOR IMPLEMENTATION ---
     window.appCanvases = {};
     document.querySelectorAll('.canvas-group').forEach(group => {
@@ -84,13 +109,28 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!canvasEl) return;
 
         const fCanvas = new fabric.Canvas(canvasEl.id, { 
-            isDrawingMode: false,
-            allowTouchScrolling: true,
-            selection: false
+            isDrawingMode: false, allowTouchScrolling: true, selection: false
         });
         fCanvas.freeDrawingBrush.color = '#FF0000';
         fCanvas.freeDrawingBrush.width = 4;
         window.appCanvases[id] = fCanvas;
+
+        // LOAD CANVAS STATE FROM AUTOSAVE
+        const savedData = JSON.parse(localStorage.getItem('surveyAppData')) || {};
+        if(savedData['canvas_' + id]) {
+            fCanvas.loadFromJSON(savedData['canvas_' + id], fCanvas.renderAll.bind(fCanvas));
+        }
+
+        // SAVE CANVAS STATE FUNCTION
+        const saveCanvasState = () => {
+            const data = JSON.parse(localStorage.getItem('surveyAppData')) || {};
+            data['canvas_' + id] = JSON.stringify(fCanvas.toJSON());
+            localStorage.setItem('surveyAppData', JSON.stringify(data));
+        };
+
+        fCanvas.on('object:added', saveCanvasState);
+        fCanvas.on('object:modified', saveCanvasState);
+        fCanvas.on('object:removed', saveCanvasState);
 
         let activeTool = 'locked'; 
         let isDrawingLine = false;
@@ -114,11 +154,41 @@ document.addEventListener('DOMContentLoaded', function() {
         const fileInput = group.querySelector('.camera-input');
         const canvasContainer = group.querySelector('.canvas-container');
 
-        let isPinching = false;
-        let lastPinchDist = 0;
-        let isPanning = false;
-        let lastPanX = 0; 
-        let lastPanY = 0;
+        let isPinching = false; let lastPinchDist = 0;
+        let isPanning = false; let lastPanX = 0; let lastPanY = 0;
+
+        // -- LOUPE RENDERER --
+        function updateLoupe(e) {
+            if(!isDrawingLine || (activeTool !== 'line' && activeTool !== 'dim-line' && activeTool !== 'calibrate')) {
+                loupeEl.style.display = 'none';
+                return;
+            }
+            
+            const pointer = e.e.touches ? e.e.touches[0] : e.e;
+            const x = pointer.clientX; const y = pointer.clientY;
+            
+            loupeEl.style.left = (x - 60) + 'px';
+            loupeEl.style.top = (y - 140) + 'px'; 
+            loupeEl.style.display = 'block';
+
+            lCtx.clearRect(0, 0, 120, 120);
+            
+            const rect = fCanvas.getElement().getBoundingClientRect();
+            const canvasX = x - rect.left;
+            const canvasY = y - rect.top;
+            
+            const sWidth = 40; const sHeight = 40; 
+            
+            // Draw actual canvas states directly into the loupe
+            try {
+                lCtx.drawImage(fCanvas.lowerCanvasEl, canvasX - sWidth/2, canvasY - sHeight/2, sWidth, sHeight, 0, 0, 120, 120);
+                lCtx.drawImage(fCanvas.upperCanvasEl, canvasX - sWidth/2, canvasY - sHeight/2, sWidth, sHeight, 0, 0, 120, 120);
+            } catch(err) {} // Catch bounds errors at edges
+
+            // Draw Crosshair
+            lCtx.strokeStyle = '#0D6EFD'; lCtx.lineWidth = 2;
+            lCtx.beginPath(); lCtx.moveTo(60, 45); lCtx.lineTo(60, 75); lCtx.moveTo(45, 60); lCtx.lineTo(75, 60); lCtx.stroke();
+        }
 
         fCanvas.on('mouse:wheel', function(opt) {
             let delta = opt.e.deltaY;
@@ -149,42 +219,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     vpt[4] += currentX - lastPanX; 
                     vpt[5] += currentY - lastPanY; 
                     fCanvas.requestRenderAll();
-                    lastPanX = currentX;
-                    lastPanY = currentY;
+                    lastPanX = currentX; lastPanY = currentY;
                 }
             }
+            if(isDrawingLine) updateLoupe(opt);
         });
 
         fCanvas.on('mouse:up', function() {
             isPanning = false;
+            loupeEl.style.display = 'none';
             fCanvas.setViewportTransform(fCanvas.viewportTransform); 
         });
 
         canvasContainer.addEventListener('touchstart', function(e) {
             if (e.touches.length === 2) {
-                isPinching = true;
-                isPanning = false;
-                fCanvas.isDrawingMode = false; 
-
-                lastPinchDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
+                isPinching = true; isPanning = false; fCanvas.isDrawingMode = false; 
+                lastPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
             }
         }, { passive: false });
 
         canvasContainer.addEventListener('touchmove', function(e) {
             if (isPinching && e.touches.length === 2) {
                 e.preventDefault(); 
-
-                let currentDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
-
+                let currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                 let zoom = fCanvas.getZoom();
                 zoom *= (currentDist / lastPinchDist); 
-
                 if (zoom > 10) zoom = 10;
                 if (zoom < 0.5) zoom = 0.5;
 
@@ -243,11 +302,9 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (tool === 'dim-line') bindDimLineTool();
             else if (tool === 'text') bindTextTool();
 
-            fCanvas.calcOffset();
-            fCanvas.renderAll();
+            fCanvas.calcOffset(); fCanvas.renderAll();
         }
 
-        // --- NEW: CALIBRATION TOOL ---
         function bindCalibrateTool() {
             fCanvas.off('mouse:down'); fCanvas.off('mouse:move'); fCanvas.off('mouse:up');
             fCanvas.on('mouse:down', function(o) {
@@ -261,6 +318,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     strokeWidth: 4 / z, stroke: '#6f42c1', originX: 'center', originY: 'center', selectable: false, hasControls: false
                 });
                 fCanvas.add(activeLineObj);
+                updateLoupe(o);
             });
 
             fCanvas.on('mouse:move', function(o) {
@@ -268,29 +326,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 const pointer = fCanvas.getPointer(o.e);
                 activeLineObj.set({ x2: pointer.x, y2: pointer.y });
                 fCanvas.renderAll();
+                updateLoupe(o);
             });
 
             fCanvas.on('mouse:up', function() {
                 if (activeTool !== 'calibrate') return;
-                isDrawingLine = false;
+                isDrawingLine = false; loupeEl.style.display = 'none';
                 if (activeLineObj) {
                     activeLineObj.setCoords();
                     const dx = activeLineObj.x2 - activeLineObj.x1;
                     const dy = activeLineObj.y2 - activeLineObj.y1;
                     const pixelLength = Math.sqrt(dx * dx + dy * dy);
-                    
-                    fCanvas.remove(activeLineObj); // Erase the purple line once drawn
+                    fCanvas.remove(activeLineObj); 
                     
                     if (pixelLength > 10) {
-                        const actualSize = prompt("Enter the real-world size of this line in mm (e.g. 215 for a brick):");
+                        const actualSize = prompt("Enter real-world size in mm (e.g. 215):");
                         if (actualSize && !isNaN(actualSize) && actualSize > 0) {
                             scaleRatio = parseFloat(actualSize) / pixelLength;
-                            alert("Scale is set! Your Dimension lines will now automatically calculate their size.");
+                            alert("Scale set! Dimension lines will now auto-calculate.");
                         }
                     }
                 }
-                setButtonState('locked'); // Auto return to scroll mode
-                fCanvas.renderAll();
+                setButtonState('locked'); fCanvas.renderAll();
             });
         }
 
@@ -307,6 +364,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     strokeWidth: 4 / z, stroke: '#FF0000', originX: 'center', originY: 'center', selectable: false, hasControls: false
                 });
                 fCanvas.add(activeLineObj);
+                updateLoupe(o);
             });
 
             fCanvas.on('mouse:move', function(o) {
@@ -314,17 +372,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 const pointer = fCanvas.getPointer(o.e);
                 activeLineObj.set({ x2: pointer.x, y2: pointer.y });
                 fCanvas.renderAll();
+                updateLoupe(o);
             });
 
             fCanvas.on('mouse:up', function() {
                 if (activeTool !== 'line') return;
-                isDrawingLine = false;
-                if (activeLineObj) activeLineObj.setCoords();
+                isDrawingLine = false; loupeEl.style.display = 'none';
+                if (activeLineObj) { activeLineObj.setCoords(); saveCanvasState(); }
                 fCanvas.renderAll();
             });
         }
 
-        // --- UPDATED: DIMENSION LINE TOOL WITH AI MATH ---
         function bindDimLineTool() {
             fCanvas.off('mouse:down'); fCanvas.off('mouse:move'); fCanvas.off('mouse:up');
             fCanvas.on('mouse:down', function(o) {
@@ -338,6 +396,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     strokeWidth: 3 / z, stroke: '#0D6EFD', strokeDashArray: [5 / z, 5 / z], originX: 'center', originY: 'center', selectable: false, hasControls: false
                 });
                 fCanvas.add(activeLineObj);
+                updateLoupe(o);
             });
 
             fCanvas.on('mouse:move', function(o) {
@@ -345,16 +404,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 const pointer = fCanvas.getPointer(o.e);
                 activeLineObj.set({ x2: pointer.x, y2: pointer.y });
                 fCanvas.renderAll();
+                updateLoupe(o);
             });
 
             fCanvas.on('mouse:up', function() {
                 if (activeTool !== 'dim-line') return;
-                isDrawingLine = false;
+                isDrawingLine = false; loupeEl.style.display = 'none';
                 if (activeLineObj) {
                     activeLineObj.setCoords();
                     const x1 = activeLineObj.x1, y1 = activeLineObj.y1, x2 = activeLineObj.x2, y2 = activeLineObj.y2;
-                    const dx = x2 - x1;
-                    const dy = y2 - y1;
+                    const dx = x2 - x1; const dy = y2 - y1;
                     const pixelLength = Math.sqrt(dx * dx + dy * dy);
                     const angle = Math.atan2(dy, dx) * 180 / Math.PI;
                     const z = fCanvas.getZoom();
@@ -364,11 +423,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     const arrow2 = new fabric.Triangle({ width: arrowSize, height: arrowSize, fill: '#0D6EFD', left: x2, top: y2, originX: 'center', originY: 'center', angle: angle + 90, selectable: false });
                     fCanvas.add(arrow1, arrow2);
 
-                    // If scale is set, auto-calculate and drop the text measurement
                     if (scaleRatio) {
                         const calculatedMm = Math.round(pixelLength * scaleRatio);
-                        const midX = (x1 + x2) / 2;
-                        const midY = (y1 + y2) / 2;
+                        const midX = (x1 + x2) / 2; const midY = (y1 + y2) / 2;
                         
                         const textObj = new fabric.IText(calculatedMm + ' mm', {
                             left: midX, top: midY, fontFamily: 'system-ui', fontSize: 20 / z,
@@ -377,6 +434,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                         fCanvas.add(textObj);
                     }
+                    saveCanvasState();
                 }
                 fCanvas.renderAll();
             });
@@ -396,9 +454,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     fill: '#FFFF00', fontWeight: 'bold', backgroundColor: 'rgba(0,0,0,0.65)',
                     padding: 6 / z, cornerSize: 8 / z, transparentCorners: false, hasControls: true
                 });
-                fCanvas.add(mmText);
-                fCanvas.setActiveObject(mmText);
-                fCanvas.renderAll();
+                fCanvas.add(mmText); fCanvas.setActiveObject(mmText); fCanvas.renderAll(); saveCanvasState();
             });
         }
 
@@ -415,9 +471,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 left: centerX, top: centerY, originX: 'center', originY: 'center', hasControls: true, borderColor: '#FF0000', cornerColor: '#FF0000', cornerSize: 8/z, transparentCorners: false
             });
 
-            fCanvas.add(pinGroup);
-            fCanvas.setActiveObject(pinGroup);
-            setButtonState('text'); 
+            fCanvas.add(pinGroup); fCanvas.setActiveObject(pinGroup); setButtonState('text'); saveCanvasState();
         }
 
         lockBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('locked'); });
@@ -432,7 +486,6 @@ document.addEventListener('DOMContentLoaded', function() {
         pin2Btn?.addEventListener('click', (e) => { e.preventDefault(); addPin('2', '#0dcaf0'); });
         pin3Btn?.addEventListener('click', (e) => { e.preventDefault(); addPin('3', '#ffc107'); });
 
-        // --- UPDATED: SMART UNDO BUTTON ---
         undoBtn?.addEventListener('click', (e) => {
             e.preventDefault();
             const objects = fCanvas.getObjects();
@@ -440,31 +493,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 const lastObj = objects[objects.length - 1];
                 let itemsToRemove = 1;
                 
-                // If it is the new auto-calculated text sitting on a dim line
                 if (lastObj.type === 'i-text' && objects.length >= 4) {
                     const obj4 = objects[objects.length - 4];
-                    if (obj4 && obj4.type === 'line') itemsToRemove = 4; // text, arrow, arrow, line
-                } 
-                // If it is just a standard dim line with no text
-                else if (lastObj.type === 'triangle' && objects.length >= 3) {
-                    itemsToRemove = 3; // arrow, arrow, line
+                    if (obj4 && obj4.type === 'line') itemsToRemove = 4;
+                } else if (lastObj.type === 'triangle' && objects.length >= 3) {
+                    itemsToRemove = 3; 
                 }
-                
-                for(let i=0; i<itemsToRemove; i++) {
-                    fCanvas.remove(objects[objects.length - 1 - i]);
-                }
-                fCanvas.renderAll();
+                for(let i=0; i<itemsToRemove; i++) { fCanvas.remove(objects[objects.length - 1 - i]); }
+                fCanvas.renderAll(); saveCanvasState();
             }
         });
 
         clearBtn?.addEventListener('click', (e) => {
             e.preventDefault();
-            fCanvas.clear();
-            fCanvas.setBackgroundImage(null, fCanvas.renderAll.bind(fCanvas));
+            fCanvas.clear(); fCanvas.setBackgroundImage(null, fCanvas.renderAll.bind(fCanvas));
             fCanvas.setViewportTransform([1,0,0,1,0,0]); 
-            scaleRatio = null; // Reset scale for the next photo
+            scaleRatio = null;
             if (fileInput) fileInput.value = '';
-            setButtonState('locked');
+            setButtonState('locked'); saveCanvasState();
         });
 
         maximizeBtn?.addEventListener('click', (e) => {
@@ -490,33 +536,52 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => { fCanvas.calcOffset(); fCanvas.renderAll(); }, 100);
         });
 
+        // --- NEW OOM MEMORY FIX ---
         if (fileInput) {
             fileInput.addEventListener('change', function(e) {
                 if (!e.target.files || e.target.files.length === 0) return;
                 const file = e.target.files[0];
                 const reader = new FileReader();
+                
                 reader.onload = function(f) {
                     const nativeImg = new Image();
                     nativeImg.onload = function() {
+                        const MAX_WIDTH = 1200; 
+                        let width = nativeImg.width;
+                        let height = nativeImg.height;
+
+                        if (width > MAX_WIDTH) {
+                            height = Math.round((height * MAX_WIDTH) / width);
+                            width = MAX_WIDTH;
+                        }
+
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = width; tempCanvas.height = height;
+                        const ctx = tempCanvas.getContext('2d');
+                        ctx.drawImage(nativeImg, 0, 0, width, height);
+                        
+                        const safeDataUrl = tempCanvas.toDataURL('image/jpeg', 0.8);
+
                         fCanvas.setViewportTransform([1,0,0,1,0,0]); 
-                        const imgRatio = nativeImg.height / nativeImg.width;
-                        const maxWidth = group.querySelector('.canvas-container').clientWidth || 600;
-                        const dynamicHeight = maxWidth * imgRatio;
+                        
+                        fabric.Image.fromURL(safeDataUrl, function(fabricImg) {
+                            const imgRatio = fabricImg.height / fabricImg.width;
+                            const maxWidth = group.querySelector('.canvas-container').clientWidth || 600;
+                            const dynamicHeight = maxWidth * imgRatio;
 
-                        fCanvas.setDimensions({ width: maxWidth, height: dynamicHeight });
-                        const fabricImg = new fabric.Image(nativeImg);
-                        const scale = Math.min(fCanvas.width / fabricImg.width, fCanvas.height / fabricImg.height);
+                            fCanvas.setDimensions({ width: maxWidth, height: dynamicHeight });
+                            const scale = Math.min(fCanvas.width / fabricImg.width, fCanvas.height / fabricImg.height);
 
-                        fabricImg.set({ 
-                            originX: 'center', originY: 'center', 
-                            scaleX: scale, scaleY: scale, 
-                            left: fCanvas.width / 2, top: fCanvas.height / 2, 
-                            selectable: false
-                        });
+                            fabricImg.set({ 
+                                originX: 'center', originY: 'center', 
+                                scaleX: scale, scaleY: scale, 
+                                left: fCanvas.width / 2, top: fCanvas.height / 2, 
+                                selectable: false
+                            });
 
-                        fCanvas.setBackgroundImage(fabricImg, () => {
-                            fCanvas.calcOffset();
-                            fCanvas.renderAll();
+                            fCanvas.setBackgroundImage(fabricImg, () => {
+                                fCanvas.calcOffset(); fCanvas.renderAll(); saveCanvasState();
+                            });
                         });
                     };
                     nativeImg.src = f.target.result;
@@ -564,10 +629,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 canvas.getContext('2d').drawImage(img, 0, 0);
                 resolve(canvas.toDataURL('image/jpeg', 0.9));
             };
-            img.onerror = () => {
-                console.warn(`Pamphlet missing: ${url}. Skipping...`);
-                resolve(null);
-            };
+            img.onerror = () => { console.warn(`Pamphlet missing: ${url}. Skipping...`); resolve(null); };
             img.src = url;
         });
     }
@@ -588,11 +650,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 const img = document.createElement('img');
                 img.src = dataUrl;
-                img.style.width = '100%';
-                img.style.maxHeight = '250px';
-                img.style.objectFit = 'contain';
-                img.style.border = '1px solid #dee2e6';
-                img.style.borderRadius = '4px';
+                img.style.width = '100%'; img.style.maxHeight = '250px'; img.style.objectFit = 'contain'; img.style.border = '1px solid #dee2e6'; img.style.borderRadius = '4px';
                 grid.appendChild(img);
             }
         }
@@ -607,91 +665,49 @@ document.addEventListener('DOMContentLoaded', function() {
         const template = document.getElementById(templateId);
         const mainApp = document.querySelector('main') || document.body.firstElementChild;
 
-        template.style.display = 'block';
-        template.style.position = 'absolute';
-        template.style.top = '0'; template.style.left = '0'; template.style.width = '800px';
-        template.style.zIndex = '999999'; template.style.backgroundColor = '#ffffff';
-        mainApp.style.display = 'none';
-        window.scrollTo(0, 0);
+        template.style.display = 'block'; template.style.position = 'absolute'; template.style.top = '0'; template.style.left = '0'; template.style.width = '800px'; template.style.zIndex = '999999'; template.style.backgroundColor = '#ffffff'; mainApp.style.display = 'none'; window.scrollTo(0, 0);
 
         try {
             await new Promise(r => setTimeout(r, 800)); 
-            
             const doc = new jsPDF('p', 'mm', 'a4');
-            const margin = 10;
-            const pdfPrintWidth = doc.internal.pageSize.getWidth() - (margin * 2);
-            const pdfFullWidth = doc.internal.pageSize.getWidth();
-            const pdfFullHeight = doc.internal.pageSize.getHeight();
+            const margin = 10; const pdfPrintWidth = doc.internal.pageSize.getWidth() - (margin * 2); const pdfFullWidth = doc.internal.pageSize.getWidth(); const pdfFullHeight = doc.internal.pageSize.getHeight();
 
             if (templateId === 'pdfTemplateInternal') {
                 let pages = Array.from(template.querySelectorAll('.pdf-page')).filter(el => window.getComputedStyle(el).display !== 'none');
-
                 for(let i = 0; i < pages.length; i++) {
                     btn.innerText = `Printing Page ${i+1}/${pages.length}...`;
-                    const canvas = await html2canvas(pages[i], {
-                        scale: 1.5, useCORS: true, allowTaint: false, windowWidth: 800, logging: false, backgroundColor: '#ffffff'
-                    });
+                    const canvas = await html2canvas(pages[i], { scale: 1.5, useCORS: true, allowTaint: false, windowWidth: 800, logging: false, backgroundColor: '#ffffff' });
                     const imgData = canvas.toDataURL('image/jpeg', 0.95);
                     const ratio = canvas.height / canvas.width;
                     if (i > 0) doc.addPage();
                     doc.addImage(imgData, 'JPEG', margin, margin, pdfPrintWidth, pdfPrintWidth * ratio);
                     canvas.width = 0; canvas.height = 0; 
                 }
-                
             } else if (templateId === 'pdfTemplateCustomer') {
                 btn.innerText = `Printing Cover Letter...`;
-                
-                // 1. Generate the HTML Cover Letter (Page 1)
                 let pages = Array.from(template.querySelectorAll('.pdf-page')).filter(el => window.getComputedStyle(el).display !== 'none');
-                const canvas = await html2canvas(pages[0], {
-                    scale: 1.5, useCORS: true, allowTaint: false, windowWidth: 800, logging: false, backgroundColor: '#ffffff'
-                });
+                const canvas = await html2canvas(pages[0], { scale: 1.5, useCORS: true, allowTaint: false, windowWidth: 800, logging: false, backgroundColor: '#ffffff' });
                 const imgData = canvas.toDataURL('image/jpeg', 0.95);
                 const ratio = canvas.height / canvas.width;
                 doc.addImage(imgData, 'JPEG', margin, margin, pdfPrintWidth, pdfPrintWidth * ratio);
 
-                // 2. Build the exact queue of required JPGs
                 btn.innerText = "Stitching Pamphlets...";
-                
-                const pagesToAppend = [
-                    'pamphlet-who-we-are.jpg',
-                    'pamphlet-why-choose-us.jpg',
-                    'pamphlet-journey.jpg',
-                    'pamphlet-tailored.jpg',
-                    'pamphlet-piling.jpg'
-                ];
-
-                // Conditional Logic checking exact dropdown values
+                const pagesToAppend = ['pamphlet-who-we-are.jpg', 'pamphlet-why-choose-us.jpg', 'pamphlet-journey.jpg', 'pamphlet-tailored.jpg', 'pamphlet-piling.jpg'];
                 if (data.weepVents === 'Yes') pagesToAppend.push('pamphlet-protecting-home.jpg');
-                
                 if (data.roofType === 'Ultra380') pagesToAppend.push('pamphlet-ultra380.jpg');
                 if (data.roofType === 'LivinRoof') pagesToAppend.push('pamphlet-livinroof.jpg');
                 if (data.roofType === 'Glass Roof') pagesToAppend.push('pamphlet-glass-roof.jpg');
                 if (data.roofType === 'Flat Roof') pagesToAppend.push('pamphlet-flat-roof.jpg');
-                
                 if (data.sapCalcs === 'Yes') pagesToAppend.push('pamphlet-sap-calcs.jpg');
-                
-                if (data.planningPerms === 'Full Planning' || data.planningPerms === 'Pre Approved Planning') {
-                    pagesToAppend.push('pamphlet-planning.jpg');
-                }
+                if (data.planningPerms === 'Full Planning' || data.planningPerms === 'Pre Approved Planning') pagesToAppend.push('pamphlet-planning.jpg');
 
-                // 3. Process the queue sequentially to prevent memory crashes
                 for (const filename of pagesToAppend) {
                     const img = await loadPamphletImage(filename);
-                    if (img) { 
-                        doc.addPage(); 
-                        doc.addImage(img, 'JPEG', 0, 0, pdfFullWidth, pdfFullHeight); 
-                    }
+                    if (img) { doc.addPage(); doc.addImage(img, 'JPEG', 0, 0, pdfFullWidth, pdfFullHeight); }
                 }
             }
-            
-            // Output the single master PDF file
             doc.save(fileName);
-
-        } catch (error) {
-            console.error("CAPTURE FAILED:", error);
-            alert("Capture Failed: " + error.message);
-        } finally {
+        } catch (error) { alert("Capture Failed: " + error.message); } finally {
             template.style.display = 'none'; template.style.position = ''; mainApp.style.display = 'block';
             btn.innerText = originalText; btn.disabled = false;
         }
@@ -701,11 +717,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function getSurveyData() {
         const dName = document.getElementById('designerSelect')?.value || "Surveyor";
         const selectedBrand = document.getElementById('brandSelect')?.value || "CO Home Improvements";
-
-        const profiles = window.designerProfiles || {};
-        const logos = window.brandLogos || {};
+        const profiles = window.designerProfiles || {}; const logos = window.brandLogos || {};
         const profile = profiles[dName] || { phone: "", email: "" };
-
         return {
             clientName: document.getElementById('clientName')?.value || 'Customer',
             clientNum: document.getElementById('clientNum')?.value || '',
@@ -722,27 +735,20 @@ document.addEventListener('DOMContentLoaded', function() {
             buildingRegs: document.getElementById('buildingRegs')?.value || '',
             sapCalcs: document.getElementById('sapCalcs')?.value || '',
             weepVents: document.getElementById('weepventsExist')?.value || '',
-            designerName: dName, 
-            designerPhone: profile.phone, 
-            designerEmail: profile.email,
+            designerName: dName, designerPhone: profile.phone, designerEmail: profile.email,
             logoSource: logos[selectedBrand] || "logo.jpg"
         };
     }
 
     document.getElementById('generateInternalPdfBtn')?.addEventListener('click', async function() {
-        const data = getSurveyData();
-        const template = document.getElementById('pdfTemplateInternal');
-
+        const data = getSurveyData(); const template = document.getElementById('pdfTemplateInternal');
         try {
             await applySafeLogo(template, data.logoSource);
-
             template.querySelectorAll('.bind-name').forEach(el => el.innerText = data.clientName);
             template.querySelectorAll('.bind-num').forEach(el => el.innerText = data.clientNum);
             template.querySelectorAll('.bind-address').forEach(el => el.innerText = data.address);
             template.querySelectorAll('.bind-date').forEach(el => el.innerText = data.date);
-
-            const designerEl = document.getElementById('pdfPrintDesigner');
-            if (designerEl) designerEl.innerText = data.designerName;
+            const designerEl = document.getElementById('pdfPrintDesigner'); if (designerEl) designerEl.innerText = data.designerName;
 
             ['BuildType', 'RoofType', 'ProposedSize', 'FrameColour', 'HouseMaterial', 'DpcDepth', 'FasciaHeight', 'AirBricks', 'BuildingRegs', 'PlanningPerms', 'SapCalcs', 'Budget', 'AccessDifficult', 'AccessWidth', 'WallObstacles', 'DesignerNotes', 'MiscNotes'].forEach(key => {
                 const inputEl = document.getElementById(key.charAt(0).toLowerCase() + key.slice(1));
@@ -750,86 +756,54 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (inputEl && textEl) textEl.innerText = inputEl.value;
             });
 
-            // Extract the Access and Misc Photo grids right before taking the screenshot
-            await populatePdfImageGrid('accessPhotos', 'pdfAccessPhotosGrid');
-            await populatePdfImageGrid('miscPhotos', 'pdfMiscPhotosGrid');
-
+            await populatePdfImageGrid('accessPhotos', 'pdfAccessPhotosGrid'); await populatePdfImageGrid('miscPhotos', 'pdfMiscPhotosGrid');
             ['frontelevation', 'sideelevation', 'rearelevation', 'housematerialphoto', 'manhole', 'weepvents', 'rwpsvp', 'treelocations', 'designersketch'].forEach(id => {
-                const fCanvas = window.appCanvases[id];
-                const imgTag = document.getElementById(`pdfImgInternal-${id}`);
+                const fCanvas = window.appCanvases[id]; const imgTag = document.getElementById(`pdfImgInternal-${id}`);
                 if (fCanvas && imgTag) { 
-                    fCanvas.setViewportTransform([1,0,0,1,0,0]); 
-                    fCanvas.discardActiveObject(); 
-                    fCanvas.renderAll(); 
-                    imgTag.src = fCanvas.toDataURL({ format: 'jpeg', quality: 0.9 }); 
+                    fCanvas.setViewportTransform([1,0,0,1,0,0]); fCanvas.discardActiveObject(); fCanvas.renderAll(); imgTag.src = fCanvas.toDataURL({ format: 'jpeg', quality: 0.9 }); 
                 }
             });
-        } catch (e) { console.warn("Binding bypass:", e); }
-
+        } catch (e) { }
         const surname = data.clientName.trim().split(' ').pop() || 'Customer';
         await executeSecurePDFGeneration('pdfTemplateInternal', `${surname}_Internal_Survey.pdf`, this, data);
-
-        if (typeof gtag === 'function') {
-            gtag('event', 'generate_pdf', { 'pdf_type': 'Internal Survey', 'designer': data.designerName });
-        }
+        if (typeof gtag === 'function') { gtag('event', 'generate_pdf', { 'pdf_type': 'Internal Survey', 'designer': data.designerName }); }
     });
 
     document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', async function() {
-        const data = getSurveyData();
-        const template = document.getElementById('pdfTemplateCustomer');
-
+        const data = getSurveyData(); const template = document.getElementById('pdfTemplateCustomer');
         try {
             await applySafeLogo(template, data.logoSource);
-
             const firstName = data.clientName.split(' ')[0] || 'Customer';
             const greetingEl = document.getElementById('lp-greeting');
-            if (greetingEl) {
-                greetingEl.innerHTML = `Hi ${firstName},<br><br>I want to say a massive thank you for inviting me into your home today. I've put together this summary document outlining the major talking points from our appointment so we both know we are on exactly the right lines. If there is anything you'd like to adjust, please don't hesitate to get in touch.`;
-            }
+            if (greetingEl) greetingEl.innerHTML = `Hi ${firstName},<br><br>I want to say a massive thank you for inviting me into your home today. I've put together this summary document outlining the major talking points from our appointment so we both know we are on exactly the right lines. If there is anything you'd like to adjust, please don't hesitate to get in touch.`;
 
             const sizeEl = document.getElementById('lp-size');
             if (sizeEl) {
-                if (data.buildType && data.proposedSize) {
-                    sizeEl.innerText = `As discussed, we are proposing a beautiful new ${data.buildType} measuring approximately ${data.proposedSize}mm. We have plenty of flexibility to adjust this as we develop the final design.`;
-                } else if (data.buildType) {
-                    sizeEl.innerText = `As discussed, we are proposing a beautiful new ${data.buildType}. We didn't quite pinpoint the exact dimensions just yet, which is absolutely fine. We have plenty of flexibility to work towards the perfect size as we develop the design.`;
-                } else {
-                    sizeEl.innerText = `We didn't quite pinpoint the exact dimensions of your build just yet, which is absolutely fine. We have plenty of flexibility to work towards the perfect size as we develop the design.`;
-                }
+                if (data.buildType && data.proposedSize) sizeEl.innerText = `As discussed, we are proposing a beautiful new ${data.buildType} measuring approximately ${data.proposedSize}mm. We have plenty of flexibility to adjust this as we develop the final design.`;
+                else if (data.buildType) sizeEl.innerText = `As discussed, we are proposing a beautiful new ${data.buildType}. We didn't quite pinpoint the exact dimensions just yet, which is absolutely fine. We have plenty of flexibility to work towards the perfect size as we develop the design.`;
+                else sizeEl.innerText = `We didn't quite pinpoint the exact dimensions of your build just yet, which is absolutely fine. We have plenty of flexibility to work towards the perfect size as we develop the design.`;
             }
 
             const roofEl = document.getElementById('lp-roof');
             if (roofEl) {
-                if (data.roofType) {
-                    roofEl.innerText = `To perfectly complement the build, we discussed incorporating a premium ${data.roofType} system. I will prepare a few different 3D options featuring this so you can see exactly how it looks.`;
-                } else {
-                    roofEl.innerText = `We have yet to decide on the final roof style, but I will prepare a few different options for you to review so we can find the perfect match for your home.`;
-                }
+                if (data.roofType) roofEl.innerText = `To perfectly complement the build, we discussed incorporating a premium ${data.roofType} system. I will prepare a few different 3D options featuring this so you can see exactly how it looks.`;
+                else roofEl.innerText = `We have yet to decide on the final roof style, but I will prepare a few different options for you to review so we can find the perfect match for your home.`;
             }
 
             const frameEl = document.getElementById('lp-frame');
             if (frameEl) {
-                if (data.frameColour) {
-                    frameEl.innerText = `We agreed that the window and door frames will look fantastic finished in an elegant ${data.frameColour} colourway to match your property.`;
-                } else {
-                    frameEl.innerText = `We haven't narrowed down the final frame colour or build materials just yet, but we have an incredible range to choose from. Just let me know when you are ready to explore them.`;
-                }
+                if (data.frameColour) frameEl.innerText = `We agreed that the window and door frames will look fantastic finished in an elegant ${data.frameColour} colourway to match your property.`;
+                else frameEl.innerText = `We haven't narrowed down the final frame colour or build materials just yet, but we have an incredible range to choose from. Just let me know when you are ready to explore them.`;
             }
 
             const complianceEl = document.getElementById('lp-compliance');
             if (complianceEl) {
                 const needsPlanning = (data.planningPerms === 'Full Planning' || data.planningPerms === 'Pre Approved Planning');
-                const needsRegs = (data.buildingRegs === 'Yes');
-                const needsSap = (data.sapCalcs === 'Yes');
-
-                if (!needsPlanning && !needsRegs && !needsSap) {
-                    complianceEl.innerText = `Based on your choices, it looks like we do not need Planning Permission, we do not need Building Regulations, and we do not need SAP calculations. Please don't worry about the technicalities of these—I have included a brief explanation of what they mean later in this pack, and our team will handle all of it for you.`;
-                } else {
+                const needsRegs = (data.buildingRegs === 'Yes'); const needsSap = (data.sapCalcs === 'Yes');
+                if (!needsPlanning && !needsRegs && !needsSap) complianceEl.innerText = `Based on your choices, it looks like we do not need Planning Permission, we do not need Building Regulations, and we do not need SAP calculations. Please don't worry about the technicalities of these—I have included a brief explanation of what they mean later in this pack, and our team will handle all of it for you.`;
+                else {
                     let reqs = [];
-                    if (needsPlanning) reqs.push(data.planningPerms);
-                    if (needsRegs) reqs.push("Building Regulations");
-                    if (needsSap) reqs.push("SAP Calculations");
-
+                    if (needsPlanning) reqs.push(data.planningPerms); if (needsRegs) reqs.push("Building Regulations"); if (needsSap) reqs.push("SAP Calculations");
                     const reqString = reqs.join(', ').replace(/, ([^,]*)$/, ' and $1');
                     complianceEl.innerText = `Regarding compliance, based on our discussion your project will require ${reqString}. Please don't worry about the technicalities of these—I have included a brief explanation of what they mean later in this pack, and our dedicated team will handle all of it for you.`;
                 }
@@ -837,23 +811,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const revisitEl = document.getElementById('lp-revisit');
             if (revisitEl) {
-                if (data.revisitDate) {
-                    revisitEl.innerText = `I look forward to our next catch-up scheduled for ${data.revisitDate}${data.revisitLocation ? ` at ${data.revisitLocation}` : ''}. We will go through your custom 3D designs together then. If you need anything before I next get in touch, please contact me on the details below.`;
-                } else {
-                    revisitEl.innerText = `We haven't booked in a date for our next catch-up just yet, but as soon as we work out a time, we will get you scheduled in. If you need anything before I next get in touch, please contact me on the details below.`;
-                }
+                if (data.revisitDate) revisitEl.innerText = `I look forward to our next catch-up scheduled for ${data.revisitDate}${data.revisitLocation ? ` at ${data.revisitLocation}` : ''}. We will go through your custom 3D designs together then. If you need anything before I next get in touch, please contact me on the details below.`;
+                else revisitEl.innerText = `We haven't booked in a date for our next catch-up just yet, but as soon as we work out a time, we will get you scheduled in. If you need anything before I next get in touch, please contact me on the details below.`;
             }
 
             const nameEl = document.getElementById('lp-designer-name'); if(nameEl) nameEl.innerText = data.designerName;
             const contactEl = document.getElementById('lp-designer-contact'); if(contactEl) contactEl.innerText = `${data.designerPhone} | ${data.designerEmail}`;
-
-        } catch (e) { console.warn("Binding bypass:", e); }
-
+        } catch (e) { }
         const surname = data.clientName.trim().split(' ').pop() || 'Customer';
         await executeSecurePDFGeneration('pdfTemplateCustomer', `${surname}_Design_Consultation.pdf`, this, data);
-
-        if (typeof gtag === 'function') {
-            gtag('event', 'generate_pdf', { 'pdf_type': 'Customer Pack', 'designer': data.designerName });
-        }
+        if (typeof gtag === 'function') { gtag('event', 'generate_pdf', { 'pdf_type': 'Customer Pack', 'designer': data.designerName }); }
     });
 });
