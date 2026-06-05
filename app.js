@@ -96,8 +96,10 @@ document.addEventListener('DOMContentLoaded', function() {
         let isDrawingLine = false;
         let activeLineObj = null;
         let startX = 0; let startY = 0;
+        let scaleRatio = null; // Pixel to MM conversion ratio
 
         const lockBtn = group.querySelector('.lock-btn');
+        const calibrateBtn = group.querySelector('.calibrate-btn');
         const freehandBtn = group.querySelector('.freehand-btn');
         const highlightBtn = group.querySelector('.highlight-btn');
         const lineBtn = group.querySelector('.line-btn');
@@ -209,6 +211,7 @@ document.addEventListener('DOMContentLoaded', function() {
             lockBtn?.classList.toggle('canvas-locked', tool === 'locked');
             if (lockBtn) lockBtn.textContent = (tool === 'locked') ? '🔒 Locked for Scroll & Pan' : '🔓 Canvas Active';
 
+            calibrateBtn?.classList.toggle('active', tool === 'calibrate');
             freehandBtn?.classList.toggle('active', tool === 'freehand');
             highlightBtn?.classList.toggle('active', tool === 'highlight');
             lineBtn?.classList.toggle('active', tool === 'line');
@@ -235,12 +238,60 @@ document.addEventListener('DOMContentLoaded', function() {
 
             fCanvas.discardActiveObject();
             
-            if (tool === 'line') bindLineTool();
+            if (tool === 'calibrate') bindCalibrateTool();
+            else if (tool === 'line') bindLineTool();
             else if (tool === 'dim-line') bindDimLineTool();
             else if (tool === 'text') bindTextTool();
 
             fCanvas.calcOffset();
             fCanvas.renderAll();
+        }
+
+        // --- NEW: CALIBRATION TOOL ---
+        function bindCalibrateTool() {
+            fCanvas.off('mouse:down'); fCanvas.off('mouse:move'); fCanvas.off('mouse:up');
+            fCanvas.on('mouse:down', function(o) {
+                if (activeTool !== 'calibrate') return;
+                isDrawingLine = true;
+                const pointer = fCanvas.getPointer(o.e);
+                startX = pointer.x; startY = pointer.y;
+                const z = fCanvas.getZoom();
+
+                activeLineObj = new fabric.Line([startX, startY, startX, startY], {
+                    strokeWidth: 4 / z, stroke: '#6f42c1', originX: 'center', originY: 'center', selectable: false, hasControls: false
+                });
+                fCanvas.add(activeLineObj);
+            });
+
+            fCanvas.on('mouse:move', function(o) {
+                if (!isDrawingLine || activeTool !== 'calibrate') return;
+                const pointer = fCanvas.getPointer(o.e);
+                activeLineObj.set({ x2: pointer.x, y2: pointer.y });
+                fCanvas.renderAll();
+            });
+
+            fCanvas.on('mouse:up', function() {
+                if (activeTool !== 'calibrate') return;
+                isDrawingLine = false;
+                if (activeLineObj) {
+                    activeLineObj.setCoords();
+                    const dx = activeLineObj.x2 - activeLineObj.x1;
+                    const dy = activeLineObj.y2 - activeLineObj.y1;
+                    const pixelLength = Math.sqrt(dx * dx + dy * dy);
+                    
+                    fCanvas.remove(activeLineObj); // Erase the purple line once drawn
+                    
+                    if (pixelLength > 10) {
+                        const actualSize = prompt("Enter the real-world size of this line in mm (e.g. 215 for a brick):");
+                        if (actualSize && !isNaN(actualSize) && actualSize > 0) {
+                            scaleRatio = parseFloat(actualSize) / pixelLength;
+                            alert("Scale is set! Your Dimension lines will now automatically calculate their size.");
+                        }
+                    }
+                }
+                setButtonState('locked'); // Auto return to scroll mode
+                fCanvas.renderAll();
+            });
         }
 
         function bindLineTool() {
@@ -273,6 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
+        // --- UPDATED: DIMENSION LINE TOOL WITH AI MATH ---
         function bindDimLineTool() {
             fCanvas.off('mouse:down'); fCanvas.off('mouse:move'); fCanvas.off('mouse:up');
             fCanvas.on('mouse:down', function(o) {
@@ -301,14 +353,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (activeLineObj) {
                     activeLineObj.setCoords();
                     const x1 = activeLineObj.x1, y1 = activeLineObj.y1, x2 = activeLineObj.x2, y2 = activeLineObj.y2;
-                    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+                    const dx = x2 - x1;
+                    const dy = y2 - y1;
+                    const pixelLength = Math.sqrt(dx * dx + dy * dy);
+                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
                     const z = fCanvas.getZoom();
                     const arrowSize = 12 / z;
 
                     const arrow1 = new fabric.Triangle({ width: arrowSize, height: arrowSize, fill: '#0D6EFD', left: x1, top: y1, originX: 'center', originY: 'center', angle: angle - 90, selectable: false });
                     const arrow2 = new fabric.Triangle({ width: arrowSize, height: arrowSize, fill: '#0D6EFD', left: x2, top: y2, originX: 'center', originY: 'center', angle: angle + 90, selectable: false });
-                    
                     fCanvas.add(arrow1, arrow2);
+
+                    // If scale is set, auto-calculate and drop the text measurement
+                    if (scaleRatio) {
+                        const calculatedMm = Math.round(pixelLength * scaleRatio);
+                        const midX = (x1 + x2) / 2;
+                        const midY = (y1 + y2) / 2;
+                        
+                        const textObj = new fabric.IText(calculatedMm + ' mm', {
+                            left: midX, top: midY, fontFamily: 'system-ui', fontSize: 20 / z,
+                            fill: '#FFFF00', fontWeight: 'bold', backgroundColor: 'rgba(0,0,0,0.65)',
+                            padding: 6 / z, cornerSize: 8 / z, originX: 'center', originY: 'center', transparentCorners: false, hasControls: true
+                        });
+                        fCanvas.add(textObj);
+                    }
                 }
                 fCanvas.renderAll();
             });
@@ -353,6 +421,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         lockBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('locked'); });
+        calibrateBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('calibrate'); });
         freehandBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('freehand'); });
         highlightBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('highlight'); });
         lineBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('line'); });
@@ -363,17 +432,26 @@ document.addEventListener('DOMContentLoaded', function() {
         pin2Btn?.addEventListener('click', (e) => { e.preventDefault(); addPin('2', '#0dcaf0'); });
         pin3Btn?.addEventListener('click', (e) => { e.preventDefault(); addPin('3', '#ffc107'); });
 
+        // --- UPDATED: SMART UNDO BUTTON ---
         undoBtn?.addEventListener('click', (e) => {
             e.preventDefault();
             const objects = fCanvas.getObjects();
             if (objects.length > 0) {
                 const lastObj = objects[objects.length - 1];
-                if (lastObj.type === 'triangle') {
-                    fCanvas.remove(objects[objects.length - 1]); 
-                    fCanvas.remove(objects[objects.length - 2]); 
-                    fCanvas.remove(objects[objects.length - 3]); 
-                } else {
-                    fCanvas.remove(lastObj);
+                let itemsToRemove = 1;
+                
+                // If it is the new auto-calculated text sitting on a dim line
+                if (lastObj.type === 'i-text' && objects.length >= 4) {
+                    const obj4 = objects[objects.length - 4];
+                    if (obj4 && obj4.type === 'line') itemsToRemove = 4; // text, arrow, arrow, line
+                } 
+                // If it is just a standard dim line with no text
+                else if (lastObj.type === 'triangle' && objects.length >= 3) {
+                    itemsToRemove = 3; // arrow, arrow, line
+                }
+                
+                for(let i=0; i<itemsToRemove; i++) {
+                    fCanvas.remove(objects[objects.length - 1 - i]);
                 }
                 fCanvas.renderAll();
             }
@@ -384,6 +462,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fCanvas.clear();
             fCanvas.setBackgroundImage(null, fCanvas.renderAll.bind(fCanvas));
             fCanvas.setViewportTransform([1,0,0,1,0,0]); 
+            scaleRatio = null; // Reset scale for the next photo
             if (fileInput) fileInput.value = '';
             setButtonState('locked');
         });
