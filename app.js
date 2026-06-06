@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("[Diagnostics] Blueprint Enterprise Engine Loaded (Removed Overlay / Restored Preview).");
+    console.log("[Blueprint Enterprise] Diagnostic Engine Loaded. (Failsafe PDF Mode)");
     const { jsPDF } = window.jspdf;
 
     // --- 1. PROFILE MANAGER ---
@@ -97,346 +97,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const saveCanvasState = () => { const data = JSON.parse(localStorage.getItem('surveyAppData')) || {}; data['canvas_' + id] = JSON.stringify(fCanvas.toJSON()); localStorage.setItem('surveyAppData', JSON.stringify(data)); }; 
         fCanvas.on('object:added', saveCanvasState); fCanvas.on('object:modified', saveCanvasState); fCanvas.on('object:removed', saveCanvasState);
-
-        let activeTool = 'locked'; 
-        let isDrawingLine = false;
-        let activeLineObj = null;
-        let startX = 0; let startY = 0;
-
-        const lockBtn = group.querySelector('.lock-btn');
-        const freehandBtn = group.querySelector('.freehand-btn');
-        const highlightBtn = group.querySelector('.highlight-btn');
-        const lineBtn = group.querySelector('.line-btn');
-        const dimLineBtn = group.querySelector('.dim-line-btn');
-        const textBtn = group.querySelector('.text-btn');
-        const calibrateBtn = group.querySelector('.calibrate-btn');
-        const undoBtn = group.querySelector('.undo-btn');
-        const maximizeBtn = group.querySelector('.maximize-btn');
-        const clearBtn = group.querySelector('.clear-btn');
-        const fileInput = group.querySelector('.camera-input');
-        const canvasContainer = group.querySelector('.canvas-container');
-
-        let isPinching = false;
-        let lastPinchDist = 0;
-        let isPanning = false;
-        let lastPanX = 0; 
-        let lastPanY = 0;
-
-        fCanvas.on('mouse:wheel', function(opt) {
-            let delta = opt.e.deltaY;
-            let zoom = fCanvas.getZoom();
-            zoom *= 0.999 ** delta;
-            if (zoom > 10) zoom = 10;
-            if (zoom < 0.5) zoom = 0.5;
-            fCanvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
-            opt.e.preventDefault();
-            opt.e.stopPropagation();
-        });
-
-        fCanvas.on('mouse:down', function(opt) {
-            if (activeTool === 'locked' && !isPinching) {
-                isPanning = true;
-                lastPanX = opt.e.clientX || (opt.e.touches && opt.e.touches[0].clientX);
-                lastPanY = opt.e.clientY || (opt.e.touches && opt.e.touches[0].clientY);
-            }
-        });
-
-        fCanvas.on('mouse:move', function(opt) {
-            if (isPanning && activeTool === 'locked') {
-                let e = opt.e;
-                let currentX = e.clientX || (e.touches && e.touches[0].clientX);
-                let currentY = e.clientY || (e.touches && e.touches[0].clientY);
-                if (currentX && currentY && lastPanX && lastPanY) {
-                    let vpt = fCanvas.viewportTransform;
-                    vpt[4] += currentX - lastPanX; 
-                    vpt[5] += currentY - lastPanY; 
-                    fCanvas.requestRenderAll();
-                    lastPanX = currentX;
-                    lastPanY = currentY;
-                }
-            }
-        });
-
-        fCanvas.on('mouse:up', function() {
-            isPanning = false;
-            fCanvas.setViewportTransform(fCanvas.viewportTransform); 
-        });
-
-        canvasContainer.addEventListener('touchstart', function(e) {
-            if (e.touches.length === 2) {
-                isPinching = true;
-                isPanning = false;
-                fCanvas.isDrawingMode = false; 
-
-                lastPinchDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
-            }
-        }, { passive: false });
-
-        canvasContainer.addEventListener('touchmove', function(e) {
-            if (isPinching && e.touches.length === 2) {
-                e.preventDefault(); 
-
-                let currentDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
-
-                let zoom = fCanvas.getZoom();
-                zoom *= (currentDist / lastPinchDist); 
-
-                if (zoom > 10) zoom = 10;
-                if (zoom < 0.5) zoom = 0.5;
-
-                let rect = canvasContainer.getBoundingClientRect();
-                let pinchCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
-                let pinchCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
-
-                fCanvas.zoomToPoint({ x: pinchCenterX, y: pinchCenterY }, zoom);
-                lastPinchDist = currentDist;
-            }
-        }, { passive: false });
-
-        canvasContainer.addEventListener('touchend', function(e) {
-            if (isPinching && e.touches.length < 2) {
-                isPinching = false;
-                if (activeTool === 'freehand' || activeTool === 'highlight') fCanvas.isDrawingMode = true; 
-            }
-        });
-
-        function setButtonState(tool) {
-            activeTool = tool;
-            const currentZoom = fCanvas.getZoom();
-
-            lockBtn?.classList.toggle('canvas-locked', tool === 'locked');
-            if (lockBtn) lockBtn.innerHTML = (tool === 'locked') ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>' : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>';
-
-            freehandBtn?.classList.toggle('active', tool === 'freehand');
-            highlightBtn?.classList.toggle('active', tool === 'highlight');
-            lineBtn?.classList.toggle('active', tool === 'line');
-            dimLineBtn?.classList.toggle('active', tool === 'dim-line');
-            textBtn?.classList.toggle('active', tool === 'text');
-            calibrateBtn?.classList.toggle('active', tool === 'calibrate');
-
-            fCanvas.isDrawingMode = (tool === 'freehand' || tool === 'highlight');
-            
-            if (tool === 'freehand') {
-                fCanvas.freeDrawingBrush.color = '#00E5FF';
-                fCanvas.freeDrawingBrush.width = 4 / currentZoom;
-            } else if (tool === 'highlight') {
-                fCanvas.freeDrawingBrush.color = 'rgba(255, 255, 0, 0.4)';
-                fCanvas.freeDrawingBrush.width = 25 / currentZoom;
-            }
-
-            fCanvas.selection = (tool === 'text' || tool === 'locked'); 
-            fCanvas.allowTouchScrolling = (tool === 'locked' || tool === 'text');
-
-            fCanvas.getObjects().forEach(obj => {
-                obj.selectable = (tool === 'text');
-                obj.editable = (tool === 'text');
-            });
-
-            fCanvas.discardActiveObject();
-            
-            if (tool === 'line') bindLineTool();
-            else if (tool === 'dim-line') bindDimLineTool();
-            else if (tool === 'text') bindTextTool();
-
-            fCanvas.calcOffset();
-            fCanvas.renderAll();
-        }
-
-        function bindLineTool() {
-            fCanvas.off('mouse:down'); fCanvas.off('mouse:move'); fCanvas.off('mouse:up');
-            fCanvas.on('mouse:down', function(o) {
-                if (activeTool !== 'line') return;
-                isDrawingLine = true;
-                const pointer = fCanvas.getPointer(o.e);
-                startX = pointer.x; startY = pointer.y;
-                const z = fCanvas.getZoom();
-
-                activeLineObj = new fabric.Line([startX, startY, startX, startY], {
-                    strokeWidth: 4 / z, stroke: '#FF3B30', originX: 'center', originY: 'center', selectable: false, hasControls: false
-                });
-                fCanvas.add(activeLineObj);
-            });
-
-            fCanvas.on('mouse:move', function(o) {
-                if (!isDrawingLine || activeTool !== 'line') return;
-                const pointer = fCanvas.getPointer(o.e);
-                activeLineObj.set({ x2: pointer.x, y2: pointer.y });
-                fCanvas.renderAll();
-            });
-
-            fCanvas.on('mouse:up', function() {
-                if (activeTool !== 'line') return;
-                isDrawingLine = false;
-                if (activeLineObj) activeLineObj.setCoords();
-                fCanvas.renderAll(); saveCanvasState();
-            });
-        }
-
-        function bindDimLineTool() {
-            fCanvas.off('mouse:down'); fCanvas.off('mouse:move'); fCanvas.off('mouse:up');
-            fCanvas.on('mouse:down', function(o) {
-                if (activeTool !== 'dim-line') return;
-                isDrawingLine = true;
-                const pointer = fCanvas.getPointer(o.e);
-                startX = pointer.x; startY = pointer.y;
-                const z = fCanvas.getZoom();
-
-                activeLineObj = new fabric.Line([startX, startY, startX, startY], {
-                    strokeWidth: 3 / z, stroke: '#00E5FF', strokeDashArray: [5 / z, 5 / z], originX: 'center', originY: 'center', selectable: false, hasControls: false
-                });
-                fCanvas.add(activeLineObj);
-            });
-
-            fCanvas.on('mouse:move', function(o) {
-                if (!isDrawingLine || activeTool !== 'dim-line') return;
-                const pointer = fCanvas.getPointer(o.e);
-                activeLineObj.set({ x2: pointer.x, y2: pointer.y });
-                fCanvas.renderAll();
-            });
-
-            fCanvas.on('mouse:up', function() {
-                if (activeTool !== 'dim-line') return;
-                isDrawingLine = false;
-                if (activeLineObj) {
-                    activeLineObj.setCoords();
-                    const x1 = activeLineObj.x1, y1 = activeLineObj.y1, x2 = activeLineObj.x2, y2 = activeLineObj.y2;
-                    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
-                    const z = fCanvas.getZoom();
-                    const arrowSize = 12 / z;
-
-                    const arrow1 = new fabric.Triangle({ width: arrowSize, height: arrowSize, fill: '#00E5FF', left: x1, top: y1, originX: 'center', originY: 'center', angle: angle - 90, selectable: false });
-                    const arrow2 = new fabric.Triangle({ width: arrowSize, height: arrowSize, fill: '#00E5FF', left: x2, top: y2, originX: 'center', originY: 'center', angle: angle + 90, selectable: false });
-                    
-                    fCanvas.add(arrow1, arrow2);
-                }
-                fCanvas.renderAll(); saveCanvasState();
-            });
-        }
-
-        function bindTextTool() {
-            fCanvas.off('mouse:down'); fCanvas.off('mouse:move'); fCanvas.off('mouse:up');
-            fCanvas.on('mouse:down', function(o) {
-                if (activeTool !== 'text') return;
-                const target = fCanvas.findTarget(o.e);
-                if (target && (target.type === 'i-text' || target.type === 'text' || target.type === 'group')) return;
-
-                const pointer = fCanvas.getPointer(o.e);
-                const z = fCanvas.getZoom();
-                const mmText = new fabric.IText('Text', {
-                    left: pointer.x, top: pointer.y, fontFamily: 'Inter', fontSize: 20 / z,
-                    fill: '#00E5FF', fontWeight: 'bold', backgroundColor: 'rgba(0,0,0,0.8)',
-                    padding: 6 / z, cornerSize: 8 / z, transparentCorners: false, hasControls: true
-                });
-                fCanvas.add(mmText);
-                fCanvas.setActiveObject(mmText);
-                fCanvas.renderAll(); saveCanvasState();
-            });
-        }
-
-        lockBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('locked'); });
-        freehandBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('freehand'); });
-        highlightBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('highlight'); });
-        lineBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('line'); });
-        dimLineBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('dim-line'); });
-        textBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('text'); });
-        calibrateBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('locked'); });
-
-        undoBtn?.addEventListener('click', (e) => {
-            e.preventDefault();
-            const objects = fCanvas.getObjects();
-            if (objects.length > 0) {
-                const lastObj = objects[objects.length - 1];
-                if (lastObj.type === 'triangle') {
-                    fCanvas.remove(objects[objects.length - 1]); 
-                    fCanvas.remove(objects[objects.length - 2]); 
-                    fCanvas.remove(objects[objects.length - 3]); 
-                } else {
-                    fCanvas.remove(lastObj);
-                }
-                fCanvas.renderAll(); saveCanvasState();
-            }
-        });
-
-        clearBtn?.addEventListener('click', (e) => {
-            e.preventDefault();
-            fCanvas.clear();
-            fCanvas.setBackgroundImage(null, fCanvas.renderAll.bind(fCanvas));
-            fCanvas.setViewportTransform([1,0,0,1,0,0]); 
-            if (fileInput) fileInput.value = '';
-            setButtonState('locked'); saveCanvasState();
-        });
-
-        maximizeBtn?.addEventListener('click', (e) => {
-            e.preventDefault();
-            const isFull = group.classList.toggle('fullscreen-mode');
-            fCanvas.setViewportTransform([1,0,0,1,0,0]); 
-
-            if (isFull) {
-                maximizeBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
-                fCanvas.setDimensions({ width: window.innerWidth - 40, height: window.innerHeight - 140 });
-            } else {
-                maximizeBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
-                const currentBg = fCanvas.backgroundImage;
-                if (currentBg) {
-                    const imgRatio = currentBg.height / currentBg.width;
-                    const maxWidth = group.querySelector('.canvas-container').clientWidth || 600;
-                    const dynamicHeight = maxWidth * imgRatio;
-                    fCanvas.setDimensions({ width: maxWidth, height: dynamicHeight });
-                } else {
-                    fCanvas.setDimensions({ width: 600, height: 400 });
-                }
-            }
-            setTimeout(() => { fCanvas.calcOffset(); fCanvas.renderAll(); }, 100);
-        });
-
-        if (fileInput) {
-            fileInput.addEventListener('change', function(e) {
-                if (!e.target.files || e.target.files.length === 0) return;
-                const file = e.target.files[0];
-                const reader = new FileReader();
-                reader.onload = function(f) {
-                    const nativeImg = new Image();
-                    nativeImg.onload = function() {
-                        fCanvas.setViewportTransform([1,0,0,1,0,0]); 
-                        const imgRatio = nativeImg.height / nativeImg.width;
-                        const maxWidth = group.querySelector('.canvas-container').clientWidth || 600;
-                        const dynamicHeight = maxWidth * imgRatio;
-
-                        fCanvas.setDimensions({ width: maxWidth, height: dynamicHeight });
-                        const fabricImg = new fabric.Image(nativeImg);
-                        const scale = Math.min(fCanvas.width / fabricImg.width, fCanvas.height / fabricImg.height);
-
-                        fabricImg.set({ 
-                            originX: 'center', originY: 'center', 
-                            scaleX: scale, scaleY: scale, 
-                            left: fCanvas.width / 2, top: fCanvas.height / 2, 
-                            selectable: false
-                        });
-
-                        fCanvas.setBackgroundImage(fabricImg, () => {
-                            fCanvas.calcOffset();
-                            fCanvas.renderAll();
-                            saveCanvasState();
-                        });
-                    };
-                    nativeImg.src = f.target.result;
-                };
-                reader.readAsDataURL(file);
-            });
-        }
     });
 
-    // --- SECURE LOGO CONVERTER ---
+    // --- SECURE LOGO & IMAGE CONVERTERS WITH CORS PROTECTION ---
     async function applySafeLogo(template, logoUrl) {
         return new Promise((resolve) => {
             const img = new Image();
-            img.crossOrigin = "Anonymous";
+            img.crossOrigin = "Anonymous"; // Crucial for iOS Safari
             img.onload = function() {
                 try {
                     const canvas = document.createElement('canvas');
@@ -448,30 +115,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     resolve();
                 } catch(e) {
+                    console.error("Logo taint error:", e);
                     template.querySelectorAll('.brand-logo-img').forEach(el => el.style.display = 'none');
                     resolve();
                 }
             };
-            img.onerror = function() {
-                template.querySelectorAll('.brand-logo-img').forEach(el => el.style.display = 'none');
-                resolve();
-            };
+            img.onerror = function() { resolve(); };
             img.src = logoUrl;
         });
     }
 
-    // --- JPEG PAMPHLET INJECTOR ---
     async function loadPamphletImage(url) {
         return new Promise((resolve) => {
             const img = new Image();
+            img.crossOrigin = "Anonymous"; // Added strictly to prevent silent failures
             img.onload = function() {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width; canvas.height = img.height;
-                canvas.getContext('2d').drawImage(img, 0, 0);
-                resolve(canvas.toDataURL('image/jpeg', 0.9));
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width; canvas.height = img.height;
+                    canvas.getContext('2d').drawImage(img, 0, 0);
+                    resolve(canvas.toDataURL('image/jpeg', 0.9));
+                } catch(e) {
+                    alert("CORS Error on Pamphlet: " + url + "\n" + e.message);
+                    resolve(null);
+                }
             };
             img.onerror = () => {
-                console.warn(`Pamphlet missing: ${url}. Skipping...`);
+                alert("Missing Pamphlet File: " + url);
                 resolve(null);
             };
             img.src = url;
@@ -497,23 +167,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 img.style.width = '100%';
                 img.style.maxHeight = '250px';
                 img.style.objectFit = 'contain';
-                img.style.border = '1px solid #dee2e6';
-                img.style.borderRadius = '4px';
                 grid.appendChild(img);
             }
         }
     }
 
-    // --- PDF GENERATOR ENGINE (RESTORED EXACTLY FROM STABLE) ---
+    // --- DIAGNOSTIC PDF GENERATOR ENGINE ---
     async function executeSecurePDFGeneration(templateId, fileName, btn, data) {
         btn.disabled = true;
         const originalText = btn.innerText;
-        btn.innerText = "Processing..."; // THIS IS THE ONLY LOADER NOW
+        btn.innerText = "Processing...";
 
         const template = document.getElementById(templateId);
-        const mainApp = document.querySelector('main') || document.body.firstElementChild;
+        
+        // FAILSAFE HIDING: Instead of assuming 'main', we hide all major siblings manually
+        // to prevent accidentally hiding the template wrapper itself.
+        const siblingsToHide = Array.from(document.body.children).filter(child => 
+            child.tagName !== 'SCRIPT' && child.id !== templateId && child.id !== 'pdfLoadingOverlay'
+        );
+        
+        const originalDisplays = new Map();
+        siblingsToHide.forEach(child => {
+            originalDisplays.set(child, child.style.display);
+            child.style.display = 'none';
+        });
 
-        // The "Preview" effect: The template is forced onto the screen
+        // The "Preview" effect
         template.style.display = 'block';
         template.style.position = 'absolute';
         template.style.top = '0'; 
@@ -521,11 +200,10 @@ document.addEventListener('DOMContentLoaded', function() {
         template.style.width = '800px';
         template.style.zIndex = '999999'; 
         template.style.backgroundColor = '#ffffff';
-        mainApp.style.display = 'none'; // CRUCIAL IOS MEMORY FIX
         window.scrollTo(0, 0);
 
         try {
-            await new Promise(r => setTimeout(r, 800)); // The physical preview time before capture
+            await new Promise(r => setTimeout(r, 800)); // Allow DOM to repaint
             
             const doc = new jsPDF('p', 'mm', 'a4');
             const margin = 10;
@@ -536,28 +214,40 @@ document.addEventListener('DOMContentLoaded', function() {
             if (templateId === 'pdfTemplateInternal') {
                 let pages = Array.from(template.querySelectorAll('.pdf-page')).filter(el => window.getComputedStyle(el).display !== 'none');
 
+                if(pages.length === 0) throw new Error("No PDF pages found in DOM. Check your HTML IDs.");
+
                 for(let i = 0; i < pages.length; i++) {
                     btn.innerText = `Printing Page ${i+1}/${pages.length}...`;
-                    const canvas = await html2canvas(pages[i], {
-                        scale: 1.5, useCORS: true, allowTaint: false, windowWidth: 800, logging: false, backgroundColor: '#ffffff'
-                    });
-                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                    const ratio = canvas.height / canvas.width;
-                    if (i > 0) doc.addPage();
-                    doc.addImage(imgData, 'JPEG', margin, margin, pdfPrintWidth, pdfPrintWidth * ratio);
-                    canvas.width = 0; canvas.height = 0; 
+                    try {
+                        const canvas = await html2canvas(pages[i], {
+                            scale: 1.5, useCORS: true, allowTaint: false, windowWidth: 800, logging: true, backgroundColor: '#ffffff'
+                        });
+                        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                        const ratio = canvas.height / canvas.width;
+                        if (i > 0) doc.addPage();
+                        doc.addImage(imgData, 'JPEG', margin, margin, pdfPrintWidth, pdfPrintWidth * ratio);
+                    } catch (canvasErr) {
+                        throw new Error(`Failed capturing page ${i+1}: ${canvasErr.message}`);
+                    }
                 }
                 
             } else if (templateId === 'pdfTemplateCustomer') {
                 btn.innerText = `Printing Cover Letter...`;
                 
                 let pages = Array.from(template.querySelectorAll('.pdf-page')).filter(el => window.getComputedStyle(el).display !== 'none');
-                const canvas = await html2canvas(pages[0], {
-                    scale: 1.5, useCORS: true, allowTaint: false, windowWidth: 800, logging: false, backgroundColor: '#ffffff'
-                });
-                const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                const ratio = canvas.height / canvas.width;
-                doc.addImage(imgData, 'JPEG', margin, margin, pdfPrintWidth, pdfPrintWidth * ratio);
+                
+                if(pages.length === 0) throw new Error("No PDF pages found in DOM.");
+
+                try {
+                    const canvas = await html2canvas(pages[0], {
+                        scale: 1.5, useCORS: true, allowTaint: false, windowWidth: 800, logging: true, backgroundColor: '#ffffff'
+                    });
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    const ratio = canvas.height / canvas.width;
+                    doc.addImage(imgData, 'JPEG', margin, margin, pdfPrintWidth, pdfPrintWidth * ratio);
+                } catch (canvasErr) {
+                    throw new Error(`Failed capturing Customer Cover Letter: ${canvasErr.message}`);
+                }
 
                 btn.innerText = "Stitching Pamphlets...";
                 
@@ -591,12 +281,15 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.save(fileName);
 
         } catch (error) {
-            console.error("CAPTURE FAILED:", error);
-            alert("Capture Failed: " + error.message);
+            console.error("FATAL CAPTURE ERROR:", error);
+            alert("⚠️ SYSTEM CRASH: \n\n" + error.message + "\n\nPlease take a screenshot of this error message.");
         } finally {
+            // Restore exact original state
             template.style.display = 'none'; 
             template.style.position = ''; 
-            mainApp.style.display = 'block';
+            siblingsToHide.forEach(child => {
+                child.style.display = originalDisplays.get(child) || '';
+            });
             btn.innerText = originalText; 
             btn.disabled = false;
         }
@@ -606,7 +299,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function getSurveyData() {
         const dName = document.getElementById('designerSelect')?.value || "Surveyor";
         const selectedBrand = document.getElementById('brandSelect')?.value || "CO Home Improvements";
-
         const profiles = window.designerProfiles || {};
         const logos = window.brandLogos || {};
         const profile = profiles[dName] || { phone: "", email: "" };
