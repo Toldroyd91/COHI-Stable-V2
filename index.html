@@ -255,8 +255,8 @@
         </div>
     </div>
 
-    <div id="pdfTemplateInternal" style="position: absolute; left: -9999px; top: -9999px; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box; display: block; z-index: -1;">
-        <div class="pdf-page" style="page-break-after: always; text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding-top: 20px; background: #ffffff;">
+    <div id="pdfTemplateInternal" style="display: none; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
+        <div class="pdf-page" style="page-break-after: always; text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding-top: 20px;">
             <div>
                 <img class="brand-logo-img" src="logo.jpg" style="max-height: 90px; margin-bottom: 25px;">
                 <h1 style="color: #0F3759; font-size: 34px; margin: 0 0 10px 0; font-weight: 700; text-transform: uppercase;">Technical Survey Report</h1>
@@ -277,7 +277,7 @@
             </div>
         </div>
 
-        <div class="pdf-page" style="page-break-after: always; padding-top: 10px; background: #ffffff;">
+        <div class="pdf-page" style="page-break-after: always; padding-top: 10px;">
             <h3 style="background: #0F3759; color: white; padding: 8px; font-size: 14px;">1. Design Scope</h3>
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px;">
                 <tr><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">Build Type:</td><td id="pdfBuildType" style="padding: 10px; border: 1px solid #dee2e6;"></td><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;">Roof Type:</td><td id="pdfRoofType" style="padding: 10px; border: 1px solid #dee2e6;"></td></tr>
@@ -299,7 +299,7 @@
             <div style="border: 1px solid #dee2e6; padding: 12px;"><strong style="display:block;">Misc Notes:</strong><span id="pdfMiscNotes"></span></div>
         </div>
 
-        <div class="pdf-page" style="page-break-after: always; padding-top: 10px; background: #ffffff;">
+        <div class="pdf-page" style="page-break-after: always; padding-top: 10px;">
             <h3 style="color: #0F3759; margin-bottom: 15px;">Site Technical Photos</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                 <div style="border: 1px solid #dee2e6; padding: 8px;"><p style="font-size:11px; font-weight:bold;">House Material</p><img id="pdfImgInternal-housematerialphoto" style="width:100%; height:150px; object-fit:contain;"></div>
@@ -311,7 +311,7 @@
             </div>
         </div>
 
-        <div class="pdf-page" style="page-break-before: always; padding-top: 10px; background: #ffffff;">
+        <div class="pdf-page" style="page-break-before: always; padding-top: 10px;">
             <h3 style="color: #0F3759; margin-bottom: 15px;">Additional Media & Sketch</h3>
             <div style="border: 1px solid #dee2e6; padding: 12px; margin-bottom: 20px;">
                 <p style="font-weight: bold; font-size: 12px;">Designer Sketch</p>
@@ -324,8 +324,8 @@
         </div>
     </div>
 
-    <div id="pdfTemplateCustomer" style="position: absolute; left: -9999px; top: -9999px; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box; display: block; z-index: -1;">
-        <div class="pdf-page" style="page-break-after: always; text-align: left; padding: 30px 50px; font-size: 15px; line-height: 1.8; background: #ffffff;">
+    <div id="pdfTemplateCustomer" style="display: none; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
+        <div class="pdf-page" style="page-break-after: always; text-align: left; padding: 30px 50px; font-size: 15px; line-height: 1.8;">
             <div style="text-align: center; margin-bottom: 40px;">
                 <img class="brand-logo-img" src="logo.jpg" style="max-height: 80px; margin-bottom: 25px;">
                 <h1 style="color: #0F3759; margin-bottom: 0; font-size: 22px;">PREDESIGN SURVEY REPORT</h1>
