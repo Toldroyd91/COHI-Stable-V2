@@ -1,22 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#050B14">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="manifest.json">
-    <title>Design Survey Pro</title>
-    <link rel="stylesheet" href="style.css">
-    
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-0J8DC9GD6Z"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date()); gtag('config', 'G-0J8DC9GD6Z');
-    </script>
-</head>
+<header id="mainHeader" class="navbar navbar--top">
+        <div class="navbar__container header-container">
+            
+            <div id="brandDisplay" class="brand-display">
+                <img id="dynamicBrandLogo" src="" alt="Brand Logo" style="display: none;">
+                <h1 id="dynamicBrandName" class="navbar__title">Survey App</h1>
+            </div>
+            
+            <div id="headerControls" class="header-controls">
+                <select id="brandSelect" class="form-group__input form-group__input--touch dropdown-brand">
+                    <option value="">Select Brand...</option>
+                    <option value="Clearview">Clearview</option>
+                    <option value="CO Home Improvements">CO Home Improvements</option>
+                    <option value="Orion Windows">Orion Windows</option>
+                    <option value="Planet">Planet</option>
+                    <option value="Trent Valley Windows">Trent Valley Windows</option>
+                    <option value="West Yorkshire Windows">West Yorkshire Windows</option>
+                    <option value="Yorkshire Windows">Yorkshire Windows</option>
+                </select>
+                <input list="designerList" id="designerSelect" class="form-group__input form-group__input--touch dropdown-designer" placeholder="Select Designer...">
+                <datalist id="designerList"></datalist>
+                <button id="openProfileManagerBtn" class="tool-btn profile-btn">⚙️ Profile</button>
+            </div>
+
+        </div>
+    </header>
 <body>
     <div id="splashScreen">
         <div class="splash-content">
