@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Survey App</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-0J8DC9GD6Z"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-0J8DC9GD6Z');
+    </script>
+    <style>
+        html, body { margin: 0; padding: 0; min-height: 100%; background: transparent !important; }
+        body::before { content: ""; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to bottom, #000000 0%, #002f54 100%); z-index: -999; }
+        .btn-danger { background: #8b0000; color: white; border: none; }
+        .canvas-controls { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+        .tool-btn { background: #2D2D2D; color: #A0A0A0; border: 1px solid #444; padding: 10px 14px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; display: inline-block; width: auto; font-weight: 500; transition: all 0.15s ease; }
+        .tool-btn.active { background: #0D6EFD; color: #fff; border-color: #0D6EFD; box-shadow: 0 0 8px rgba(13,110,253,0.4); }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center; z-index: 999999; backdrop-filter: blur(4px); }
+        .modal-content { background: var(--card-bg); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid #333; }
+    </style>
+</head>
+<body>
+
+    <div id="splashScreen">
+        <div class="splash-content">
+            <img src="logo.jpg" alt="Logo" class="splash-logo" onerror="this.style.display='none'">
+            <h1 class="splash-title">PREDESIGN ENGINE</h1>
+            <div class="loader-bar"><div class="loader-fill"></div></div>
+        </div>
+    </div>
+
+    <header id="mainHeader" class="navbar navbar--top">
+        <div class="navbar__container header-container">
+            <div id="brandDisplay" class="brand-display">
+                <img id="dynamicBrandLogo" src="" alt="Brand Logo" style="display: none;">
+                <h1 id="dynamicBrandName" class="navbar__title">Survey App</h1>
+            </div>
+            <div id="headerControls" class="header-controls">
+                <select id="brandSelect" class="form-group__input form-group__input--touch dropdown-brand">
+                    <option value="">Select Brand...</option>
+                    <option value="Clearview">Clearview</option>
+                    <option value="CO Home Improvements">CO Home Improvements</option>
+                    <option value="Orion Windows">Orion Windows</option>
+                    <option value="Planet">Planet</option>
+                    <option value="Trent Valley Windows">Trent Valley Windows</option>
+                    <option value="West Yorkshire Windows">West Yorkshire Windows</option>
+                    <option value="Yorkshire Windows">Yorkshire Windows</option>
+                </select>
+                <input list="designerList" id="designerSelect" class="form-group__input form-group__input--touch dropdown-designer" placeholder="Select Designer...">
+                <datalist id="designerList"></datalist>
+                <button id="openProfileManagerBtn" class="tool-btn profile-btn">⚙️ Profile</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-container main-container--centered">
+        
+        <article class="card card--primary">
+            <h2 class="card__title">Customer Details</h2>
+            <div class="form-group"><label class="form-group__label">Customer Name:</label><input type="text" id="clientName" class="form-group__input form-group__input--touch"></div>
+            <div class="form-group"><label class="form-group__label">Customer Num:</label><input type="tel" id="clientNum" class="form-group__input form-group__input--touch"></div>
+            <div class="form-group"><label class="form-group__label">Customer Postcode:</label><input type="text" id="postCode" class="form-group__input form-group__input--touch"></div>
+            <div class="form-group"><label class="form-group__label">Date of Appointment:</label><input type="date" id="apptDate" class="form-group__input form-group__input--touch"></div>
+            <div class="form-group"><label class="form-group__label">2nd Appointment Date (Revisit):</label><input type="date" id="revisitDate" class="form-group__input form-group__input--touch"></div>
+            <div class="form-group"><label class="form-group__label">2nd Appointment Location:</label><input type="text" id="revisitLocation" class="form-group__input form-group__input--touch" placeholder="e.g. your address, Our showroom..."></div>
+        </article>
+
+        <article class="card card--primary">
+            <h2 class="card__title">Elevation Photos</h2>
+            <div class="canvas-group" data-id="frontelevation" style="margin-bottom: 20px;">
+                <label class="form-group__label" style="color: var(--accent);">Front Elevation:</label>
+                <input type="file" class="camera-input form-group__input--touch" accept="image/*">
+                <div class="canvas-container"><canvas id="canvas-frontelevation" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked">🔒 Locked for Scroll</button>
+                    <button type="button" class="tool-btn freehand-btn">✏️ Freehand</button>
+                    <button type="button" class="tool-btn highlight-btn">🖍️ Highlight</button>
+                    <button type="button" class="tool-btn line-btn">📏 Line</button>
+                    <button type="button" class="tool-btn dim-line-btn">📐 Dim Line</button>
+                    <button type="button" class="tool-btn text-btn">📝 Text</button>
+                    <button type="button" class="tool-btn pin-1-btn" style="color: #0D6EFD; border-color: #0D6EFD;">📍 Pin 1</button>
+                    <button type="button" class="tool-btn pin-2-btn" style="color: #0dcaf0; border-color: #0dcaf0;">📍 Pin 2</button>
+                    <button type="button" class="tool-btn pin-3-btn" style="color: #ffc107; border-color: #ffc107;">📍 Pin 3</button>
+                    <button type="button" class="tool-btn undo-btn">↩️ Undo</button>
+                    <button type="button" class="tool-btn maximize-btn">🔍 Max Screen</button>
+                    <button type="button" class="tool-btn clear-btn" style="background: #444; color: #fff;">🗑️ Clear</button>
+                </div>
+            </div>
+            <div class="canvas-group" data-id="sideelevation" style="margin-bottom: 20px;">
+                <label class="form-group__label" style="color: var(--accent);">Side Elevation: (If Possible)</label>
+                <input type="file" class="camera-input form-group__input--touch" accept="image/*">
+                <div class="canvas-container"><canvas id="canvas-sideelevation" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked">🔒 Locked for Scroll</button>
+                    <button type="button" class="tool-btn freehand-btn">✏️ Freehand</button>
+                    <button type="button" class="tool-btn highlight-btn">🖍️ Highlight</button>
+                    <button type="button" class="tool-btn line-btn">📏 Line</button>
+                    <button type="button" class="tool-btn dim-line-btn">📐 Dim Line</button>
+                    <button type="button" class="tool-btn text-btn">📝 Text</button>
+                    <button type="button" class="tool-btn pin-1-btn" style="color: #0D6EFD; border-color: #0D6EFD;">📍 Pin 1</button>
+                    <button type="button" class="tool-btn pin-2-btn" style="color: #0dcaf0; border-color: #0dcaf0;">📍 Pin 2</button>
+                    <button type="button" class="tool-btn pin-3-btn" style="color: #ffc107; border-color: #ffc107;">📍 Pin 3</button>
+                    <button type="button" class="tool-btn undo-btn">↩️ Undo</button>
+                    <button type="button" class="tool-btn maximize-btn">🔍 Max Screen</button>
+                    <button type="button" class="tool-btn clear-btn" style="background: #444; color: #fff;">🗑️ Clear</button>
+                </div>
+            </div>
+            <div class="canvas-group" data-id="rearelevation">
+                <label class="form-group__label" style="color: var(--accent);">Rear Elevation:</label>
+                <input type="file" class="camera-input form-group__input--touch" accept="image/*">
+                <div class="canvas-container"><canvas id="canvas-rearelevation" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked">🔒 Locked for Scroll</button>
+                    <button type="button" class="tool-btn freehand-btn">✏️ Freehand</button>
+                    <button type="button" class="tool-btn highlight-btn">🖍️ Highlight</button>
+                    <button type="button" class="tool-btn line-btn">📏 Line</button>
+                    <button type="button" class="tool-btn dim-line-btn">📐 Dim Line</button>
+                    <button type="button" class="tool-btn text-btn">📝 Text</button>
+                    <button type="button" class="tool-btn pin-1-btn" style="color: #0D6EFD; border-color: #0D6EFD;">📍 Pin 1</button>
+                    <button type="button" class="tool-btn pin-2-btn" style="color: #0dcaf0; border-color: #0dcaf0;">📍 Pin 2</button>
+                    <button type="button" class="tool-btn pin-3-btn" style="color: #ffc107; border-color: #ffc107;">📍 Pin 3</button>
+                    <button type="button" class="tool-btn undo-btn">↩️ Undo</button>
+                    <button type="button" class="tool-btn maximize-btn">🔍 Max Screen</button>
+                    <button type="button" class="tool-btn clear-btn" style="background: #444; color: #fff;">🗑️ Clear</button>
+                </div>
+            </div>
+        </article>
+
+        <article class="card card--primary">
+            <h2 class="card__title">Access & Location Survey</h2>
+            <div class="form-group"><label class="form-group__label">Wheelbarrow difficulties?</label><select id="accessDifficult" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="form-group"><label class="form-group__label">Narrowest access point (mm):</label><input type="number" id="accessWidth" class="form-group__input"></div>
+            <div class="form-group"><label class="form-group__label">Upload access photos:</label><input type="file" id="accessPhotos" class="form-group__input" accept="image/*" multiple style="padding-top:13px;"></div>
+
+            <div class="form-group"><label class="form-group__label">DPC Depth (mm):</label><input type="number" id="dpcDepth" class="form-group__input"></div>
+            <div class="form-group"><label class="form-group__label">House material:</label><select id="houseMaterial" class="form-group__input"><option value="">Select...</option><option value="Brick">Brick</option><option value="Stone">Stone</option><option value="Render">Render</option><option value="Other">Other</option></select></div>
+            <div class="canvas-group" data-id="housematerialphoto" style="margin-bottom: 20px;">
+                <label class="form-group__label" style="color: var(--accent);">Upload house material photo:</label>
+                <input type="file" class="camera-input form-group__input" accept="image/*">
+                <div class="canvas-container"><canvas id="canvas-housematerialphoto" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked">🔒 Locked for Scroll</button>
+                    <button type="button" class="tool-btn freehand-btn">✏️ Freehand</button>
+                    <button type="button" class="tool-btn highlight-btn">🖍️ Highlight</button>
+                    <button type="button" class="tool-btn line-btn">📏 Line</button>
+                    <button type="button" class="tool-btn dim-line-btn">📐 Dim Line</button>
+                    <button type="button" class="tool-btn text-btn">📝 Text</button>
+                    <button type="button" class="tool-btn pin-1-btn" style="color: #0D6EFD; border-color: #0D6EFD;">📍 Pin 1</button>
+                    <button type="button" class="tool-btn pin-2-btn" style="color: #0dcaf0; border-color: #0dcaf0;">📍 Pin 2</button>
+                    <button type="button" class="tool-btn pin-3-btn" style="color: #ffc107; border-color: #ffc107;">📍 Pin 3</button>
+                    <button type="button" class="tool-btn undo-btn">↩️ Undo</button>
+                    <button type="button" class="tool-btn maximize-btn">🔍 Max Screen</button>
+                    <button type="button" class="tool-btn clear-btn" style="background: #444; color: #fff;">🗑️ Clear</button>
+                </div>
+            </div>
+
+            <div class="form-group"><label class="form-group__label">Trees within 30m?</label><select id="treesExist" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="canvas-group" data-id="treelocations" style="margin-bottom: 20px;">
+                <label class="form-group__label" style="color: var(--accent);">If Yes, upload photo:</label>
+                <input type="file" class="camera-input form-group__input" accept="image/*">
+                <div class="canvas-container"><canvas id="canvas-treelocations" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked">🔒 Locked for Scroll</button>
+                    <button type="button" class="tool-btn freehand-btn">✏️ Freehand</button>
+                    <button type="button" class="tool-btn highlight-btn">🖍️ Highlight</button>
+                    <button type="button" class="tool-btn line-btn">📏 Line</button>
+                    <button type="button" class="tool-btn dim-line-btn">📐 Dim Line</button>
+                    <button type="button" class="tool-btn text-btn">📝 Text</button>
+                    <button type="button" class="tool-btn pin-1-btn" style="color: #0D6EFD; border-color: #0D6EFD;">📍 Pin 1</button>
+                    <button type="button" class="tool-btn pin-2-btn" style="color: #0dcaf0; border-color: #0dcaf0;">📍 Pin 2</button>
+                    <button type="button" class="tool-btn pin-3-btn" style="color: #ffc107; border-color: #ffc107;">📍 Pin 3</button>
+                    <button type="button" class="tool-btn undo-btn">↩️ Undo</button>
+                    <button type="button" class="tool-btn maximize-btn">🔍 Max Screen</button>
+                    <button type="button" class="tool-btn clear-btn" style="background: #444; color: #fff;">🗑️ Clear</button>
+                </div>
+            </div>
+
+            <div class="form-group"><label class="form-group__label">Manholes visible?</label><select id="manholeExist" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="canvas-group" data-id="manhole" style="margin-bottom: 20px;">
+                <label class="form-group__label" style="color: var(--accent);">If Yes, upload photo:</label>
+                <input type="file" class="camera-input form-group__input" accept="image/*">
+                <div class="canvas-container"><canvas id="canvas-manhole" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked">🔒 Locked for Scroll</button>
+                    <button type="button" class="tool-btn freehand-btn">✏️ Freehand</button>
+                    <button type="button" class="tool-btn highlight-btn">🖍️ Highlight</button>
+                    <button type="button" class="tool-btn line-btn">📏 Line</button>
+                    <button type="button" class="tool-btn dim-line-btn">📐 Dim Line</button>
+                    <button type="button" class="tool-btn text-btn">📝 Text</button>
+                    <button type="button" class="tool-btn pin-1-btn" style="color: #0D6EFD; border-color: #0D6EFD;">📍 Pin 1</button>
+                    <button type="button" class="tool-btn pin-2-btn" style="color: #0dcaf0; border-color: #0dcaf0;">📍 Pin 2</button>
+                    <button type="button" class="tool-btn pin-3-btn" style="color: #ffc107; border-color: #ffc107;">📍 Pin 3</button>
+                    <button type="button" class="tool-btn undo-btn">↩️ Undo</button>
+                    <button type="button" class="tool-btn maximize-btn">🔍 Max Screen</button>
+                    <button type="button" class="tool-btn clear-btn" style="background: #444; color: #fff;">🗑️ Clear</button>
+                </div>
+            </div>
+
+            <div class="form-group"><label class="form-group__label">Weep vents visible?</label><select id="weepventsExist" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="canvas-group" data-id="weepvents" style="margin-bottom: 20px;">
+                <label class="form-group__label" style="color: var(--accent);">If Yes, upload photo:</label>
+                <input type="file" class="camera-input form-group__input" accept="image/*">
+                <div class="canvas-container"><canvas id="canvas-weepvents" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked">🔒 Locked for Scroll</button>
+                    <button type="button" class="tool-btn freehand-btn">✏️ Freehand</button>
+                    <button type="button" class="tool-btn highlight-btn">🖍️ Highlight</button>
+                    <button type="button" class="tool-btn line-btn">📏 Line</button>
+                    <button type="button" class="tool-btn dim-line-btn">📐 Dim Line</button>
+                    <button type="button" class="tool-btn text-btn">📝 Text</button>
+                    <button type="button" class="tool-btn pin-1-btn" style="color: #0D6EFD; border-color: #0D6EFD;">📍 Pin 1</button>
+                    <button type="button" class="tool-btn pin-2-btn" style="color: #0dcaf0; border-color: #0dcaf0;">📍 Pin 2</button>
+                    <button type="button" class="tool-btn pin-3-btn" style="color: #ffc107; border-color: #ffc107;">📍 Pin 3</button>
+                    <button type="button" class="tool-btn undo-btn">↩️ Undo</button>
+                    <button type="button" class="tool-btn maximize-btn">🔍 Max Screen</button>
+                    <button type="button" class="tool-btn clear-btn" style="background: #444; color: #fff;">🗑️ Clear</button>
+                </div>
+            </div>
+
+            <div class="form-group"><label class="form-group__label">Air Bricks? How many?</label><select id="airbricks" class="form-group__input"><option value="">Select...</option><option value="No">No</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5+">5+</option></select></div>
+            <div class="form-group"><label class="form-group__label">Pipes (RWP/SVP) exist?</label><select id="pipesExist" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+
+            <div class="canvas-group" data-id="rwpsvp" style="margin-bottom: 20px;">
+                <label class="form-group__label" style="color: var(--accent);">If Yes, upload photo:</label>
+                <input type="file" class="camera-input form-group__input" accept="image/*">
+                <div class="canvas-container"><canvas id="canvas-rwpsvp" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked">🔒 Locked for Scroll</button>
+                    <button type="button" class="tool-btn freehand-btn">✏️ Freehand</button>
+                    <button type="button" class="tool-btn highlight-btn">🖍️ Highlight</button>
+                    <button type="button" class="tool-btn line-btn">📏 Line</button>
+                    <button type="button" class="tool-btn dim-line-btn">📐 Dim Line</button>
+                    <button type="button" class="tool-btn text-btn">📝 Text</button>
+                    <button type="button" class="tool-btn pin-1-btn" style="color: #0D6EFD; border-color: #0D6EFD;">📍 Pin 1</button>
+                    <button type="button" class="tool-btn pin-2-btn" style="color: #0dcaf0; border-color: #0dcaf0;">📍 Pin 2</button>
+                    <button type="button" class="tool-btn pin-3-btn" style="color: #ffc107; border-color: #ffc107;">📍 Pin 3</button>
+                    <button type="button" class="tool-btn undo-btn">↩️ Undo</button>
+                    <button type="button" class="tool-btn maximize-btn">🔍 Max Screen</button>
+                    <button type="button" class="tool-btn clear-btn" style="background: #444; color: #fff;">🗑️ Clear</button>
+                </div>
+            </div>
+
+            <div class="form-group"><label class="form-group__label">Fascia Height (mm):</label><input type="text" id="fasciaHeight" class="form-group__input"></div>
+            <div class="form-group"><label class="form-group__label">Wall Obstacles:</label><textarea id="wallObstacles" class="form-group__input" rows="2"></textarea></div>
+        </article>
+
+        <article class="card card--primary">
+            <h2 class="card__title">Design Ideas</h2>
+            <div class="form-group"><label class="form-group__label">Build Type:</label><select id="buildType" class="form-group__input"><option value="">Select...</option><option value="Conservatory">Conservatory</option><option value="Extension">Extension</option><option value="Porch">Porch</option><option value="Roof and Frame">Roof and Frame</option><option value="Other">Other</option></select></div>
+            <div class="form-group"><label class="form-group__label">Roof Type:</label><select id="roofType" class="form-group__input"><option value="">Select...</option><option value="Ultra380">Ultra380</option><option value="LivinRoof">LivinRoof</option><option value="Glass Roof">Glass Roof</option><option value="Flat Roof">Flat Roof</option><option value="Other">Other</option></select></div>
+            <div class="form-group"><label class="form-group__label">Proposed Size (mm):</label><input type="text" id="proposedSize" class="form-group__input"></div>
+            <div class="form-group">
+                <label class="form-group__label">Frame Colour:</label>
+                <select id="frameColour" class="form-group__input">
+                    <option value="">Select...</option><option value="White">White</option><option value="Grey Foil on White">Grey Foil on White</option><option value="Grey Foil">Grey Foil</option><option value="Rosewood on White">Rosewood on White</option><option value="Rosewood">Rosewood</option><option value="Light Oak on White">Light Oak on White</option><option value="Light Oak">Light Oak</option><option value="Black Brown Foil on White">Black Brown Foil on White</option><option value="Black Brown Foil">Black Brown Foil</option><option value="Cream Foil on White">Cream Foil on White</option><option value="Cream Foil">Cream Foil</option><option value="Chartwell Green on White">Chartwell Green on White</option><option value="Chartwell Green Foil">Chartwell Green Foil</option><option value="Irish Oak Foil on White">Irish Oak Foil on White</option><option value="Irish Oak Foil">Irish Oak Foil</option><option value="Olive Grey on White">Olive Grey on White</option><option value="Olive Grey">Olive Grey</option><option value="Smooth Grey on White">Smooth Grey on White</option><option value="Smooth Grey Throughout">Smooth Grey Throughout</option><option value="Agate Grey">Agate Grey</option><option value="Agate Grey on White">Agate Grey on White</option>
+                </select>
+            </div>
+            <div class="form-group"><label class="form-group__label">New Build Material:</label><select id="newBuildMaterial" class="form-group__input"><option value="">Select...</option><option value="Brick">Brick</option><option value="Block only">Block only</option><option value="Artificial Stone">Artificial Stone</option><option value="Natural Stone">Natural Stone</option><option value="HUP Wall System">HUP Wall System</option></select></div>
+            <div class="form-group"><label class="form-group__label">Building Regs Required?</label><select id="buildingRegs" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="form-group"><label class="form-group__label">Planning Permission Required?</label><select id="planningPerms" class="form-group__input"><option value="">Select...</option><option value="No">No</option><option value="Full Planning">Full Planning</option><option value="Pre Approved Planning">Pre Approved Planning</option></select></div>
+            <div class="form-group"><label class="form-group__label">SAP Calcs Required?</label><select id="sapCalcs" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            <div class="form-group"><label class="form-group__label">Budget:</label><input type="text" id="budget" class="form-group__input"></div>
+            
+            <div class="form-group">
+                <label class="form-group__label">Designer Notes:</label>
+                <button type="button" id="dictateBtn" class="tool-btn" style="width: auto; margin-bottom: 10px; background: #e63946; color: white; border-color: #e63946;">🎙️ Dictate Notes</button>
+                <textarea id="designerNotes" class="form-group__input" rows="4" placeholder="Type or dictate your notes here..."></textarea>
+            </div>
+
+            <div class="canvas-group" data-id="designersketch">
+                <label class="form-group__label" style="color: var(--accent);">Designer Sketches:</label>
+                <input type="file" class="camera-input form-group__input" accept="image/*">
+                <div class="canvas-container" style="background:#fff;"><canvas id="canvas-designersketch" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked">🔒 Locked for Scroll</button>
+                    <button type="button" class="tool-btn freehand-btn">✏️ Freehand</button>
+                    <button type="button" class="tool-btn highlight-btn">🖍️ Highlight</button>
+                    <button type="button" class="tool-btn line-btn">📏 Line</button>
+                    <button type="button" class="tool-btn dim-line-btn">📐 Dim Line</button>
+                    <button type="button" class="tool-btn text-btn">📝 Text</button>
+                    <button type="button" class="tool-btn pin-1-btn" style="color: #0D6EFD; border-color: #0D6EFD;">📍 Pin 1</button>
+                    <button type="button" class="tool-btn pin-2-btn" style="color: #0dcaf0; border-color: #0dcaf0;">📍 Pin 2</button>
+                    <button type="button" class="tool-btn pin-3-btn" style="color: #ffc107; border-color: #ffc107;">📍 Pin 3</button>
+                    <button type="button" class="tool-btn undo-btn">↩️ Undo</button>
+                    <button type="button" class="tool-btn maximize-btn">🔍 Max Screen</button>
+                    <button type="button" class="tool-btn clear-btn" style="background: #444; color: #fff;">🗑️ Clear Sketch</button>
+                </div>
+            </div>
+        </article>
+
+        <article class="card card--primary">
+            <h2 class="card__title">Misc</h2>
+            <div class="form-group"><label class="form-group__label">Additional Notes:</label><textarea id="miscNotes" class="form-group__input" rows="3"></textarea></div>
+            <div class="form-group"><label class="form-group__label" style="color: var(--accent);">Additional Photos (Upload multiple):</label><input type="file" id="miscPhotos" class="form-group__input" accept="image/*" multiple style="padding-top:13px;"></div>
+        </article>
+
+        <div style="display: flex; gap: 15px; margin-top: 34px;">
+            <button id="generateCustomerPdfBtn" class="button" style="background: #2D2D2D; border: 2px solid var(--accent); box-shadow: none; width: 50%;">Customer Checklist PDF</button>
+            <button id="generateInternalPdfBtn" class="button" style="width: 50%;">Full Survey PDF</button>
+        </div>
+        <button id="resetFormBtn" class="button btn-danger" style="margin-top: 20px; width: 100%;">Clear Form for Next Appointment</button>
+    </main>
+
+    <div id="pdfTemplateInternal" style="display: none; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
+        <div class="pdf-page" style="page-break-after: always; text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding-top: 20px;">
+            <div>
+                <img class="brand-logo-img" src="logo.jpg" style="max-height: 90px; margin-bottom: 25px;">
+                <h1 style="color: #0F3759; font-size: 34px; margin: 0 0 10px 0; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Technical Survey Report</h1>
+                <div style="width: 80px; height: 4px; background: #0F3759; margin: 0 auto 30px auto; border-radius: 2px;"></div>
+            </div>
+            <div style="width: 100%; border: 1px solid #e1e4e6; border-radius: 6px; overflow: hidden; background: #f8f9fa; margin: 20px auto; padding: 10px; box-sizing: border-box;">
+                <p style="margin: 0 0 8px 0; text-align: left; font-size: 13px; font-weight: bold; color: #0F3759; text-transform: uppercase;">Front Elevation Reference</p>
+                <img id="pdfImgInternal-frontelevation" style="width: 100%; height: 380px; object-fit: contain; border-radius: 4px;">
+            </div>
+            <div style="background: #f8f9fa; border-left: 5px solid #0F3759; padding: 25px; text-align: left; border-radius: 4px; margin-top: 30px;">
+                <h3 style="margin: 0 0 15px 0; color: #0F3759; font-size: 18px; text-transform: uppercase;">Customer Details</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px 30px; font-size: 14px; color: #495057;">
+                    <div><strong>Customer Name:</strong> <span class="bind-name" style="color:#000; font-weight:600;"></span></div>
+                    <div><strong>Date of Survey:</strong> <span class="bind-date" style="color:#000; font-weight:600;"></span></div>
+                    <div><strong>Customer Number:</strong> <span class="bind-num" style="color:#000; font-weight:600;"></span></div>
+                    <div><strong>Assigned Designer:</strong> <span id="pdfPrintDesigner" style="color:#000; font-weight:600;"></span></div>
+                    <div style="grid-column: span 2;"><strong>Site Address:</strong> <span class="bind-address" style="color:#000; font-weight:600;"></span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pdf-page" style="page-break-after: always; padding-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0F3759; padding-bottom: 10px; margin-bottom: 25px;">
+                <span style="font-size: 12px; font-weight: bold; color: #6c757d; text-transform: uppercase;">Internal Specification Dataset</span>
+                <img class="brand-logo-img" src="logo.jpg" style="max-height: 35px;">
+            </div>
+            <h3 style="background: #0F3759; color: white; padding: 8px 14px; margin: 0 0 15px 0; font-size: 14px; border-radius: 4px; text-transform: uppercase;">1. Design Ideas & Project Scope</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px;">
+                <tr style="background: #f8f9fa;"><td style="padding: 10px; border: 1px solid #dee2e6; width: 25%; font-weight: bold; color: #495057;">Build Type:</td><td id="pdfBuildType" style="padding: 10px; border: 1px solid #dee2e6; width: 25%;"></td><td style="padding: 10px; border: 1px solid #dee2e6; width: 25%; font-weight: bold; color: #495057;">Roof Type:</td><td id="pdfRoofType" style="padding: 10px; border: 1px solid #dee2e6; width: 25%;"></td></tr>
+                <tr><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold; color: #495057;">Proposed Size:</td><td id="pdfProposedSize" style="padding: 10px; border: 1px solid #dee2e6;"></td><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold; color: #495057;">Frame Colour:</td><td id="pdfFrameColour" style="padding: 10px; border: 1px solid #dee2e6;"></td></tr>
+                <tr style="background: #f8f9fa;"><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold; color: #495057;">Building Regs:</td><td id="pdfBuildingRegs" style="padding: 10px; border: 1px solid #dee2e6;"></td><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold; color: #495057;">Planning Permission:</td><td id="pdfPlanningPerms" style="padding: 10px; border: 1px solid #dee2e6;"></td></tr>
+                <tr><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold; color: #495057;">SAP Calculations:</td><td id="pdfSapCalcs" style="padding: 10px; border: 1px solid #dee2e6;"></td><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold; color: #0F3759;">Target Budget:</td><td id="pdfBudget" style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold; color: #0F3759;"></td></tr>
+            </table>
+            <h3 style="background: #0F3759; color: white; padding: 8px 14px; margin: 0 0 15px 0; font-size: 14px; border-radius: 4px; text-transform: uppercase;">2. Access Logistics Matrix</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px;">
+                <tr style="background: #f8f9fa;"><td style="padding: 10px; border: 1px solid #dee2e6; width: 35%; font-weight: bold; color: #495057;">Wheelbarrow Route Issues?</td><td id="pdfAccessDifficult" style="padding: 10px; border: 1px solid #dee2e6; width: 65%;"></td></tr>
+                <tr><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold; color: #495057;">Narrowest Access Width Point:</td><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold;"><span id="pdfAccessWidth"></span> mm</td></tr>
+            </table>
+            <h3 style="background: #0F3759; color: white; padding: 8px 14px; margin: 0 0 15px 0; font-size: 14px; border-radius: 4px; text-transform: uppercase;">3. Structural & Location Metrics</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px;">
+                <tr style="background: #f8f9fa;"><td style="padding: 10px; border: 1px solid #dee2e6; width: 35%; font-weight: bold; color: #495057;">DPC Depth Measure:</td><td style="padding: 10px; border: 1px solid #dee2e6; width: 15%;"><span id="pdfDpcDepth"></span> mm</td><td style="padding: 10px; border: 1px solid #dee2e6; width: 35%; font-weight: bold; color: #495057;">House Material:</td><td id="pdfHouseMaterial" style="padding: 10px; border: 1px solid #dee2e6; width: 15%;"></td></tr>
+                <tr><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold; color: #495057;">Ground to Underside of Fascia:</td><td style="padding: 10px; border: 1px solid #dee2e6;"><span id="pdfFasciaHeight"></span> mm</td><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold; color: #495057;">Impacted Air Bricks Count:</td><td id="pdfAirBricks" style="padding: 10px; border: 1px solid #dee2e6;"></td></tr>
+                <tr style="background: #f8f9fa;"><td style="padding: 10px; border: 1px solid #dee2e6; font-weight: bold; color: #495057;">Wall Structural Obstacles:</td><td colspan="3" id="pdfWallObstacles" style="padding: 10px; border: 1px solid #dee2e6; line-height: 1.4;"></td></tr>
+            </table>
+            <h3 style="background: #495057; color: white; padding: 6px 12px; margin: 25px 0 10px 0; font-size: 12px; border-radius: 4px; text-transform: uppercase;">Designer Operational Summary</h3>
+            <div style="border: 1px solid #dee2e6; border-radius: 4px; padding: 12px; font-size: 13px; min-height: 50px; background: #fafafa; margin-bottom: 15px; line-height: 1.4;"><strong style="color: #0F3759; display:block; margin-bottom: 5px;">Field Notes:</strong><span id="pdfDesignerNotes"></span></div>
+            <div style="border: 1px solid #dee2e6; border-radius: 4px; padding: 12px; font-size: 13px; min-height: 40px; background: #fafafa; line-height: 1.4;"><strong style="color: #495057; display:block; margin-bottom: 5px;">Additional Notes:</strong><span id="pdfMiscNotes"></span></div>
+        </div>
+
+        <div class="pdf-page" style="page-break-after: always; padding-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0F3759; padding-bottom: 10px; margin-bottom: 25px;">
+                <span style="font-size: 12px; font-weight: bold; color: #6c757d; text-transform: uppercase;">Technical Drawings & Annotations Log</span>
+                <img class="brand-logo-img" src="logo.jpg" style="max-height: 35px;">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px 15px;">
+                <div style="border: 1px solid #dee2e6; padding: 8px; border-radius: 4px; background:#fbeeeb;"><p style="margin: 0 0 6px 0; font-weight: bold; font-size: 11px; color:#c92a2a; text-transform:uppercase;">House Material</p><img id="pdfImgInternal-housematerialphoto" style="width:100%; border:1px solid #e1e4e6; height: 175px; object-fit: contain; background:#fff;"></div>
+                <div style="border: 1px solid #dee2e6; padding: 8px; border-radius: 4px; background:#fbeeeb;"><p style="margin: 0 0 6px 0; font-weight: bold; font-size: 11px; color:#c92a2a; text-transform:uppercase;">Manhole / Inspection Chamber</p><img id="pdfImgInternal-manhole" style="width:100%; border:1px solid #e1e4e6; height: 175px; object-fit: contain; background:#fff;"></div>
+                <div style="border: 1px solid #dee2e6; padding: 8px; border-radius: 4px; background:#fbeeeb;"><p style="margin: 0 0 6px 0; font-weight: bold; font-size: 11px; color:#c92a2a; text-transform:uppercase;">Drainage Weep Vents</p><img id="pdfImgInternal-weepvents" style="width:100%; border:1px solid #e1e4e6; height: 175px; object-fit: contain; background:#fff;"></div>
+                <div style="border: 1px solid #dee2e6; padding: 8px; border-radius: 4px; background:#fbeeeb;"><p style="margin: 0 0 6px 0; font-weight: bold; font-size: 11px; color:#c92a2a; text-transform:uppercase;">Rainwater / Soil Vent Pipes</p><img id="pdfImgInternal-rwpsvp" style="width:100%; border:1px solid #e1e4e6; height: 175px; object-fit: contain; background:#fff;"></div>
+                <div style="border: 1px solid #dee2e6; padding: 8px; border-radius: 4px; background:#fbeeeb;"><p style="margin: 0 0 6px 0; font-weight: bold; font-size: 11px; color:#c92a2a; text-transform:uppercase;">Trees within 30m</p><img id="pdfImgInternal-treelocations" style="width:100%; border:1px solid #e1e4e6; height: 175px; object-fit: contain; background:#fff;"></div>
+                <div style="border: 1px solid #dee2e6; padding: 8px; border-radius: 4px; background:#f1f3f5;"><p style="margin: 0 0 6px 0; font-weight: bold; font-size: 11px; color:#495057; text-transform:uppercase;">Side Elevation Photo</p><img id="pdfImgInternal-sideelevation" style="width:100%; border:1px solid #e1e4e6; height: 175px; object-fit: contain; background:#fff;"></div>
+                <div style="border: 1px solid #dee2e6; padding: 8px; border-radius: 4px; background:#f1f3f5;"><p style="margin: 0 0 6px 0; font-weight: bold; font-size: 11px; color:#495057; text-transform:uppercase;">Rear Elevation Photo</p><img id="pdfImgInternal-rearelevation" style="width:100%; border:1px solid #e1e4e6; height: 175px; object-fit: contain; background:#fff;"></div>
+            </div>
+        </div>
+
+        <div class="pdf-page" style="page-break-before: always; padding-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0F3759; padding-bottom: 10px; margin-bottom: 25px;">
+                <span style="font-size: 12px; font-weight: bold; color: #6c757d; text-transform: uppercase;">Access Route & Additional Photos</span>
+                <img class="brand-logo-img" src="logo.jpg" style="max-height: 35px;">
+            </div>
+            
+            <div style="border: 1px solid #dee2e6; padding: 12px; border-radius: 4px; background: #fff; box-sizing: border-box; width: 100%; margin-bottom: 30px;">
+                <p style="margin: 0 0 8px 0; font-weight: bold; font-size: 12px; color: #0F3759; text-transform: uppercase; border-bottom: 1px solid #dee2e6; padding-bottom: 4px;">Designer Sketch</p>
+                <img id="pdfImgInternal-designersketch" style="width: 100%; height: 350px; object-fit: contain;">
+            </div>
+
+            <p style="margin: 0 0 10px 0; font-weight: bold; font-size: 13px; color: #0F3759; text-transform: uppercase;">Access Route Uploads</p>
+            <div id="pdfAccessPhotosGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px;"></div>
+            <p style="margin: 0 0 10px 0; font-weight: bold; font-size: 13px; color: #0F3759; text-transform: uppercase;">Misc / Extra Uploads</p>
+            <div id="pdfMiscPhotosGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;"></div>
+        </div>
+    </div>
+
+    <div id="pdfTemplateCustomer" style="display: none; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
+        <div class="pdf-page" style="page-break-after: always; text-align: left; padding: 30px 50px; font-size: 15px; line-height: 1.8; color: #333;">
+            <div style="text-align: center; margin-bottom: 40px;">
+                <img class="brand-logo-img" src="logo.jpg" style="max-height: 80px; margin-bottom: 25px;">
+                <h1 style="color: #0F3759; margin-bottom: 0; font-size: 22px; letter-spacing: 1px;">PREDESIGN SURVEY REPORT</h1>
+            </div>
+
+            <p id="lp-greeting" style="margin-bottom: 25px;"></p>
+            <p id="lp-size" style="margin-bottom: 25px;"></p>
+            <p id="lp-roof" style="margin-bottom: 25px;"></p>
+            <p id="lp-frame" style="margin-bottom: 25px;"></p>
+            <p id="lp-compliance" style="margin-bottom: 25px;"></p>
+            <p id="lp-revisit" style="margin-bottom: 40px;"></p>
+
+            <p style="margin-bottom: 20px;">Best regards,</p>
+            <p style="margin-bottom: 5px; font-weight: bold; font-size: 18px; color: #0F3759;" id="lp-designer-name"></p>
+            <p style="margin-bottom: 15px; font-size: 15px; color: #666;">Design Consultant</p>
+            <p style="margin-top: 5px; font-size: 14px;" id="lp-designer-contact"></p>
+        </div>
+    </div>
+
+    <div id="profileModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>Manage Designer Profile</h2>
+            <div class="form-group"><label class="form-group__label" style="color: #A0A0A0;">Name:</label><input type="text" id="profName" class="form-group__input"></div>
+            <div class="form-group"><label class="form-group__label" style="color: #A0A0A0;">Email:</label><input type="email" id="profEmail" class="form-group__input"></div>
+            <div class="form-group"><label class="form-group__label" style="color: #A0A0A0;">Phone:</label><input type="tel" id="profPhone" class="form-group__input"></div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="saveProfileBtn" class="button" style="margin-top: 0; width: 50%;">Save</button>
+                <button id="closeProfileBtn" class="button" style="margin-top: 0; background:#444; width: 50%;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+
+    <script src="designers.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
