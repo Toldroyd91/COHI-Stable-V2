@@ -1,8 +1,54 @@
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("[Blueprint Enterprise] Engine Initialized: Full Feature Build (v1.1-STABLE)");
+    console.log("[Blueprint Enterprise] Engine Initialized: Dynamic Header Active (v1.2-STABLE)");
     const { jsPDF } = window.jspdf;
 
-    // --- 0. SPLASH SCREEN ---
+    // --- 0. DYNAMIC HEADER & LOGO ENGINE ---
+    
+    // Make sure these filenames perfectly match the images in your folder
+    window.brandLogos = {
+        "Clearview": "clearview.png",
+        "CO Home Improvements": "co-home-improvements.png",
+        "Orion Windows": "orion.png",
+        "Planet": "planet.png",
+        "Trent Valley Windows": "trent-valley.png",
+        "West Yorkshire Windows": "west-yorkshire.png",
+        "Yorkshire Windows": "yorkshire.png"
+    };
+
+    const brandSelect = document.getElementById('brandSelect');
+    const brandLogo = document.getElementById('dynamicBrandLogo');
+    const brandName = document.getElementById('dynamicBrandName');
+    const brandDisplay = document.getElementById('brandDisplay');
+
+    function updateBrandHeader() {
+        if (!brandSelect || !brandLogo || !brandName) return;
+        const brand = brandSelect.value;
+        if (brand && window.brandLogos[brand]) {
+            brandLogo.src = window.brandLogos[brand];
+            brandLogo.style.display = 'block';
+            brandName.innerText = brand;
+            brandDisplay.classList.add('has-logo');
+        } else {
+            brandLogo.style.display = 'none';
+            brandName.innerText = "Survey App";
+            brandDisplay.classList.remove('has-logo');
+        }
+    }
+
+    if (brandSelect) {
+        brandSelect.addEventListener('change', updateBrandHeader);
+    }
+
+    // The Scroll Trigger
+    window.addEventListener('scroll', () => { 
+        const header = document.getElementById('mainHeader'); 
+        if(header) {
+            if(window.scrollY > 40) header.classList.add('shrunk'); 
+            else header.classList.remove('shrunk'); 
+        }
+    });
+
+    // Splash Screen
     setTimeout(() => { 
         const splash = document.getElementById('splashScreen'); 
         if(splash) { 
@@ -71,6 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    updateBrandHeader(); // Trigger logo on load
     evaluateConditionals();
 
     // --- 3. VOICE DICTATION ---
