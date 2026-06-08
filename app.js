@@ -1,17 +1,50 @@
+// Remove splash screen immediately to ensure user is never stuck
+setTimeout(() => { 
+    const splash = document.getElementById('splashScreen'); 
+    if(splash) { 
+        splash.style.opacity = '0'; 
+        setTimeout(() => splash.style.display = 'none', 600); 
+    } 
+}, 1200);
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log("[Diagnostics] Blueprint Enterprise Engine Loaded (Offline/Stable).");
-    const { jsPDF } = window.jspdf;
 
-    // --- 0. HIDE SPLASH SCREEN ---
-    setTimeout(() => { 
-        const splash = document.getElementById('splashScreen'); 
-        if(splash) { 
-            splash.style.opacity = '0'; 
-            setTimeout(() => splash.style.display = 'none', 600); 
-        } 
-    }, 1000);
+    // --- 1. SAFEGUARD PDF ENGINE ---
+    let jsPDF;
+    if (window.jspdf) {
+        jsPDF = window.jspdf.jsPDF;
+    } else {
+        console.warn("PDF library delayed or offline.");
+    }
 
-    // --- 1. DYNAMIC SURVEY UPLOAD LABEL ---
+    // --- 2. AUTOSAVE FUNCTIONALITY ---
+    // Safely saves every text/number/select field to localStorage
+    const saveForms = () => {
+        const data = {};
+        document.querySelectorAll('input:not([type="file"]), select, textarea').forEach(input => {
+            if(input.id) data[input.id] = input.value;
+        });
+        localStorage.setItem('surveyAppData', JSON.stringify(data));
+    };
+
+    const savedData = JSON.parse(localStorage.getItem('surveyAppData')) || {};
+    document.querySelectorAll('input:not([type="file"]), select, textarea').forEach(input => {
+        if (input.id && savedData[input.id]) {
+            input.value = savedData[input.id];
+        }
+        input.addEventListener('input', saveForms);
+    });
+
+    document.getElementById('resetFormBtn')?.addEventListener('click', () => {
+        if(confirm("Are you sure you want to clear the entire form for a new appointment?")) {
+            localStorage.removeItem('surveyAppData');
+            // Retain designer profiles, just clear the form
+            location.reload();
+        }
+    });
+
+    // --- 3. DYNAMIC SURVEY UPLOAD LABEL ---
     const updateDynamicLabel = () => {
         const trees = document.getElementById('treesExist')?.value;
         const manhole = document.getElementById('manholeExist')?.value;
@@ -39,8 +72,9 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.dyn-survey-select').forEach(sel => {
         sel.addEventListener('change', updateDynamicLabel);
     });
+    updateDynamicLabel(); // Run once on load
 
-    // --- 2. PROFILE MANAGER ---
+    // --- 4. PROFILE MANAGER ---
     window.designerProfiles = JSON.parse(localStorage.getItem('savedDesignerProfiles')) || {};
     const refreshDropdown = () => {
         const list = document.getElementById('designerList');
@@ -69,9 +103,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('designerSelect').value = name;
         refreshDropdown();
         document.getElementById('profileModal').style.display = 'none';
+        saveForms();
     });
 
-    // --- 3. FABRIC CANVAS V2 ---
+    // --- 5. FABRIC CANVAS V2 ---
     window.appCanvases = {};
     document.querySelectorAll('.canvas-group').forEach(group => {
         const id = group.getAttribute('data-id');
@@ -82,6 +117,11 @@ document.addEventListener('DOMContentLoaded', function() {
             isDrawingMode: false, allowTouchScrolling: true, selection: true
         });
         window.appCanvases[id] = fCanvas;
+
+        // Load existing canvas data if any
+        if(savedData['canvas_' + id]) {
+            fCanvas.loadFromJSON(savedData['canvas_' + id], fCanvas.renderAll.bind(fCanvas));
+        }
 
         const saveCanvasState = () => { 
             const data = JSON.parse(localStorage.getItem('surveyAppData')) || {}; 
@@ -140,6 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             fCanvas.add(text);
             fCanvas.setActiveObject(text);
+            saveCanvasState();
         });
 
         group.querySelector('.undo-btn')?.addEventListener('click', function() {
@@ -162,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // --- 4. IMAGE UPLOAD HANDLERS ---
+    // --- 6. IMAGE UPLOAD HANDLERS ---
     const uploadedImagesStore = { misc: [], survey: [], access: [] };
 
     const handleMultiUpload = (inputId, storeKey) => {
@@ -181,51 +222,53 @@ document.addEventListener('DOMContentLoaded', function() {
     handleMultiUpload('surveyPhotos', 'survey');
     handleMultiUpload('accessPhotos', 'access');
 
-    // --- 5. MULTI-PAGE PDF ENGINE (Truncation Fix) ---
-    
+    // --- 7. MULTI-PAGE PDF ENGINE (Forced Full-Render) ---
     async function generateMultiPagePDF(templateId, filename) {
+        if (!jsPDF) return alert("PDF Engine loading, please try again in a few seconds.");
+        
         const template = document.getElementById(templateId);
         if(!template) return alert("Error: Template missing");
 
-        // FIX: Store current scroll position and instantly jump to top to prevent HTML2Canvas viewport clipping
-        const originalScroll = window.scrollY;
-        window.scrollTo(0, 0);
-
-        // Bring template into the document flow but hide it visually behind the UI
+        // Prepare Template: Reveal without affecting scroll flow
         template.style.display = 'block';
         template.style.position = 'absolute';
         template.style.top = '0px';
         template.style.left = '0px';
         template.style.zIndex = '-9999';
+        template.style.width = '800px';
 
         try {
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
             
-            const pages = Array.from(template.querySelectorAll('.pdf-page')).filter(p => p.style.display !== 'none');
+            // Render the FULL template in one go using scrollHeight
+            const canvas = await html2canvas(template, { 
+                scale: 2, 
+                useCORS: true, 
+                logging: false,
+                windowWidth: 800,
+                windowHeight: template.scrollHeight 
+            });
             
-            for (let i = 0; i < pages.length; i++) {
-                const pageEl = pages[i];
-                pageEl.style.backgroundColor = '#ffffff';
-
-                // FIX: Force scrollY to 0 so HTML2Canvas captures the full element height
-                const canvas = await html2canvas(pageEl, { 
-                    scale: 2, 
-                    useCORS: true, 
-                    logging: false,
-                    scrollY: 0, 
-                    windowWidth: 800,
-                    windowHeight: pageEl.scrollHeight
-                });
-                
-                const imgData = canvas.toDataURL('image/jpeg', 1.0);
-                const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-                
-                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight);
-                
-                if (i < pages.length - 1) {
-                    pdf.addPage();
-                }
+            const imgData = canvas.toDataURL('image/jpeg', 1.0);
+            
+            // Calculate total image height in PDF millimeters
+            const canvasHeightInMM = (canvas.height * pdfWidth) / canvas.width;
+            
+            let heightLeft = canvasHeightInMM;
+            let position = 0;
+            
+            // Print first page slice
+            pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightInMM);
+            heightLeft -= pdfHeight;
+            
+            // Loop for additional pages if document is longer than A4
+            while (heightLeft > 0) {
+                position = position - pdfHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightInMM);
+                heightLeft -= pdfHeight;
             }
             
             pdf.save(filename);
@@ -233,19 +276,16 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error(e);
             alert("PDF Generation failed. Please try again.");
         } finally {
-            // Restore original UI state and scroll position
             template.style.display = 'none';
-            window.scrollTo(0, originalScroll);
         }
     }
 
-   // Customer PDF Button
+    // Customer PDF Button
     document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', async () => {
         const nameInput = document.getElementById('clientName');
         const rawName = nameInput && nameInput.value.trim() ? nameInput.value.trim() : 'Valued Customer';
         const surname = rawName.split(' ').pop() || 'Customer';
         
-        // Grab all the dropdown and input values
         const size = document.getElementById('proposedSize')?.value || "TBC";
         const roof = document.getElementById('roofType')?.value || "TBC";
         const frame = document.getElementById('frameColour')?.value || "TBC";
@@ -255,22 +295,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const rDate = document.getElementById('revisitDate')?.value;
         const rLoc = document.getElementById('revisitLocation')?.value;
         
-        // 1. GREETING & BASICS
+        // Populate text fields
         document.getElementById('lp-greeting').innerText = `Dear ${rawName}, thank you for your time today to discuss your exciting new project.`;
         document.getElementById('lp-size').innerText = `Based on our measurements, we are looking at a proposed size of approximately ${size}.`;
         document.getElementById('lp-roof').innerText = `We discussed utilizing the ${roof} system to ensure the space is perfect year-round.`;
         document.getElementById('lp-frame').innerText = `For the aesthetics, we have noted your preference for ${frame} frames.`;
         
-        // 2. COMPLIANCE TEXT (Restored)
         let compText = "";
-        if (bRegs === "Yes" || pPerms !== "No" && pPerms !== "") {
+        if (bRegs === "Yes" || (pPerms !== "No" && pPerms !== "")) {
             compText = `Your project will require some compliance oversight (Building Regs: ${bRegs}, Planning: ${pPerms}). Our team handles all of this for you.`;
         } else {
             compText = "Your project currently looks to be exempt from additional planning compliance, streamlining our timeline.";
         }
         document.getElementById('lp-compliance').innerText = compText;
 
-        // 3. REVISIT DATE TEXT (Restored)
         const revisitEl = document.getElementById('lp-revisit');
         if (revisitEl) {
             if (rDate) {
@@ -280,19 +318,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // 4. DESIGNER INFO & CONTACT (Restored)
         document.getElementById('lp-designer-name').innerText = designerName;
         
-        // Look up the designer's contact info from your profiles list
-        let designerPhone = "07700 900000"; // Default
-        let designerEmail = "designer@cohi.co.uk"; // Default
+        let designerPhone = "07700 900000";
+        let designerEmail = "designer@cohi.co.uk";
         if (window.designerProfiles && window.designerProfiles[designerName]) {
             designerPhone = window.designerProfiles[designerName].phone || designerPhone;
             designerEmail = window.designerProfiles[designerName].email || designerEmail;
         }
         document.getElementById('lp-designer-contact').innerText = `${designerPhone} | ${designerEmail}`;
 
-        // 5. INJECT IMAGES SAFELY (Without CSS Grids)
+        // Populate inline-block images
         const allCustImages = [...uploadedImagesStore.misc, ...uploadedImagesStore.survey];
         const imagePage = document.getElementById('customerPdfImagePage');
         const imageGrid = document.getElementById('pdfCustomerImagesGrid');
@@ -308,9 +344,9 @@ document.addEventListener('DOMContentLoaded', function() {
             imagePage.style.display = 'none';
         }
 
-        // Generate the PDF
         await generateMultiPagePDF('pdfTemplateCustomer', `${surname}_Design_Consultation.pdf`);
     });
+
     // Internal PDF Button
     document.getElementById('generateInternalPdfBtn')?.addEventListener('click', async () => {
         const nameInput = document.getElementById('clientName');
