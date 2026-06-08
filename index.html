@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Survey App</title>
-    
+    <title>COHI Survey Pro</title>
     <link rel="stylesheet" href="style.css">
-    
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-0J8DC9GD6Z"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -75,21 +73,20 @@
                     <input type="file" id="front-cam" class="camera-input hidden-input" accept="image/*">
                     <label for="front-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Front Elevation</label>
                 </div>
-                <div class="canvas-container"><canvas id="canvas-frontelevation" width="600" height="400"></canvas></div>
+                <div class="canvas-container"><canvas id="canvas-frontelevation" width=\"600\" height=\"400\"></canvas></div>
                 <div class="canvas-controls">
                     <button type="button" class="tool-btn lock-btn canvas-locked"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
                     <div class="tool-section">
                         <button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
-                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg></button>
+                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg></button>
                         <button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button>
                         <div class="divider"></div>
                         <button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button>
-                        <button type="button" class="tool-btn dim-line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.17 3.22a2 2 0 0 0-2.83 0L3.22 18.34a2 2 0 0 0 0 2.83 2 2 0 0 0 2.83 0L21.17 6.05a2 2 0 0 0 0-2.83Z"></path><path d="m5 16 2 2"></path><path d="m8.5 12.5 2 2"></path><path d="m12 9 2 2"></path><path d="m15.5 5.5 2 2"></path></svg></button>
-                        <button type="button" class="tool-btn calibrate-btn accent-btn">Set Scale</button>
+                        <button type="button" class="tool-btn dim-line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.17 3.22a2 2 0 0 0-2.83 0L3.22 18.34a2 2 0 0 0 0 2.83 2 2 0 0 0 2.83 0L21.17 6.05a2 2 0 0 0 0-2.83Z"></path></svg></button>
                     </div>
                     <div class="tool-section flex-right">
                         <button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
-                        <button type="button" class="tool-btn maximize-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg></button>
+                        <button type="button" class="tool-btn maximize-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline></svg></button>
                     </div>
                 </div>
             </div>
@@ -99,21 +96,20 @@
                     <input type="file" id="side-cam" class="camera-input hidden-input" accept="image/*">
                     <label for="side-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Side Elevation</label>
                 </div>
-                <div class="canvas-container"><canvas id="canvas-sideelevation" width="600" height="400"></canvas></div>
+                <div class="canvas-container"><canvas id="canvas-sideelevation" width=\"600\" height=\"400\"></canvas></div>
                 <div class="canvas-controls">
                     <button type="button" class="tool-btn lock-btn canvas-locked"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
                     <div class="tool-section">
                         <button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
-                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg></button>
+                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg></button>
                         <button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button>
                         <div class="divider"></div>
                         <button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button>
-                        <button type="button" class="tool-btn dim-line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.17 3.22a2 2 0 0 0-2.83 0L3.22 18.34a2 2 0 0 0 0 2.83 2 2 0 0 0 2.83 0L21.17 6.05a2 2 0 0 0 0-2.83Z"></path><path d="m5 16 2 2"></path><path d="m8.5 12.5 2 2"></path><path d="m12 9 2 2"></path><path d="m15.5 5.5 2 2"></path></svg></button>
-                        <button type="button" class="tool-btn calibrate-btn accent-btn">Set Scale</button>
+                        <button type="button" class="tool-btn dim-line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.17 3.22a2 2 0 0 0-2.83 0L3.22 18.34a2 2 0 0 0 0 2.83 2 2 0 0 0 2.83 0L21.17 6.05a2 2 0 0 0 0-2.83Z"></path></svg></button>
                     </div>
                     <div class="tool-section flex-right">
                         <button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
-                        <button type="button" class="tool-btn maximize-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg></button>
+                        <button type="button" class="tool-btn maximize-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline></svg></button>
                     </div>
                 </div>
             </div>
@@ -123,21 +119,20 @@
                     <input type="file" id="rear-cam" class="camera-input hidden-input" accept="image/*">
                     <label for="rear-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Rear Elevation</label>
                 </div>
-                <div class="canvas-container"><canvas id="canvas-rearelevation" width="600" height="400"></canvas></div>
+                <div class="canvas-container"><canvas id="canvas-rearelevation" width=\"600\" height=\"400\"></canvas></div>
                 <div class="canvas-controls">
                     <button type="button" class="tool-btn lock-btn canvas-locked"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
                     <div class="tool-section">
                         <button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
-                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg></button>
+                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg></button>
                         <button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button>
                         <div class="divider"></div>
                         <button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button>
-                        <button type="button" class="tool-btn dim-line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.17 3.22a2 2 0 0 0-2.83 0L3.22 18.34a2 2 0 0 0 0 2.83 2 2 0 0 0 2.83 0L21.17 6.05a2 2 0 0 0 0-2.83Z"></path><path d="m5 16 2 2"></path><path d="m8.5 12.5 2 2"></path><path d="m12 9 2 2"></path><path d="m15.5 5.5 2 2"></path></svg></button>
-                        <button type="button" class="tool-btn calibrate-btn accent-btn">Set Scale</button>
+                        <button type="button" class="tool-btn dim-line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.17 3.22a2 2 0 0 0-2.83 0L3.22 18.34a2 2 0 0 0 0 2.83 2 2 0 0 0 2.83 0L21.17 6.05a2 2 0 0 0 0-2.83Z"></path></svg></button>
                     </div>
                     <div class="tool-section flex-right">
                         <button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
-                        <button type="button" class="tool-btn maximize-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg></button>
+                        <button type="button" class="tool-btn maximize-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline></svg></button>
                     </div>
                 </div>
             </div>
@@ -151,11 +146,76 @@
                 <div class="form-group" style="grid-column: 1 / -1;"><label class="form-group__label">Upload access photos:</label><input type="file" id="accessPhotos" class="form-group__input" accept="image/*" multiple style="padding-top:10px;"></div>
             </div>
             
-            <h3 class="section-subtitle mt-30">Site Survey Basics</h3>
+            <h3 class="section-subtitle mt-30" style="color: var(--accent); margin-bottom: 15px;">Site Survey Basics</h3>
             <div class="form-grid">
                 <div class="form-group"><label class="form-group__label">DPC Depth (mm):</label><input type="number" id="dpcDepth" class="form-group__input"></div>
                 <div class="form-group"><label class="form-group__label">House material:</label><select id="houseMaterial" class="form-group__input"><option value="">Select...</option><option value="Brick">Brick</option><option value="Stone">Stone</option><option value="Render">Render</option><option value="Other">Other</option></select></div>
+                <div class="form-group"><label class="form-group__label">Fascia Height (mm):</label><input type="text" id="fasciaHeight" class="form-group__input"></div>
+                <div class="form-group"><label class="form-group__label">Air Bricks? How many?</label><select id="airbricks" class="form-group__input"><option value="">Select...</option><option value="No">No</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5+">5+</option></select></div>
+                <div class="form-group" style="grid-column: 1 / -1;"><label class="form-group__label">Wall Obstacles:</label><textarea id="wallObstacles" class="form-group__input" rows="2"></textarea></div>
             </div>
+
+            <div class="form-grid mt-30">
+                <div class="form-group"><label class="form-group__label">Trees within 30m?</label><select id="treesExist" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Manholes visible?</label><select id="manholeExist" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Weep vents visible?</label><select id="weepventsExist" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Pipes (RWP/SVP) exist?</label><select id="pipesExist" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            </div>
+            <p style="color: var(--secondary-text); font-size: 0.85rem; margin-top: 10px;">*If Yes to any of the above, please capture them in the Elevation Photos above and highlight them.*</p>
+        </article>
+
+        <article class="card">
+            <h2 class="card__title">Design Ideas</h2>
+            <div class="form-grid">
+                <div class="form-group"><label class="form-group__label">Build Type:</label><select id="buildType" class="form-group__input"><option value="">Select...</option><option value="Conservatory">Conservatory</option><option value="Extension">Extension</option><option value="Porch">Porch</option><option value="Roof and Frame">Roof and Frame</option><option value="Other">Other</option></select></div>
+                <div class="form-group"><label class="form-group__label">Roof Type:</label><select id="roofType" class="form-group__input"><option value="">Select...</option><option value="Ultra380">Ultra380</option><option value="LivinRoof">LivinRoof</option><option value="Glass Roof">Glass Roof</option><option value="Flat Roof">Flat Roof</option><option value="Other">Other</option></select></div>
+                <div class="form-group"><label class="form-group__label">Proposed Size (mm):</label><input type="text" id="proposedSize" class="form-group__input"></div>
+                <div class="form-group">
+                    <label class="form-group__label">Frame Colour:</label>
+                    <select id="frameColour" class="form-group__input">
+                        <option value="">Select...</option><option value="White">White</option><option value="Grey Foil on White">Grey Foil on White</option><option value="Grey Foil">Grey Foil</option><option value="Rosewood on White">Rosewood on White</option><option value="Rosewood">Rosewood</option><option value="Light Oak on White">Light Oak on White</option><option value="Light Oak">Light Oak</option><option value="Black Brown Foil on White">Black Brown Foil on White</option><option value="Black Brown Foil">Black Brown Foil</option><option value="Cream Foil on White">Cream Foil on White</option><option value="Cream Foil">Cream Foil</option><option value="Chartwell Green on White">Chartwell Green on White</option><option value="Chartwell Green Foil">Chartwell Green Foil</option><option value="Irish Oak Foil on White">Irish Oak Foil on White</option><option value="Irish Oak Foil">Irish Oak Foil</option><option value="Olive Grey on White">Olive Grey on White</option><option value="Olive Grey">Olive Grey</option><option value="Smooth Grey on White">Smooth Grey on White</option><option value="Smooth Grey Throughout">Smooth Grey Throughout</option><option value="Agate Grey">Agate Grey</option><option value="Agate Grey on White">Agate Grey on White</option>
+                    </select>
+                </div>
+                <div class="form-group"><label class="form-group__label">New Build Material:</label><select id="newBuildMaterial" class="form-group__input"><option value="">Select...</option><option value="Brick">Brick</option><option value="Block only">Block only</option><option value="Artificial Stone">Artificial Stone</option><option value="Natural Stone">Natural Stone</option><option value="HUP Wall System">HUP Wall System</option></select></div>
+                <div class="form-group"><label class="form-group__label">Building Regs Required?</label><select id="buildingRegs" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Planning Permission Required?</label><select id="planningPerms" class="form-group__input"><option value="">Select...</option><option value="No">No</option><option value="Full Planning">Full Planning</option><option value="Pre Approved Planning">Pre Approved Planning</option></select></div>
+                <div class="form-group"><label class="form-group__label">SAP Calcs Required?</label><select id="sapCalcs" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Budget:</label><input type="text" id="budget" class="form-group__input"></div>
+                
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-group__label">Designer Notes:</label>
+                    <textarea id="designerNotes" class="form-group__input" rows="4" placeholder="Type or dictate your notes here..."></textarea>
+                </div>
+            </div>
+
+            <div class="canvas-group mt-30" data-id="designersketch">
+                <div class="custom-file-upload">
+                    <input type="file" id="sketch-cam" class="camera-input hidden-input" accept="image/*">
+                    <label for="sketch-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Upload Base Sketch</label>
+                </div>
+                <div class="canvas-container"><canvas id="canvas-designersketch" width=\"600\" height=\"400\"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
+                    <div class="tool-section">
+                        <button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg></button>
+                        <button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button>
+                        <div class="divider"></div>
+                        <button type="button" class="tool-btn line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button>
+                        <button type="button" class="tool-btn dim-line-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.17 3.22a2 2 0 0 0-2.83 0L3.22 18.34a2 2 0 0 0 0 2.83 2 2 0 0 0 2.83 0L21.17 6.05a2 2 0 0 0 0-2.83Z"></path></svg></button>
+                    </div>
+                    <div class="tool-section flex-right">
+                        <button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
+                        <button type="button" class="tool-btn maximize-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline></svg></button>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <article class="card">
+            <h2 class="card__title">Misc</h2>
+            <div class="form-group"><label class="form-group__label">Additional Notes:</label><textarea id="miscNotes" class="form-group__input" rows="3"></textarea></div>
+            <div class="form-group" style="margin-top:15px;"><label class="form-group__label" style="color: var(--accent);">Additional Photos (Upload multiple):</label><input type="file" id="miscPhotos" class="form-group__input" accept="image/*" multiple style="padding-top:13px;"></div>
         </article>
 
         <div style="display: flex; gap: 15px; margin-top: 34px;">
@@ -165,32 +225,8 @@
         <button id="resetFormBtn" class="button btn-danger" style="margin-top: 20px; width: 100%;">Clear Form for Next Appointment</button>
     </main>
 
-    <div id="pdfTemplateInternal" style="position: absolute; left: -9999px; top: 0; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
-        <div class="pdf-page" style="page-break-after: always; text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding-top: 20px;">
-            <div>
-                <img class="brand-logo-img" src="logo.jpg" style="max-height: 90px; margin-bottom: 25px;">
-                <h1 style="color: #0F3759; font-size: 34px; margin: 0 0 10px 0; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Technical Survey Report</h1>
-                <div style="width: 80px; height: 4px; background: #0F3759; margin: 0 auto 30px auto; border-radius: 2px;"></div>
-            </div>
-            <div style="width: 100%; border: 1px solid #e1e4e6; border-radius: 6px; overflow: hidden; background: #f8f9fa; margin: 20px auto; padding: 10px; box-sizing: border-box;">
-                <p style="margin: 0 0 8px 0; text-align: left; font-size: 13px; font-weight: bold; color: #0F3759; text-transform: uppercase;">Front Elevation Reference</p>
-                <img id="pdfImgInternal-frontelevation" style="width: 100%; height: 380px; object-fit: contain; border-radius: 4px;">
-            </div>
-            <div style="background: #f8f9fa; border-left: 5px solid #0F3759; padding: 25px; text-align: left; border-radius: 4px; margin-top: 30px;">
-                <h3 style="margin: 0 0 15px 0; color: #0F3759; font-size: 18px; text-transform: uppercase;">Customer Details</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px 30px; font-size: 14px; color: #495057;">
-                    <div><strong>Customer Name:</strong> <span class="bind-name" style="color:#000; font-weight:600;"></span></div>
-                    <div><strong>Date of Survey:</strong> <span class="bind-date" style="color:#000; font-weight:600;"></span></div>
-                    <div><strong>Customer Number:</strong> <span class="bind-num" style="color:#000; font-weight:600;"></span></div>
-                    <div><strong>Assigned Designer:</strong> <span id="pdfPrintDesigner" style="color:#000; font-weight:600;"></span></div>
-                    <div style="grid-column: span 2;"><strong>Site Address:</strong> <span class="bind-address" style="color:#000; font-weight:600;"></span></div>
-                </div>
-            </div>
-        </div>
-        </div>
-
-    <div id="pdfTemplateCustomer" style="position: absolute; left: -9999px; top: 0; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
-        <div class="pdf-page" style="page-break-after: always; text-align: left; padding: 30px 50px; font-size: 15px; line-height: 1.8; color: #333;">
+    <div id="pdfTemplateCustomer" style="position: absolute; left: -9999px; top: 0; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box; z-index: -1;">
+        <div class="pdf-page" style="text-align: left; padding: 30px 50px; font-size: 15px; line-height: 1.8; color: #333;">
             <div style="text-align: center; margin-bottom: 40px;">
                 <img class="brand-logo-img" src="logo.jpg" style="max-height: 80px; margin-bottom: 25px;">
                 <h1 style="color: #0F3759; margin-bottom: 0; font-size: 22px; letter-spacing: 1px;">PREDESIGN SURVEY REPORT</h1>
@@ -205,6 +241,24 @@
             <p style="margin-bottom: 5px; font-weight: bold; font-size: 18px; color: #0F3759;" id="lp-designer-name"></p>
             <p style="margin-bottom: 15px; font-size: 15px; color: #666;">Design Consultant</p>
             <p style="margin-top: 5px; font-size: 14px;" id="lp-designer-contact"></p>
+        </div>
+    </div>
+
+    <div id="pdfTemplateInternal" style="position: absolute; left: -9999px; top: 0; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box; z-index: -1;">
+        <div class="pdf-page" style="text-align: center; padding-top: 20px;">
+            <div>
+                <img class="brand-logo-img" src="logo.jpg" style="max-height: 90px; margin-bottom: 25px;">
+                <h1 style="color: #0F3759; font-size: 34px; margin: 0 0 10px 0; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Technical Survey Report</h1>
+                <div style="width: 80px; height: 4px; background: #0F3759; margin: 0 auto 30px auto; border-radius: 2px;"></div>
+            </div>
+            <div style="background: #f8f9fa; border-left: 5px solid #0F3759; padding: 25px; text-align: left; border-radius: 4px; margin-top: 30px;">
+                <h3 style="margin: 0 0 15px 0; color: #0F3759; font-size: 18px; text-transform: uppercase;">Customer Details</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px 30px; font-size: 14px; color: #495057;">
+                    <div><strong>Customer Name:</strong> <span class="bind-name" id="pdfPrintName" style="color:#000; font-weight:600;"></span></div>
+                    <div><strong>Date of Survey:</strong> <span class="bind-date" id="pdfPrintDate" style="color:#000; font-weight:600;"></span></div>
+                    <div><strong>Assigned Designer:</strong> <span id="pdfPrintDesigner" style="color:#000; font-weight:600;"></span></div>
+                </div>
+            </div>
         </div>
     </div>
 
