@@ -1,6 +1,21 @@
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("[Diagnostics] Blueprint Enterprise Engine Loaded (Offline/Stable).");
+    console.log("[Blueprint Enterprise] Luxury OS Boot Sequence Initiated. (Restoring Stable PDF Engine)");
+
+    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').catch(err => console.log('Service Worker Error', err)); }
+
+    setTimeout(() => { const splash = document.getElementById('splashScreen'); if(splash) { splash.style.opacity = '0'; setTimeout(() => splash.style.display = 'none', 600); } }, 1800); 
+
     const { jsPDF } = window.jspdf;
+
+    window.addEventListener('scroll', () => { const header = document.getElementById('mainHeader'); if(window.scrollY > 20) header.classList.add('shrunk'); else header.classList.remove('shrunk'); });
+
+    function evaluateConditionals() {
+        document.querySelectorAll('.conditional-field').forEach(field => {
+            const conditionId = field.getAttribute('data-condition'); const selectEl = document.getElementById(conditionId);
+            if(selectEl) { if(selectEl.value === 'Yes') field.classList.add('visible'); else field.classList.remove('visible'); }
+        });
+    }
+    document.querySelectorAll('select').forEach(sel => sel.addEventListener('change', evaluateConditionals));
 
     // --- 1. PROFILE MANAGER ---
     window.designerProfiles = JSON.parse(localStorage.getItem('savedDesignerProfiles')) || {};
@@ -67,8 +82,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 localStorage.setItem('surveyAppData', JSON.stringify(data));
             };
             dictateBtn.onclick = () => {
-                if(rec.running) { rec.stop(); dictateBtn.innerHTML = '🎙️ Dictate Notes'; }
-                else { rec.start(); dictateBtn.innerHTML = '🛑 Stop Dictating'; }
+                if(rec.running) { 
+                    rec.stop(); 
+                    dictateBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px; vertical-align:middle;"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg> Dictate';
+                } else { 
+                    rec.start(); 
+                    dictateBtn.innerHTML = '🛑 Stop'; 
+                }
                 rec.running = !rec.running;
             };
         } else {
@@ -76,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- 4. INTERACTIVE FABRIC VECTOR IMPLEMENTATION ---
+    // --- 4. INTERACTIVE FABRIC VECTOR IMPLEMENTATION (STABLE) ---
     window.appCanvases = {};
     document.querySelectorAll('.canvas-group').forEach(group => {
         const id = group.getAttribute('data-id');
@@ -88,9 +108,15 @@ document.addEventListener('DOMContentLoaded', function() {
             allowTouchScrolling: true,
             selection: false
         });
-        fCanvas.freeDrawingBrush.color = '#FF0000';
+        fCanvas.freeDrawingBrush.color = '#00E5FF';
         fCanvas.freeDrawingBrush.width = 4;
         window.appCanvases[id] = fCanvas;
+
+        const savedData = JSON.parse(localStorage.getItem('surveyAppData')) || {}; 
+        if(savedData['canvas_' + id]) fCanvas.loadFromJSON(savedData['canvas_' + id], fCanvas.renderAll.bind(fCanvas));
+        
+        const saveCanvasState = () => { const data = JSON.parse(localStorage.getItem('surveyAppData')) || {}; data['canvas_' + id] = JSON.stringify(fCanvas.toJSON()); localStorage.setItem('surveyAppData', JSON.stringify(data)); }; 
+        fCanvas.on('object:added', saveCanvasState); fCanvas.on('object:modified', saveCanvasState); fCanvas.on('object:removed', saveCanvasState);
 
         let activeTool = 'locked'; 
         let isDrawingLine = false;
@@ -103,20 +129,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const lineBtn = group.querySelector('.line-btn');
         const dimLineBtn = group.querySelector('.dim-line-btn');
         const textBtn = group.querySelector('.text-btn');
-        const pin1Btn = group.querySelector('.pin-1-btn');
-        const pin2Btn = group.querySelector('.pin-2-btn');
-        const pin3Btn = group.querySelector('.pin-3-btn');
+        const calibrateBtn = group.querySelector('.calibrate-btn');
         const undoBtn = group.querySelector('.undo-btn');
         const maximizeBtn = group.querySelector('.maximize-btn');
         const clearBtn = group.querySelector('.clear-btn');
         const fileInput = group.querySelector('.camera-input');
         const canvasContainer = group.querySelector('.canvas-container');
 
-        let isPinching = false;
-        let lastPinchDist = 0;
-        let isPanning = false;
-        let lastPanX = 0; 
-        let lastPanY = 0;
+        let isPinching = false; let lastPinchDist = 0; let isPanning = false; let lastPanX = 0; let lastPanY = 0;
 
         fCanvas.on('mouse:wheel', function(opt) {
             let delta = opt.e.deltaY;
@@ -160,36 +180,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         canvasContainer.addEventListener('touchstart', function(e) {
             if (e.touches.length === 2) {
-                isPinching = true;
-                isPanning = false;
-                fCanvas.isDrawingMode = false; 
-
-                lastPinchDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
+                isPinching = true; isPanning = false; fCanvas.isDrawingMode = false; 
+                lastPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
             }
         }, { passive: false });
 
         canvasContainer.addEventListener('touchmove', function(e) {
             if (isPinching && e.touches.length === 2) {
                 e.preventDefault(); 
-
-                let currentDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
-
-                let zoom = fCanvas.getZoom();
-                zoom *= (currentDist / lastPinchDist); 
-
-                if (zoom > 10) zoom = 10;
-                if (zoom < 0.5) zoom = 0.5;
-
+                let currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                let zoom = fCanvas.getZoom(); zoom *= (currentDist / lastPinchDist); 
+                if (zoom > 10) zoom = 10; if (zoom < 0.5) zoom = 0.5;
                 let rect = canvasContainer.getBoundingClientRect();
                 let pinchCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
                 let pinchCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
-
                 fCanvas.zoomToPoint({ x: pinchCenterX, y: pinchCenterY }, zoom);
                 lastPinchDist = currentDist;
             }
@@ -207,18 +211,19 @@ document.addEventListener('DOMContentLoaded', function() {
             const currentZoom = fCanvas.getZoom();
 
             lockBtn?.classList.toggle('canvas-locked', tool === 'locked');
-            if (lockBtn) lockBtn.textContent = (tool === 'locked') ? '🔒 Locked for Scroll & Pan' : '🔓 Canvas Active';
-
+            if (lockBtn) lockBtn.innerHTML = (tool === 'locked') ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>' : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>';
+            
             freehandBtn?.classList.toggle('active', tool === 'freehand');
             highlightBtn?.classList.toggle('active', tool === 'highlight');
             lineBtn?.classList.toggle('active', tool === 'line');
             dimLineBtn?.classList.toggle('active', tool === 'dim-line');
             textBtn?.classList.toggle('active', tool === 'text');
+            calibrateBtn?.classList.toggle('active', tool === 'calibrate');
 
             fCanvas.isDrawingMode = (tool === 'freehand' || tool === 'highlight');
             
             if (tool === 'freehand') {
-                fCanvas.freeDrawingBrush.color = '#FF0000';
+                fCanvas.freeDrawingBrush.color = '#00E5FF';
                 fCanvas.freeDrawingBrush.width = 4 / currentZoom;
             } else if (tool === 'highlight') {
                 fCanvas.freeDrawingBrush.color = 'rgba(255, 255, 0, 0.4)';
@@ -253,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const z = fCanvas.getZoom();
 
                 activeLineObj = new fabric.Line([startX, startY, startX, startY], {
-                    strokeWidth: 4 / z, stroke: '#FF0000', originX: 'center', originY: 'center', selectable: false, hasControls: false
+                    strokeWidth: 4 / z, stroke: '#FF3B30', originX: 'center', originY: 'center', selectable: false, hasControls: false
                 });
                 fCanvas.add(activeLineObj);
             });
@@ -269,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (activeTool !== 'line') return;
                 isDrawingLine = false;
                 if (activeLineObj) activeLineObj.setCoords();
-                fCanvas.renderAll();
+                fCanvas.renderAll(); saveCanvasState();
             });
         }
 
@@ -283,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const z = fCanvas.getZoom();
 
                 activeLineObj = new fabric.Line([startX, startY, startX, startY], {
-                    strokeWidth: 3 / z, stroke: '#0D6EFD', strokeDashArray: [5 / z, 5 / z], originX: 'center', originY: 'center', selectable: false, hasControls: false
+                    strokeWidth: 3 / z, stroke: '#00E5FF', strokeDashArray: [5 / z, 5 / z], originX: 'center', originY: 'center', selectable: false, hasControls: false
                 });
                 fCanvas.add(activeLineObj);
             });
@@ -305,12 +310,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     const z = fCanvas.getZoom();
                     const arrowSize = 12 / z;
 
-                    const arrow1 = new fabric.Triangle({ width: arrowSize, height: arrowSize, fill: '#0D6EFD', left: x1, top: y1, originX: 'center', originY: 'center', angle: angle - 90, selectable: false });
-                    const arrow2 = new fabric.Triangle({ width: arrowSize, height: arrowSize, fill: '#0D6EFD', left: x2, top: y2, originX: 'center', originY: 'center', angle: angle + 90, selectable: false });
+                    const arrow1 = new fabric.Triangle({ width: arrowSize, height: arrowSize, fill: '#00E5FF', left: x1, top: y1, originX: 'center', originY: 'center', angle: angle - 90, selectable: false });
+                    const arrow2 = new fabric.Triangle({ width: arrowSize, height: arrowSize, fill: '#00E5FF', left: x2, top: y2, originX: 'center', originY: 'center', angle: angle + 90, selectable: false });
                     
                     fCanvas.add(arrow1, arrow2);
                 }
-                fCanvas.renderAll();
+                fCanvas.renderAll(); saveCanvasState();
             });
         }
 
@@ -323,33 +328,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const pointer = fCanvas.getPointer(o.e);
                 const z = fCanvas.getZoom();
-                const mmText = new fabric.IText('3000 mm', {
-                    left: pointer.x, top: pointer.y, fontFamily: 'system-ui', fontSize: 20 / z,
-                    fill: '#FFFF00', fontWeight: 'bold', backgroundColor: 'rgba(0,0,0,0.65)',
+                const mmText = new fabric.IText('Text', {
+                    left: pointer.x, top: pointer.y, fontFamily: 'Inter', fontSize: 20 / z,
+                    fill: '#00E5FF', fontWeight: 'bold', backgroundColor: 'rgba(0,0,0,0.8)',
                     padding: 6 / z, cornerSize: 8 / z, transparentCorners: false, hasControls: true
                 });
                 fCanvas.add(mmText);
                 fCanvas.setActiveObject(mmText);
-                fCanvas.renderAll();
+                fCanvas.renderAll(); saveCanvasState();
             });
-        }
-
-        function addPin(num, color) {
-            const z = fCanvas.getZoom();
-            const vpt = fCanvas.viewportTransform;
-            const centerX = (fCanvas.width / 2 - vpt[4]) / z;
-            const centerY = (fCanvas.height / 2 - vpt[5]) / z;
-
-            const pinGroup = new fabric.Group([
-                new fabric.Circle({radius:18/z, fill:color, stroke:'#fff', strokeWidth:3/z, shadow: new fabric.Shadow({color: 'rgba(0,0,0,0.5)', blur: 5/z, offsetY: 2/z})}),
-                new fabric.Text(num, {fontSize:20/z, fill:'#fff', fontWeight:'bold', originX:'center', originY:'center'})
-            ], {
-                left: centerX, top: centerY, originX: 'center', originY: 'center', hasControls: true, borderColor: '#FF0000', cornerColor: '#FF0000', cornerSize: 8/z, transparentCorners: false
-            });
-
-            fCanvas.add(pinGroup);
-            fCanvas.setActiveObject(pinGroup);
-            setButtonState('text'); 
         }
 
         lockBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('locked'); });
@@ -358,10 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
         lineBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('line'); });
         dimLineBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('dim-line'); });
         textBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('text'); });
-
-        pin1Btn?.addEventListener('click', (e) => { e.preventDefault(); addPin('1', '#0D6EFD'); });
-        pin2Btn?.addEventListener('click', (e) => { e.preventDefault(); addPin('2', '#0dcaf0'); });
-        pin3Btn?.addEventListener('click', (e) => { e.preventDefault(); addPin('3', '#ffc107'); });
+        calibrateBtn?.addEventListener('click', (e) => { e.preventDefault(); setButtonState('locked'); });
 
         undoBtn?.addEventListener('click', (e) => {
             e.preventDefault();
@@ -375,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     fCanvas.remove(lastObj);
                 }
-                fCanvas.renderAll();
+                fCanvas.renderAll(); saveCanvasState();
             }
         });
 
@@ -385,7 +369,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fCanvas.setBackgroundImage(null, fCanvas.renderAll.bind(fCanvas));
             fCanvas.setViewportTransform([1,0,0,1,0,0]); 
             if (fileInput) fileInput.value = '';
-            setButtonState('locked');
+            setButtonState('locked'); saveCanvasState();
         });
 
         maximizeBtn?.addEventListener('click', (e) => {
@@ -394,10 +378,10 @@ document.addEventListener('DOMContentLoaded', function() {
             fCanvas.setViewportTransform([1,0,0,1,0,0]); 
 
             if (isFull) {
-                maximizeBtn.textContent = '📉 Close Screen';
+                maximizeBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
                 fCanvas.setDimensions({ width: window.innerWidth - 40, height: window.innerHeight - 140 });
             } else {
-                maximizeBtn.textContent = '🔍 Max Screen';
+                maximizeBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
                 const currentBg = fCanvas.backgroundImage;
                 if (currentBg) {
                     const imgRatio = currentBg.height / currentBg.width;
@@ -438,6 +422,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         fCanvas.setBackgroundImage(fabricImg, () => {
                             fCanvas.calcOffset();
                             fCanvas.renderAll();
+                            saveCanvasState();
                         });
                     };
                     nativeImg.src = f.target.result;
@@ -485,10 +470,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 canvas.getContext('2d').drawImage(img, 0, 0);
                 resolve(canvas.toDataURL('image/jpeg', 0.9));
             };
-            img.onerror = () => {
-                console.warn(`Pamphlet missing: ${url}. Skipping...`);
-                resolve(null);
-            };
+            img.onerror = () => { resolve(null); };
             img.src = url;
         });
     }
@@ -519,24 +501,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- PDF GENERATOR ENGINE ---
-    async function executeSecurePDFGeneration(templateId, fileName, btn, data) {
-        btn.disabled = true;
-        const originalText = btn.innerText;
-        btn.innerText = "Processing...";
+    // --- UI LOADING SCREEN ---
+    function showPdfLoader(text) {
+        let loader = document.getElementById('pdfLoadingOverlay');
+        if(!loader) {
+            loader = document.createElement('div'); loader.id = 'pdfLoadingOverlay';
+            loader.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(5,11,20,0.98);z-index:99999999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#00E5FF;font-family:Inter,sans-serif;';
+            loader.innerHTML = '<div class="loader-bar" style="width:200px;margin-bottom:20px;"><div class="loader-fill"></div></div><h2 id="pdfLoaderText" style="font-weight:600;letter-spacing:1px;text-align:center;"></h2>';
+            document.body.appendChild(loader);
+        }
+        document.getElementById('pdfLoaderText').innerText = text; loader.style.display = 'flex';
+    }
+    function hidePdfLoader() { const loader = document.getElementById('pdfLoadingOverlay'); if(loader) loader.style.display = 'none'; }
+
+    // --- EXACT PDF GENERATOR FROM STABLE, ADAPTED TO CURRENT CSS ---
+    async function executeSecurePDFGeneration(templateId, fileName, data) {
+        showPdfLoader("Processing Document...");
 
         const template = document.getElementById(templateId);
-        const mainApp = document.querySelector('main') || document.body.firstElementChild;
+        const mainApp = document.querySelector('main') || document.body.firstElementChild; 
 
         template.style.display = 'block';
         template.style.position = 'absolute';
         template.style.top = '0'; template.style.left = '0'; template.style.width = '800px';
         template.style.zIndex = '999999'; template.style.backgroundColor = '#ffffff';
-        mainApp.style.display = 'none';
+        mainApp.style.display = 'none'; // Critical for iOS rendering
         window.scrollTo(0, 0);
 
         try {
-            await new Promise(r => setTimeout(r, 800)); 
+            await new Promise(r => setTimeout(r, 800)); // Paint delay
             
             const doc = new jsPDF('p', 'mm', 'a4');
             const margin = 10;
@@ -548,7 +541,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 let pages = Array.from(template.querySelectorAll('.pdf-page')).filter(el => window.getComputedStyle(el).display !== 'none');
 
                 for(let i = 0; i < pages.length; i++) {
-                    btn.innerText = `Printing Page ${i+1}/${pages.length}...`;
+                    showPdfLoader(`Printing Page ${i+1}/${pages.length}...`);
                     const canvas = await html2canvas(pages[i], {
                         scale: 1.5, useCORS: true, allowTaint: false, windowWidth: 800, logging: false, backgroundColor: '#ffffff'
                     });
@@ -560,9 +553,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
             } else if (templateId === 'pdfTemplateCustomer') {
-                btn.innerText = `Printing Cover Letter...`;
+                showPdfLoader(`Printing Cover Letter...`);
                 
-                // 1. Generate the HTML Cover Letter (Page 1)
                 let pages = Array.from(template.querySelectorAll('.pdf-page')).filter(el => window.getComputedStyle(el).display !== 'none');
                 const canvas = await html2canvas(pages[0], {
                     scale: 1.5, useCORS: true, allowTaint: false, windowWidth: 800, logging: false, backgroundColor: '#ffffff'
@@ -571,8 +563,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const ratio = canvas.height / canvas.width;
                 doc.addImage(imgData, 'JPEG', margin, margin, pdfPrintWidth, pdfPrintWidth * ratio);
 
-                // 2. Build the exact queue of required JPGs
-                btn.innerText = "Stitching Pamphlets...";
+                showPdfLoader("Stitching Pamphlets...");
                 
                 const pagesToAppend = [
                     'pamphlet-who-we-are.jpg',
@@ -582,21 +573,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     'pamphlet-piling.jpg'
                 ];
 
-                // Conditional Logic checking exact dropdown values
                 if (data.weepVents === 'Yes') pagesToAppend.push('pamphlet-protecting-home.jpg');
-                
                 if (data.roofType === 'Ultra380') pagesToAppend.push('pamphlet-ultra380.jpg');
                 if (data.roofType === 'LivinRoof') pagesToAppend.push('pamphlet-livinroof.jpg');
                 if (data.roofType === 'Glass Roof') pagesToAppend.push('pamphlet-glass-roof.jpg');
                 if (data.roofType === 'Flat Roof') pagesToAppend.push('pamphlet-flat-roof.jpg');
-                
                 if (data.sapCalcs === 'Yes') pagesToAppend.push('pamphlet-sap-calcs.jpg');
-                
                 if (data.planningPerms === 'Full Planning' || data.planningPerms === 'Pre Approved Planning') {
                     pagesToAppend.push('pamphlet-planning.jpg');
                 }
 
-                // 3. Process the queue sequentially to prevent memory crashes
                 for (const filename of pagesToAppend) {
                     const img = await loadPamphletImage(filename);
                     if (img) { 
@@ -606,7 +592,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
-            // Output the single master PDF file
             doc.save(fileName);
 
         } catch (error) {
@@ -614,7 +599,7 @@ document.addEventListener('DOMContentLoaded', function() {
             alert("Capture Failed: " + error.message);
         } finally {
             template.style.display = 'none'; template.style.position = ''; mainApp.style.display = 'block';
-            btn.innerText = originalText; btn.disabled = false;
+            hidePdfLoader();
         }
     }
 
@@ -622,7 +607,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function getSurveyData() {
         const dName = document.getElementById('designerSelect')?.value || "Surveyor";
         const selectedBrand = document.getElementById('brandSelect')?.value || "CO Home Improvements";
-
         const profiles = window.designerProfiles || {};
         const logos = window.brandLogos || {};
         const profile = profiles[dName] || { phone: "", email: "" };
@@ -651,6 +635,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     document.getElementById('generateInternalPdfBtn')?.addEventListener('click', async function() {
+        const btn = this; const originalText = btn.innerText; btn.disabled = true;
         const data = getSurveyData();
         const template = document.getElementById('pdfTemplateInternal');
 
@@ -671,7 +656,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (inputEl && textEl) textEl.innerText = inputEl.value;
             });
 
-            // Extract the Access and Misc Photo grids right before taking the screenshot
             await populatePdfImageGrid('accessPhotos', 'pdfAccessPhotosGrid');
             await populatePdfImageGrid('miscPhotos', 'pdfMiscPhotosGrid');
 
@@ -685,17 +669,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     imgTag.src = fCanvas.toDataURL({ format: 'jpeg', quality: 0.9 }); 
                 }
             });
-        } catch (e) { console.warn("Binding bypass:", e); }
+        } catch (e) {}
 
         const surname = data.clientName.trim().split(' ').pop() || 'Customer';
-        await executeSecurePDFGeneration('pdfTemplateInternal', `${surname}_Internal_Survey.pdf`, this, data);
-
-        if (typeof gtag === 'function') {
-            gtag('event', 'generate_pdf', { 'pdf_type': 'Internal Survey', 'designer': data.designerName });
-        }
+        await executeSecurePDFGeneration('pdfTemplateInternal', `${surname}_Internal_Survey.pdf`, data);
+        btn.innerText = originalText; btn.disabled = false;
     });
 
     document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', async function() {
+        const btn = this; const originalText = btn.innerText; btn.disabled = true;
         const data = getSurveyData();
         const template = document.getElementById('pdfTemplateCustomer');
 
@@ -705,35 +687,35 @@ document.addEventListener('DOMContentLoaded', function() {
             const firstName = data.clientName.split(' ')[0] || 'Customer';
             const greetingEl = document.getElementById('lp-greeting');
             if (greetingEl) {
-                greetingEl.innerHTML = `Hi ${firstName},<br><br>I want to say a massive thank you for inviting me into your home today. I've put together this summary document outlining the major talking points from our appointment so we both know we are on exactly the right lines. If there is anything you'd like to adjust, please don't hesitate to get in touch.`;
+                greetingEl.innerHTML = `Hi ${firstName},<br><br>I want to say a massive thank you for inviting me into your home today. I've put together this summary document outlining the major talking points from our appointment.`;
             }
 
             const sizeEl = document.getElementById('lp-size');
             if (sizeEl) {
                 if (data.buildType && data.proposedSize) {
-                    sizeEl.innerText = `As discussed, we are proposing a beautiful new ${data.buildType} measuring approximately ${data.proposedSize}mm. We have plenty of flexibility to adjust this as we develop the final design.`;
+                    sizeEl.innerText = `As discussed, we are proposing a beautiful new ${data.buildType} measuring approximately ${data.proposedSize}mm.`;
                 } else if (data.buildType) {
-                    sizeEl.innerText = `As discussed, we are proposing a beautiful new ${data.buildType}. We didn't quite pinpoint the exact dimensions just yet, which is absolutely fine. We have plenty of flexibility to work towards the perfect size as we develop the design.`;
+                    sizeEl.innerText = `As discussed, we are proposing a beautiful new ${data.buildType}.`;
                 } else {
-                    sizeEl.innerText = `We didn't quite pinpoint the exact dimensions of your build just yet, which is absolutely fine. We have plenty of flexibility to work towards the perfect size as we develop the design.`;
+                    sizeEl.innerText = `We didn't quite pinpoint the exact dimensions of your build just yet, which is absolutely fine.`;
                 }
             }
 
             const roofEl = document.getElementById('lp-roof');
             if (roofEl) {
                 if (data.roofType) {
-                    roofEl.innerText = `To perfectly complement the build, we discussed incorporating a premium ${data.roofType} system. I will prepare a few different 3D options featuring this so you can see exactly how it looks.`;
+                    roofEl.innerText = `To perfectly complement the build, we discussed incorporating a premium ${data.roofType} system.`;
                 } else {
-                    roofEl.innerText = `We have yet to decide on the final roof style, but I will prepare a few different options for you to review so we can find the perfect match for your home.`;
+                    roofEl.innerText = `We have yet to decide on the final roof style.`;
                 }
             }
 
             const frameEl = document.getElementById('lp-frame');
             if (frameEl) {
                 if (data.frameColour) {
-                    frameEl.innerText = `We agreed that the window and door frames will look fantastic finished in an elegant ${data.frameColour} colourway to match your property.`;
+                    frameEl.innerText = `We agreed that the window and door frames will look fantastic finished in an elegant ${data.frameColour} colourway.`;
                 } else {
-                    frameEl.innerText = `We haven't narrowed down the final frame colour or build materials just yet, but we have an incredible range to choose from. Just let me know when you are ready to explore them.`;
+                    frameEl.innerText = `We haven't narrowed down the final frame colour just yet.`;
                 }
             }
 
@@ -744,7 +726,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const needsSap = (data.sapCalcs === 'Yes');
 
                 if (!needsPlanning && !needsRegs && !needsSap) {
-                    complianceEl.innerText = `Based on your choices, it looks like we do not need Planning Permission, we do not need Building Regulations, and we do not need SAP calculations. Please don't worry about the technicalities of these—I have included a brief explanation of what they mean later in this pack, and our team will handle all of it for you.`;
+                    complianceEl.innerText = `Based on your choices, it looks like we do not need Planning Permission, we do not need Building Regulations, and we do not need SAP calculations.`;
                 } else {
                     let reqs = [];
                     if (needsPlanning) reqs.push(data.planningPerms);
@@ -752,29 +734,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (needsSap) reqs.push("SAP Calculations");
 
                     const reqString = reqs.join(', ').replace(/, ([^,]*)$/, ' and $1');
-                    complianceEl.innerText = `Regarding compliance, based on our discussion your project will require ${reqString}. Please don't worry about the technicalities of these—I have included a brief explanation of what they mean later in this pack, and our dedicated team will handle all of it for you.`;
+                    complianceEl.innerText = `Regarding compliance, based on our discussion your project will require ${reqString}.`;
                 }
             }
 
             const revisitEl = document.getElementById('lp-revisit');
             if (revisitEl) {
                 if (data.revisitDate) {
-                    revisitEl.innerText = `I look forward to our next catch-up scheduled for ${data.revisitDate}${data.revisitLocation ? ` at ${data.revisitLocation}` : ''}. We will go through your custom 3D designs together then. If you need anything before I next get in touch, please contact me on the details below.`;
+                    revisitEl.innerText = `I look forward to our next catch-up scheduled for ${data.revisitDate}.`;
                 } else {
-                    revisitEl.innerText = `We haven't booked in a date for our next catch-up just yet, but as soon as we work out a time, we will get you scheduled in. If you need anything before I next get in touch, please contact me on the details below.`;
+                    revisitEl.innerText = `We haven't booked in a date for our next catch-up just yet.`;
                 }
             }
 
             const nameEl = document.getElementById('lp-designer-name'); if(nameEl) nameEl.innerText = data.designerName;
             const contactEl = document.getElementById('lp-designer-contact'); if(contactEl) contactEl.innerText = `${data.designerPhone} | ${data.designerEmail}`;
 
-        } catch (e) { console.warn("Binding bypass:", e); }
+        } catch (e) {}
 
         const surname = data.clientName.trim().split(' ').pop() || 'Customer';
-        await executeSecurePDFGeneration('pdfTemplateCustomer', `${surname}_Design_Consultation.pdf`, this, data);
-
-        if (typeof gtag === 'function') {
-            gtag('event', 'generate_pdf', { 'pdf_type': 'Customer Pack', 'designer': data.designerName });
-        }
+        await executeSecurePDFGeneration('pdfTemplateCustomer', `${surname}_Design_Consultation.pdf`, data);
+        btn.innerText = originalText; btn.disabled = false;
     });
 });
