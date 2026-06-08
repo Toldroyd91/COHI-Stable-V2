@@ -147,7 +147,7 @@ textarea.form-group__input {
     margin: 15px 0;
     border-radius: 8px;
     overflow: hidden;
-    background: #1A1A1A; /* Fixed: Restored to dark mode */
+    background: #1A1A1A; 
     border: 1px solid #444;
 }
 
