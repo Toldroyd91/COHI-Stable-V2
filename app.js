@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('profileModal').style.display = 'none';
     });
 
-    // --- 3. FABRIC CANVAS V2 (Fixed Tools) ---
+    // --- 3. FABRIC CANVAS V2 ---
     window.appCanvases = {};
     document.querySelectorAll('.canvas-group').forEach(group => {
         const id = group.getAttribute('data-id');
@@ -181,41 +181,48 @@ document.addEventListener('DOMContentLoaded', function() {
     handleMultiUpload('surveyPhotos', 'survey');
     handleMultiUpload('accessPhotos', 'access');
 
-    // --- 5. MULTI-PAGE PDF ENGINE ---
+    // --- 5. MULTI-PAGE PDF ENGINE (Truncation Fix) ---
     
-    // Core function to stitch pages together
     async function generateMultiPagePDF(templateId, filename) {
         const template = document.getElementById(templateId);
         if(!template) return alert("Error: Template missing");
 
-        // Bring the template on-screen but hidden behind everything
-        template.style.left = '0px'; 
+        // FIX: Store current scroll position and instantly jump to top to prevent HTML2Canvas viewport clipping
+        const originalScroll = window.scrollY;
+        window.scrollTo(0, 0);
+
+        // Bring template into the document flow but hide it visually behind the UI
+        template.style.display = 'block';
+        template.style.position = 'absolute';
+        template.style.top = '0px';
+        template.style.left = '0px';
         template.style.zIndex = '-9999';
 
         try {
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
             
-            // Find all individual pages inside the template
             const pages = Array.from(template.querySelectorAll('.pdf-page')).filter(p => p.style.display !== 'none');
             
             for (let i = 0; i < pages.length; i++) {
                 const pageEl = pages[i];
-                
-                // Force background to white for PDF capture
                 pageEl.style.backgroundColor = '#ffffff';
 
-                // Take snapshot of just this specific page
-                const canvas = await html2canvas(pageEl, { scale: 2, useCORS: true, logging: false });
-                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                // FIX: Force scrollY to 0 so HTML2Canvas captures the full element height
+                const canvas = await html2canvas(pageEl, { 
+                    scale: 2, 
+                    useCORS: true, 
+                    logging: false,
+                    scrollY: 0, 
+                    windowWidth: 800,
+                    windowHeight: pageEl.scrollHeight
+                });
                 
-                // Calculate height to maintain perfect aspect ratio
+                const imgData = canvas.toDataURL('image/jpeg', 1.0);
                 const imgHeight = (canvas.height * pdfWidth) / canvas.width;
                 
-                // Add the image to the PDF
                 pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight);
                 
-                // If there are more pages to process, add a fresh blank page to the PDF
                 if (i < pages.length - 1) {
                     pdf.addPage();
                 }
@@ -226,8 +233,9 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error(e);
             alert("PDF Generation failed. Please try again.");
         } finally {
-            // Send the template back off-screen
-            template.style.left = '-9999px';
+            // Restore original UI state and scroll position
+            template.style.display = 'none';
+            window.scrollTo(0, originalScroll);
         }
     }
 
@@ -237,7 +245,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const rawName = nameInput && nameInput.value.trim() ? nameInput.value.trim() : 'Valued Customer';
         const surname = rawName.split(' ').pop() || 'Customer';
         
-        // Populate fields
         const size = document.getElementById('proposedSize')?.value || "TBC";
         const roof = document.getElementById('roofType')?.value || "TBC";
         const frame = document.getElementById('frameColour')?.value || "TBC";
@@ -249,7 +256,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('lp-frame').innerText = `For the aesthetics, we have noted your preference for ${frame} frames.`;
         document.getElementById('lp-designer-name').innerText = designerName;
 
-        // Populate Images if any exist
         const allCustImages = [...uploadedImagesStore.misc, ...uploadedImagesStore.survey];
         const imagePage = document.getElementById('customerPdfImagePage');
         const imageGrid = document.getElementById('pdfCustomerImagesGrid');
@@ -272,7 +278,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const rawName = nameInput && nameInput.value.trim() ? nameInput.value.trim() : 'Valued Customer';
         const surname = rawName.split(' ').pop() || 'Customer';
 
-        // Populate internal fields
         document.getElementById('intPdfName').innerText = rawName;
         document.getElementById('intPdfDate').innerText = document.getElementById('apptDate')?.value || "N/A";
         document.getElementById('intPdfDesigner').innerText = document.getElementById('designerSelect')?.value || "N/A";
