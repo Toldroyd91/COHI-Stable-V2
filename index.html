@@ -215,7 +215,7 @@
         <button id="resetFormBtn" class="button btn-danger" style="margin-top: 20px; width: 100%;">Clear Form for Next Appointment</button>
     </main>
 
-    <div id="pdfTemplateCustomer" style="position: absolute; left: -9999px; top: 0; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box; z-index: -1;">
+    <div id="pdfTemplateCustomer" style="display: none; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
         <div class="pdf-page" style="text-align: left; padding: 30px 50px; font-size: 15px; line-height: 1.8; color: #333; min-height: 1100px;">
             <div style="text-align: center; margin-bottom: 40px;">
                 <h1 style="color: #0F3759; margin-bottom: 0; font-size: 26px; letter-spacing: 1px; border-bottom: 2px solid #0F3759; padding-bottom: 10px;">PREDESIGN SURVEY REPORT</h1>
@@ -231,14 +231,14 @@
             <p style="margin-bottom: 15px; font-size: 15px; color: #666;">Design Consultant</p>
             <p style="margin-top: 5px; font-size: 14px;" id="lp-designer-contact"></p>
         </div>
-        <div class="pdf-page" id="customerPdfImagePage" style="text-align: left; padding: 30px 50px; font-size: 15px; display: none;">
+        <div class="pdf-page" id="customerPdfImagePage" style="text-align: left; padding: 30px 50px; font-size: 15px; display: none; min-height: 1100px;">
             <h2 style="color: #0F3759; font-size: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">Additional Site Imagery</h2>
             <div id="pdfCustomerImagesGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;"></div>
         </div>
     </div>
 
-    <div id="pdfTemplateInternal" style="position: absolute; left: -9999px; top: 0; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box; z-index: -1;">
-        <div class="pdf-page" style="text-align: center; padding-top: 20px;">
+    <div id="pdfTemplateInternal" style="display: none; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
+        <div class="pdf-page" style="text-align: center; padding-top: 20px; min-height: 1100px;">
             <div>
                 <h1 style="color: #0F3759; font-size: 30px; margin: 0 0 10px 0; font-weight: 700; text-transform: uppercase;">Technical Survey Report</h1>
                 <div style="width: 80px; height: 4px; background: #0F3759; margin: 0 auto 30px auto; border-radius: 2px;"></div>
