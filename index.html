@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Survey App</title>
-    
     <link rel="stylesheet" href="style.css">
-    
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-0J8DC9GD6Z"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -14,53 +12,73 @@
       gtag('js', new Date());
       gtag('config', 'G-0J8DC9GD6Z');
     </script>
-    <style>
-        html, body { margin: 0; padding: 0; min-height: 100%; background: transparent !important; }
-        body::before { content: ""; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(to bottom, #000000 0%, #002f54 100%); z-index: -999; }
+<style>
+
+     html, body {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        background: transparent !important; 
+    }
+
+    body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: linear-gradient(to bottom, #000000 0%, #002f54 100%);
+        z-index: -999;
+    }
+
         .btn-danger { background: #8b0000; color: white; border: none; }
         .canvas-controls { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-        .tool-btn { background: #2D2D2D; color: #A0A0A0; border: 1px solid #444; padding: 10px 14px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; display: inline-block; width: auto; font-weight: 500; transition: all 0.15s ease; }
-        .tool-btn.active { background: #0D6EFD; color: #fff; border-color: #0D6EFD; box-shadow: 0 0 8px rgba(13,110,253,0.4); }
+        .tool-btn { 
+            background: #2D2D2D; color: #A0A0A0; border: 1px solid #444; 
+            padding: 10px 14px; border-radius: 6px; font-size: 0.85rem; 
+            cursor: pointer; display: inline-block; width: auto; 
+            margin-top: 0; height: auto; font-weight: 500;
+            transition: all 0.15s ease; -webkit-tap-highlight-color: transparent;
+        }
+        .tool-btn.active { background: #0D6EFD; color: #fff; border-color: #0D6EFD; font-weight: bold; box-shadow: 0 0 8px rgba(13,110,253,0.4); }
+        .tool-btn.lock-btn { background: #2b1d1d; border-color: #532222; color: #ff6b6b; }
+        .tool-btn.lock-btn.canvas-locked { background: #1c3222; border-color: #22532c; color: #6bff7e; font-weight: bold; }
+        .tool-btn:active { transform: scale(0.96); }
+        .canvas-group.fullscreen-mode {
+            position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important;
+            background: #121212 !important; z-index: 9999999 !important; padding: 20px !important;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;
+        }
+        .canvas-group.fullscreen-mode .canvas-container {
+            flex-grow: 1; display: flex; align-items: center; justify-content: center;
+            max-width: 100%; max-height: calc(100vh - 120px); border: 2px solid #333;
+        }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center; z-index: 999999; backdrop-filter: blur(4px); }
-        .modal-content { background: var(--card-bg); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid #333; }
+        .modal-content { background: var(--card-bg); padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .modal-content h2 { color: #fff; margin-bottom: 20px; font-size: 1.5rem; }
     </style>
 </head>
 <body>
-
-    <div id="splashScreen">
-        <div class="splash-content">
-            <img src="logo.jpg" alt="Logo" class="splash-logo" onerror="this.style.display='none'">
-            <h1 class="splash-title">PREDESIGN ENGINE</h1>
-            <div class="loader-bar"><div class="loader-fill"></div></div>
-        </div>
-    </div>
-
-    <header id="mainHeader" class="navbar navbar--top">
-        <div class="navbar__container header-container">
-            <div id="brandDisplay" class="brand-display">
-                <img id="dynamicBrandLogo" src="" alt="Brand Logo" style="display: none;">
-                <h1 id="dynamicBrandName" class="navbar__title">Survey App</h1>
-            </div>
-            <div id="headerControls" class="header-controls">
-                <select id="brandSelect" class="form-group__input form-group__input--touch dropdown-brand">
-                    <option value="">Select Brand...</option>
-                    <option value="Clearview">Clearview</option>
-                    <option value="CO Home Improvements">CO Home Improvements</option>
-                    <option value="Orion Windows">Orion Windows</option>
-                    <option value="Planet">Planet</option>
-                    <option value="Trent Valley Windows">Trent Valley Windows</option>
-                    <option value="West Yorkshire Windows">West Yorkshire Windows</option>
-                    <option value="Yorkshire Windows">Yorkshire Windows</option>
-                </select>
-                <input list="designerList" id="designerSelect" class="form-group__input form-group__input--touch dropdown-designer" placeholder="Select Designer...">
-                <datalist id="designerList"></datalist>
-                <button id="openProfileManagerBtn" class="tool-btn profile-btn">⚙️ Profile</button>
-            </div>
+    <header class="navbar navbar--top" style="position: relative; padding: 15px;">
+        <div class="navbar__container" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+            <h1 class="navbar__title" style="margin-right: auto;">Survey App</h1>
+            <select id="brandSelect" class="form-group__input form-group__input--touch" style="min-height: 40px; height: 40px; padding: 0 10px; font-size: 0.9rem; width: 200px;">
+                <option value="Clearview">Clearview</option>
+                <option value="CO Home Improvements">CO Home Improvements</option>
+                <option value="Orion Windows">Orion Windows</option>
+                <option value="Planet">Planet</option>
+                <option value="Trent Valley Windows">Trent Valley Windows</option>
+                <option value="West Yorkshire Windows">West Yorkshire Windows</option>
+                <option value="Yorkshire Windows">Yorkshire Windows</option>
+            </select>
+            <input list="designerList" id="designerSelect" class="form-group__input form-group__input--touch" style="min-height: 40px; height: 40px; padding: 0 10px; font-size: 0.9rem; width: 160px;" placeholder="Select Designer...">
+            <datalist id="designerList"></datalist>
+            <button id="openProfileManagerBtn" class="tool-btn" style="min-height: 40px; height: 40px; margin-top: 0;">⚙️ Profile</button>
         </div>
     </header>
 
     <main class="main-container main-container--centered">
-        
         <article class="card card--primary">
             <h2 class="card__title">Customer Details</h2>
             <div class="form-group"><label class="form-group__label">Customer Name:</label><input type="text" id="clientName" class="form-group__input form-group__input--touch"></div>
@@ -307,6 +325,7 @@
         <button id="resetFormBtn" class="button btn-danger" style="margin-top: 20px; width: 100%;">Clear Form for Next Appointment</button>
     </main>
 
+    <!-- INTERNAL PDF (3 PAGES) -->
     <div id="pdfTemplateInternal" style="display: none; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
         <div class="pdf-page" style="page-break-after: always; text-align: center; height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding-top: 20px;">
             <div>
@@ -392,6 +411,7 @@
         </div>
     </div>
 
+    <!-- CUSTOMER PDF: 1 HTML PAGE -->
     <div id="pdfTemplateCustomer" style="display: none; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
         <div class="pdf-page" style="page-break-after: always; text-align: left; padding: 30px 50px; font-size: 15px; line-height: 1.8; color: #333;">
             <div style="text-align: center; margin-bottom: 40px;">
@@ -413,6 +433,7 @@
         </div>
     </div>
 
+    <!-- PROFILE MODAL HTML -->
     <div id="profileModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
             <h2>Manage Designer Profile</h2>
