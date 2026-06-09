@@ -335,10 +335,9 @@
     <script src="app.js"></script>
 
     <script type="module">
-        // 1. Import Auth AND Firestore SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, getDocs, query, where, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0",
@@ -349,71 +348,87 @@
             appId: "1:208212115382:web:db7d4276b194f89a274b17"
         };
 
-        // Initialize Firebase & Database
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // UI Elements
         const authOverlay = document.getElementById('authOverlay');
         const cloudDashboard = document.getElementById('cloudDashboard');
-        const syncStatus = document.getElementById('syncStatus');
-        let currentDrafts = {}; // Holds loaded data in memory
+        let currentDrafts = {}; 
 
         // Core Security Listener
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 authOverlay.style.display = 'none';
                 cloudDashboard.style.display = 'block';
+                if(window.showToast) window.showToast(`Logged in securely as ${user.email}`);
                 fetchCloudDrafts(user.uid);
+                injectCsvButton();
             } else {
                 authOverlay.style.display = 'flex';
                 cloudDashboard.style.display = 'none';
             }
         });
 
-        // --- DATABASE LOGIC --- //
+        // Inject Manager CSV Button
+        function injectCsvButton() {
+            const cloudDashFormGrid = document.querySelector('#cloudDashboard .form-grid');
+            if (cloudDashFormGrid && !document.getElementById('exportCsvBtn')) {
+                const csvDiv = document.createElement('div');
+                csvDiv.className = 'form-group';
+                csvDiv.style.flexGrow = '1';
+                csvDiv.innerHTML = `<button id="exportCsvBtn" class="button" style="width: 100%; background: #ff9800; border-color: #e68a00;">📊 Export Leads (CSV)</button>`;
+                cloudDashFormGrid.appendChild(csvDiv);
 
-        // Package all text and canvas data
+                document.getElementById('exportCsvBtn').addEventListener('click', async () => {
+                    if(window.showToast) window.showToast("Compiling Database Report...", false);
+                    try {
+                        const snapshot = await getDocs(collection(db, "surveys"));
+                        let csv = "Date Saved,Designer ID,Brand,Client Name,Build Type,Proposed Size,Frame Colour\n";
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            const inputs = data.data.inputs || {};
+                            const date = data.updatedAt ? new Date(data.updatedAt.toDate()).toLocaleDateString() : 'N/A';
+                            csv += `"${date}","${data.userId}","${inputs.brandSelect || ''}","${data.clientName || ''}","${inputs.buildType || ''}","${inputs.proposedSize || ''}","${inputs.frameColour || ''}"\n`;
+                        });
+                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = `COHI_Leads_Report.csv`;
+                        a.click();
+                        if(window.showToast) window.showToast("Report Exported Successfully!", true);
+                    } catch (err) {
+                        console.error(err);
+                        if(window.showToast) window.showToast("Error generating Report", false);
+                    }
+                });
+            }
+        }
+
         const getFormState = () => {
             const data = {};
-            // Grab all text inputs, dates, and dropdowns
-            document.querySelectorAll('.form-group__input').forEach(el => {
-                if (el.id && el.type !== 'file') data[el.id] = el.value;
-            });
-            // Grab canvas drawings (fabric.js)
+            document.querySelectorAll('.form-group__input').forEach(el => { if (el.id && el.type !== 'file') data[el.id] = el.value; });
             const canvases = {};
-            if (window.appCanvases) {
-                for (let key in window.appCanvases) {
-                    canvases[key] = window.appCanvases[key].toJSON();
-                }
-            }
+            if (window.appCanvases) { for (let key in window.appCanvases) canvases[key] = window.appCanvases[key].toJSON(); }
             return { inputs: data, canvases: canvases };
         };
 
-        // Restore data back into the app
         const loadFormState = (payload) => {
             if (payload.inputs) {
                 for (let key in payload.inputs) {
                     const el = document.getElementById(key);
                     if (el) el.value = payload.inputs[key];
                 }
-                // Trigger any dynamic label updates
                 document.querySelectorAll('.dyn-survey-select').forEach(el => el.dispatchEvent(new Event('change')));
             }
             if (payload.canvases && window.appCanvases) {
                 for (let key in payload.canvases) {
-                    if (window.appCanvases[key]) {
-                        window.appCanvases[key].loadFromJSON(payload.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key]));
-                    }
+                    if (window.appCanvases[key]) window.appCanvases[key].loadFromJSON(payload.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key]));
                 }
             }
         };
 
-        // Fetch user's history from Firestore
         async function fetchCloudDrafts(uid) {
-            syncStatus.innerText = "Syncing...";
-            syncStatus.style.color = "#ffc107";
             const q = query(collection(db, "surveys"), where("userId", "==", uid));
             try {
                 const querySnapshot = await getDocs(q);
@@ -427,24 +442,16 @@
                     let dateStr = draft.updatedAt ? new Date(draft.updatedAt.toDate()).toLocaleDateString() : 'Recent';
                     select.innerHTML += `<option value="${doc.id}">${draft.clientName} (${dateStr})</option>`;
                 });
-                syncStatus.innerText = "Up to date";
-                syncStatus.style.color = "#0dcaf0";
             } catch (error) {
                 console.error("Fetch Error:", error);
-                syncStatus.innerText = "Sync Failed";
-                syncStatus.style.color = "#ff4444";
             }
         }
 
-        // Save Button Listener
         document.getElementById('saveCloudBtn')?.addEventListener('click', async () => {
             if (!auth.currentUser) return;
+            if(window.showToast) window.showToast("Uploading to Database...", false);
             const clientName = document.getElementById('clientName').value.trim() || "Untitled Survey";
-            // Create a clean URL-friendly ID for the database
             const surveyId = clientName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString().slice(-4);
-            
-            syncStatus.innerText = "Uploading...";
-            syncStatus.style.color = "#ffc107";
             
             try {
                 await setDoc(doc(db, "surveys", surveyId), {
@@ -453,24 +460,20 @@
                     data: getFormState(),
                     updatedAt: serverTimestamp()
                 });
-                syncStatus.innerText = "Saved to Cloud";
-                syncStatus.style.color = "#28a745";
-                fetchCloudDrafts(auth.currentUser.uid); // Refresh the dropdown
+                if(window.showToast) window.showToast("Draft Saved to Cloud!", true);
+                fetchCloudDrafts(auth.currentUser.uid); 
             } catch (error) {
                 console.error("Save Error:", error);
-                syncStatus.innerText = "Error Saving";
-                syncStatus.style.color = "#ff4444";
+                if(window.showToast) window.showToast("Error Saving to Cloud", false);
             }
         });
 
-        // Load Button Listener
         document.getElementById('loadCloudBtn')?.addEventListener('click', () => {
             const selectedId = document.getElementById('cloudDrafts').value;
             if (!selectedId || !currentDrafts[selectedId]) return alert("Please select a survey from the dropdown.");
             
             loadFormState(currentDrafts[selectedId].data);
-            syncStatus.innerText = "Survey Loaded";
-            syncStatus.style.color = "#28a745";
+            if(window.showToast) window.showToast(`Loaded ${currentDrafts[selectedId].clientName} successfully!`, true);
         });
 
         // Authentication Handlers
