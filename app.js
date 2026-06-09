@@ -1,3 +1,22 @@
+// --- TOAST NOTIFICATION UI ---
+window.showToast = function(msg, isSuccess = true) {
+    let toast = document.getElementById('engineToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'engineToast';
+        toast.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; color: #fff; border-radius: 8px; z-index: 99999; display: none; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.4); transition: opacity 0.3s; pointer-events: none;';
+        document.body.appendChild(toast);
+    }
+    toast.style.background = isSuccess ? '#28a745' : '#ff9800';
+    toast.innerText = msg;
+    toast.style.display = 'block';
+    setTimeout(() => toast.style.opacity = '1', 10);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.style.display = 'none', 300);
+    }, 3000);
+};
+
 // Remove splash screen immediately
 setTimeout(() => { 
     const splash = document.getElementById('splashScreen'); 
@@ -95,25 +114,121 @@ document.addEventListener('DOMContentLoaded', function() {
             reader.readAsDataURL(file);
         });
 
-        // Tool buttons
         group.querySelector('.freehand-btn')?.addEventListener('click', () => { fCanvas.isDrawingMode = true; fCanvas.freeDrawingBrush.color = '#00E5FF'; });
         group.querySelector('.lock-btn')?.addEventListener('click', () => { fCanvas.isDrawingMode = false; });
         group.querySelector('.clear-btn')?.addEventListener('click', () => { fCanvas.getObjects().filter(o => o.type !== 'image').forEach(o => fCanvas.remove(o)); saveCanvas(); });
     });
 
-    // --- 5. PDF ENGINE ---
+    // --- 5. PDF ENGINE WITH BRANDING INJECTION ---
     async function generateMultiPagePDF(templateId, filename) {
+        if (!jsPDF) return window.showToast("PDF Engine loading, try again in a moment.", false);
+        window.showToast("Generating Branded PDF...");
+
         const template = document.getElementById(templateId);
+        if(!template) return;
+
+        // Apply Dynamic Brand Colors
+        const brand = document.getElementById('brandSelect')?.value;
+        const brandStyles = {
+            'Yorkshire Windows': '#005a9c',
+            'CO Home Improvements': '#2C3E50',
+            'Clearview': '#27ae60',
+            'Orion Windows': '#d35400',
+            'Planet': '#8e44ad',
+            'Trent Valley Windows': '#c0392b',
+            'West Yorkshire Windows': '#16a085'
+        };
+        const brandColor = brandStyles[brand] || '#0F3759'; // Default Navy
+
+        // Smart color swap for PDF template elements
+        template.querySelectorAll('*').forEach(el => {
+            if (el.style.color === 'rgb(15, 55, 89)' || el.style.color === '#0F3759') el.style.color = brandColor;
+            if (el.style.backgroundColor === 'rgb(15, 55, 89)' || el.style.backgroundColor === '#0F3759') el.style.backgroundColor = brandColor;
+            if (el.style.borderBottomColor === 'rgb(15, 55, 89)' || el.style.borderBottomColor === '#0F3759') el.style.borderBottomColor = brandColor;
+            if (el.style.borderLeftColor === 'rgb(15, 55, 89)' || el.style.borderLeftColor === '#0F3759') el.style.borderLeftColor = brandColor;
+        });
+
         template.style.display = 'block'; template.style.position = 'absolute'; template.style.width = '800px'; template.style.zIndex = '-9999';
-        const canvas = await html2canvas(template, { scale: 2, windowWidth: 800, windowHeight: template.scrollHeight });
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const imgHeight = (canvas.height * pdf.internal.pageSize.getWidth()) / canvas.width;
-        pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, 0, pdf.internal.pageSize.getWidth(), imgHeight);
-        pdf.save(filename);
-        template.style.display = 'none';
+        
+        try {
+            const canvas = await html2canvas(template, { scale: 2, windowWidth: 800, windowHeight: template.scrollHeight });
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgHeight = (canvas.height * pdf.internal.pageSize.getWidth()) / canvas.width;
+            
+            let heightLeft = imgHeight;
+            let position = 0;
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            
+            pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, position, pdf.internal.pageSize.getWidth(), imgHeight);
+            heightLeft -= pdfHeight;
+            
+            while (heightLeft > 0) {
+                position = position - pdfHeight;
+                pdf.addPage();
+                pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, position, pdf.internal.pageSize.getWidth(), imgHeight);
+                heightLeft -= pdfHeight;
+            }
+            
+            pdf.save(filename);
+            window.showToast("PDF Export Complete!", true);
+        } catch(e) {
+            console.error(e);
+            window.showToast("PDF Generation Failed", false);
+        } finally {
+            template.style.display = 'none';
+        }
     }
 
-    // PDF Event Listeners
-    document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', () => generateMultiPagePDF('pdfTemplateCustomer', 'Design_Consultation.pdf'));
-    document.getElementById('generateInternalPdfBtn')?.addEventListener('click', () => generateMultiPagePDF('pdfTemplateInternal', 'Internal_Survey.pdf'));
+    // --- 6. PDF POPULATION LISTENERS ---
+    document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', () => {
+        const rawName = document.getElementById('clientName')?.value.trim() || 'Valued Customer';
+        const surname = rawName.split(' ').pop() || 'Customer';
+        const brand = document.getElementById('brandSelect')?.value || "CO Home Improvements";
+        
+        document.getElementById('lp-greeting').innerText = `Dear ${rawName}, thank you for your time today to discuss your exciting new project.`;
+        document.getElementById('lp-size').innerText = `Based on our measurements, we are looking at a proposed size of approximately ${document.getElementById('proposedSize')?.value || "TBC"}.`;
+        document.getElementById('lp-roof').innerText = `We discussed utilizing the ${document.getElementById('roofType')?.value || "TBC"} system to ensure the space is perfect year-round.`;
+        document.getElementById('lp-frame').innerText = `For the aesthetics, we have noted your preference for ${document.getElementById('frameColour')?.value || "TBC"} frames.`;
+        
+        const bRegs = document.getElementById('buildingRegs')?.value;
+        const pPerms = document.getElementById('planningPerms')?.value;
+        if (bRegs === "Yes" || (pPerms !== "No" && pPerms !== "")) {
+            document.getElementById('lp-compliance').innerText = `Your project will require some compliance oversight (Building Regs: ${bRegs}, Planning: ${pPerms}). Our team handles all of this for you.`;
+        } else {
+            document.getElementById('lp-compliance').innerText = "Your project currently looks to be exempt from additional planning compliance, streamlining our timeline.";
+        }
+
+        const rDate = document.getElementById('revisitDate')?.value;
+        if (rDate) {
+            document.getElementById('lp-revisit').innerText = `I look forward to our next catch-up scheduled for ${rDate}. We will go through your custom 3D designs together then.`;
+        } else {
+            document.getElementById('lp-revisit').innerText = `We haven't booked in a date for our next catch-up just yet, but as soon as we work out a time, we will get you scheduled in.`;
+        }
+
+        const dName = document.getElementById('designerSelect')?.value || "Your Designer";
+        document.getElementById('lp-designer-name').innerText = dName;
+        
+        let dPhone = "07700 900000", dEmail = "designer@cohi.co.uk";
+        if (window.designerProfiles && window.designerProfiles[dName]) {
+            dPhone = window.designerProfiles[dName].phone || dPhone;
+            dEmail = window.designerProfiles[dName].email || dEmail;
+        }
+        document.getElementById('lp-designer-contact').innerText = `${dPhone} | ${dEmail}`;
+
+        generateMultiPagePDF('pdfTemplateCustomer', `${surname}_${brand.replace(/\s+/g, '_')}_Consultation.pdf`);
+    });
+
+    document.getElementById('generateInternalPdfBtn')?.addEventListener('click', () => {
+        const rawName = document.getElementById('clientName')?.value.trim() || 'Valued Customer';
+        const surname = rawName.split(' ').pop() || 'Customer';
+
+        document.getElementById('intPdfName').innerText = rawName;
+        document.getElementById('intPdfDate').innerText = document.getElementById('apptDate')?.value || "N/A";
+        document.getElementById('intPdfDesigner').innerText = document.getElementById('designerSelect')?.value || "N/A";
+        document.getElementById('intPdfBuild').innerText = document.getElementById('buildType')?.value || "N/A";
+        document.getElementById('intPdfRoof').innerText = document.getElementById('roofType')?.value || "N/A";
+        document.getElementById('intPdfNotes').innerText = document.getElementById('designerNotes')?.value || "None";
+
+        generateMultiPagePDF('pdfTemplateInternal', `${surname}_Internal_Survey.pdf`);
+    });
 });
