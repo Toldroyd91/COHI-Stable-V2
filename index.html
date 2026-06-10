@@ -101,9 +101,6 @@
                         <button id="loadCloudBtn" class="button button--secondary" style="white-space: nowrap;">Load Survey</button>
                     </div>
                 </div>
-                <div class="form-group">
-                    <button id="saveCloudBtn" class="button" style="width: 100%; background: #28a745;">Save Draft to Cloud</button>
-                </div>
             </div>
         </article>
         
@@ -293,10 +290,19 @@
     </main>
 
     <main id="adminDashboard" class="main-container main-container--centered layout-wrapper" style="display: none;">
-        <article class="card">
-            <h2 class="card__title">Manager Intelligence Hub</h2>
-            <p style="color: #ccc;">Loading all company surveys and designer metrics...</p>
-            </article>
+        <article class="card" style="border-color: #ff9800; background: #1E1E1E;">
+            <h2 class="card__title" style="border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px;">
+                <span style="color: #ff9800;">📊 Manager Intelligence Hub</span>
+            </h2>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="adminSearch" class="form-group__input" placeholder="Search leads by Client Name or Postcode..." style="flex-grow: 1;">
+            </div>
+
+            <div id="adminLeadsContainer" style="display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; padding-right: 5px;">
+                <p style="color: #888; text-align: center;">Fetching company data...</p>
+            </div>
+        </article>
     </main>
 
     <div id="pdfTemplateCustomer" style="display: none; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
@@ -356,120 +362,124 @@
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        const firebaseConfig = {
+        const app = initializeApp({
             apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0",
             authDomain: "cohi-survey-engine.firebaseapp.com",
             projectId: "cohi-survey-engine",
             storageBucket: "cohi-survey-engine.firebasestorage.app",
             messagingSenderId: "208212115382",
             appId: "1:208212115382:web:db7d4276b194f89a274b17"
-        };
+        });
+        const auth = getAuth(app); const db = getFirestore(app);
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        // UI Routing Elements
         const authOverlay = document.getElementById('authOverlay');
         const designerApp = document.getElementById('designerApp');
         const adminDashboard = document.getElementById('adminDashboard');
         const activeProfileUI = document.getElementById('activeDesignerProfile');
 
-        // Toggle Login/Register UI
-        document.getElementById('showRegisterBtn').addEventListener('click', () => {
-            document.getElementById('loginView').style.display = 'none';
-            document.getElementById('registerView').style.display = 'block';
-        });
-        document.getElementById('cancelRegisterBtn').addEventListener('click', () => {
-            document.getElementById('registerView').style.display = 'none';
-            document.getElementById('loginView').style.display = 'block';
-        });
+        // Toggle UI
+        document.getElementById('showRegisterBtn')?.addEventListener('click', () => { document.getElementById('loginView').style.display = 'none'; document.getElementById('registerView').style.display = 'block'; });
+        document.getElementById('cancelRegisterBtn')?.addEventListener('click', () => { document.getElementById('registerView').style.display = 'none'; document.getElementById('loginView').style.display = 'block'; });
 
-        // Smart Security & Routing Listener
+        // Security Routing
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 authOverlay.style.display = 'none';
-                
-                // Fetch User Profile Data
                 const userDoc = await getDoc(doc(db, "users", user.uid));
                 if (userDoc.exists()) {
-                    const userData = userDoc.data();
-                    window.currentUserProfile = userData; // Store globally for PDF/Saves
-
+                    const userData = userDoc.data(); window.currentUserProfile = userData;
                     if (userData.role === 'admin') {
-                        // Route to Admin
-                        designerApp.style.display = 'none';
-                        adminDashboard.style.display = 'block';
-                        if(window.showToast) window.showToast(`Welcome to the Hub, ${userData.name}`);
+                        designerApp.style.display = 'none'; adminDashboard.style.display = 'block';
+                        activeProfileUI.innerHTML = `MANAGER HUB | ${userData.name}`; activeProfileUI.style.display = 'inline';
+                        fetchAdminLeads();
                     } else {
-                        // Route to Designer App
-                        adminDashboard.style.display = 'none';
-                        designerApp.style.display = 'block';
-                        activeProfileUI.innerHTML = `${userData.brand} | ${userData.name}`;
-                        activeProfileUI.style.display = 'inline';
-                        if(window.showToast) window.showToast(`Engine unlocked: ${userData.name}`);
-                        
-                        // Trigger cloud sync for this designer (function from app.js)
-                        if(window.fetchCloudDrafts) window.fetchCloudDrafts(user.uid, db);
+                        adminDashboard.style.display = 'none'; designerApp.style.display = 'block';
+                        activeProfileUI.innerHTML = `${userData.brand} | ${userData.name}`; activeProfileUI.style.display = 'inline';
+                        fetchCloudDrafts(user.uid);
                     }
                 }
-            } else {
-                authOverlay.style.display = 'flex';
-                designerApp.style.display = 'none';
-                adminDashboard.style.display = 'none';
-                activeProfileUI.style.display = 'none';
-            }
+            } else { authOverlay.style.display = 'flex'; designerApp.style.display = 'none'; adminDashboard.style.display = 'none'; activeProfileUI.style.display = 'none'; }
         });
 
-        // Advanced Registration (Captures Profile Data)
+        // Registration
         document.getElementById('registerBtn')?.addEventListener('click', async () => {
-            const errEl = document.getElementById('authError');
-            errEl.style.display = 'none';
-            
-            const brand = document.getElementById('regBrand').value;
-            const name = document.getElementById('regName').value.trim();
-            const phone = document.getElementById('regPhone').value.trim();
-            const bio = document.getElementById('regBio').value.trim();
-            const email = document.getElementById('regEmail').value.trim();
-            const pass = document.getElementById('regPassword').value;
-
-            if(!brand || !name || !email || !pass) return errEl.innerText = "Please fill all required fields.", errEl.style.display = 'block';
-
+            const errEl = document.getElementById('authError'); errEl.style.display = 'none';
+            const brand = document.getElementById('regBrand').value, name = document.getElementById('regName').value.trim(), email = document.getElementById('regEmail').value.trim(), pass = document.getElementById('regPassword').value;
+            if(!brand || !name || !email || !pass) return errEl.innerText = "Fill all required fields.", errEl.style.display = 'block';
             try {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-                const user = userCredential.user;
-                
-                // Create the profile document in Firestore
-                await setDoc(doc(db, "users", user.uid), {
-                    brand: brand,
-                    name: name,
-                    phone: phone,
-                    bio: bio,
-                    email: email,
-                    role: 'designer', // Default role. You manually change this to 'admin' in Firebase Console for yourself.
-                    createdAt: serverTimestamp()
-                });
-            } catch (error) {
-                errEl.innerText = error.message.replace('Firebase: ', ''); 
-                errEl.style.display = 'block';
-            }
+                const cred = await createUserWithEmailAndPassword(auth, email, pass);
+                await setDoc(doc(db, "users", cred.user.uid), { brand, name, phone: document.getElementById('regPhone').value, bio: document.getElementById('regBio').value, email, role: 'designer', createdAt: serverTimestamp() });
+            } catch (error) { errEl.innerText = error.message.replace('Firebase: ', ''); errEl.style.display = 'block'; }
         });
 
-        // Standard Login
-        document.getElementById('loginBtn')?.addEventListener('click', () => {
-            document.getElementById('authError').style.display = 'none';
-            signInWithEmailAndPassword(auth, document.getElementById('authEmail').value.trim(), document.getElementById('authPassword').value)
-                .catch(err => { 
-                    document.getElementById('authError').innerText = err.message.replace('Firebase: ', ''); 
-                    document.getElementById('authError').style.display = 'block'; 
-                });
-        });
-
+        document.getElementById('loginBtn')?.addEventListener('click', () => signInWithEmailAndPassword(auth, document.getElementById('authEmail').value, document.getElementById('authPassword').value));
         document.getElementById('logoutBtn')?.addEventListener('click', () => signOut(auth));
-        
-        // Expose db and auth globally so app.js can access them for continuous auto-save
-        window.fbDb = db;
-        window.fbAuth = auth;
+
+        // State Manager
+        const getFormState = () => {
+            const data = {}; document.querySelectorAll('.form-group__input').forEach(el => { if (el.id && el.type !== 'file') data[el.id] = el.value; });
+            const canvases = {}; if (window.appCanvases) { for (let key in window.appCanvases) canvases[key] = window.appCanvases[key].toJSON(); }
+            return { inputs: data, canvases };
+        };
+
+        const loadFormState = (payload) => {
+            if (payload.inputs) { for (let key in payload.inputs) { const el = document.getElementById(key); if (el) el.value = payload.inputs[key]; } }
+            if (payload.canvases && window.appCanvases) { for (let key in payload.canvases) if (window.appCanvases[key]) window.appCanvases[key].loadFromJSON(payload.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key])); }
+            window.showToast("Survey Loaded");
+        };
+
+        // --- CONTINUOUS AUTOSAVE ENGINE ---
+        window.performCloudAutoSave = async () => {
+            if (!auth.currentUser) return;
+            const cName = document.getElementById('clientName').value.trim();
+            if (!cName) return; // Silent abort if no name
+
+            const sId = cName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + auth.currentUser.uid.slice(-4);
+            const syncStatus = document.getElementById('syncStatus');
+            if(syncStatus) { syncStatus.innerText = "Autosaving..."; syncStatus.style.color = "#ffc107"; }
+            
+            try {
+                await setDoc(doc(db, "surveys", sId), { userId: auth.currentUser.uid, clientName: cName, data: getFormState(), updatedAt: serverTimestamp() });
+                if(syncStatus) { syncStatus.innerText = "Saved"; syncStatus.style.color = "#28a745"; }
+            } catch (error) { console.error(error); if(syncStatus) syncStatus.innerText = "Error Saving"; }
+        };
+
+        let currentDrafts = {};
+        async function fetchCloudDrafts(uid) {
+            const q = query(collection(db, "surveys"), where("userId", "==", uid));
+            try {
+                const snap = await getDocs(q);
+                const select = document.getElementById('cloudDrafts'); select.innerHTML = '<option value="">Load Previous...</option>';
+                snap.forEach((doc) => { currentDrafts[doc.id] = doc.data(); select.innerHTML += `<option value="${doc.id}">${doc.data().clientName}</option>`; });
+            } catch (e) { console.error(e); }
+        }
+        document.getElementById('loadCloudBtn')?.addEventListener('click', () => { const id = document.getElementById('cloudDrafts').value; if(id) loadFormState(currentDrafts[id].data); });
+
+        // --- ADMIN HUB LOGIC ---
+        async function fetchAdminLeads() {
+            const container = document.getElementById('adminLeadsContainer');
+            try {
+                const snapshot = await getDocs(collection(db, "surveys"));
+                container.innerHTML = snapshot.empty ? '<p style="color:#888;">No surveys yet.</p>' : '';
+                snapshot.forEach(doc => {
+                    const data = doc.data(), inputs = data.data.inputs || {}, dDate = data.updatedAt ? new Date(data.updatedAt.toDate()).toLocaleDateString() : 'N/A';
+                    container.innerHTML += `
+                        <div class="admin-lead-card" style="background:#2a2a2a; padding:15px; border-radius:8px; border-left:4px solid #ff9800; display:flex; justify-content:space-between; margin-bottom:10px;">
+                            <div>
+                                <h3 style="margin:0 0 5px 0; color:#fff;">${data.clientName || 'Unnamed'} <span style="font-size:0.8rem; color:#ff9800;">${inputs.postCode || ''}</span></h3>
+                                <p style="margin:0; color:#aaa; font-size:0.85rem;">Build: ${inputs.buildType || 'TBC'} | Size: ${inputs.proposedSize || 'TBC'}</p>
+                                <p style="margin:5px 0 0 0; color:#888; font-size:0.8rem;">Date Saved: ${dDate}</p>
+                            </div>
+                        </div>`;
+                });
+            } catch (error) { console.error(error); }
+        }
+
+        // Admin Search Filter
+        document.getElementById('adminSearch')?.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            document.querySelectorAll('.admin-lead-card').forEach(card => { card.style.display = card.innerText.toLowerCase().includes(term) ? 'flex' : 'none'; });
+        });
     </script>
 </body>
 </html>
