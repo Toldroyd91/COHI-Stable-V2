@@ -351,35 +351,28 @@
         </div>
     </div>
 
-    <div id="pdfTemplateHybrid" style="display: none; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
-        <div class="pdf-page" style="text-align: center; padding-top: 20px; min-height: 1000px;">
-            <div>
-                <h1 style="color: #0F3759; font-size: 30px; margin: 0 0 10px 0; font-weight: 700; text-transform: uppercase;">Customer Design Survey</h1>
-                <div style="width: 80px; height: 4px; background: #0F3759; margin: 0 auto 30px auto; border-radius: 2px;"></div>
+       <div id="pdfTemplateFull" style="display: none; background: #ffffff; width: 800px; padding: 40px; box-sizing: border-box; font-family: sans-serif;">
+        <div class="pdf-page" style="padding: 30px;">
+            <h1 style="color: #0F3759; border-bottom: 2px solid; padding-bottom: 10px;">PROJECT PROPOSAL</h1>
+            <p id="full-greeting" style="font-size: 16px; line-height: 1.6;"></p>
+            <div style="margin: 20px 0; background: #f8f9fa; padding: 15px;">
+                <p id="full-size"></p>
+                <p id="full-roof"></p>
+                <p id="full-frame"></p>
             </div>
-            <div style="background: #f8f9fa; border-left: 5px solid #0F3759; padding: 25px; text-align: left; border-radius: 4px; margin-top: 30px;">
-                <h3 style="margin: 0 0 15px 0; color: #0F3759; font-size: 18px; text-transform: uppercase;">Project Details</h3>
-                <div style="width: 100%; font-size: 14px; color: #495057;">
-                    <div style="display: inline-block; width: 48%; margin-bottom: 15px;"><strong>Customer Name:</strong> <span id="hybPdfName" style="color:#000; font-weight:600;"></span></div>
-                    <div style="display: inline-block; width: 48%; margin-bottom: 15px;"><strong>Date:</strong> <span id="hybPdfDate" style="color:#000; font-weight:600;"></span></div>
-                </div>
-            </div>
-            <div style="margin-top: 30px; text-align: left;">
-                <p id="hyb-greeting" style="margin-bottom: 20px;"></p>
-                <p id="hyb-size" style="margin-bottom: 20px;"></p>
-                <p id="hyb-roof" style="margin-bottom: 20px;"></p>
-                <p id="hyb-frame" style="margin-bottom: 20px;"></p>
-                <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-left: 4px solid #0F3759;">
-                    <h4 style="margin: 0 0 10px 0; color: #0F3759;">Design Notes:</h4>
-                    <p id="hyb-custom-notes" style="margin: 0;"></p>
-                </div>
-            </div>
+            <p id="full-compliance"></p>
+            <p id="full-revisit" style="font-weight: bold; margin-top: 20px;"></p>
         </div>
-        <div class="pdf-page" id="hybridPdfImagePage" style="text-align: left; padding: 30px 50px; font-size: 15px; display: none; min-height: 1000px;">
-            <h2 style="color: #0F3759; font-size: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">Site Imagery</h2>
-            <div id="pdfHybridImagesGrid" style="margin-top: 20px; width: 100%;"></div>
+
+        <div class="pdf-page" style="padding: 30px;">
+            <h2 style="color: #0F3759;">TECHNICAL SPECIFICATION</h2>
+            <div id="full-spec-data" style="font-size: 14px; line-height: 2;"></div>
+            
+            <div id="full-included-images" style="margin-top: 20px;"></div>
+            <div id="full-included-notes" style="margin-top: 20px; font-style: italic; border-top: 1px solid #ccc; padding-top: 10px;"></div>
         </div>
-    </div>
+       </div>
+    
 
     <div id="pdfTemplateInternal" style="display: none; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
         <div class="pdf-page" style="text-align: center; padding-top: 20px; min-height: 1000px;">
