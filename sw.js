@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cohi-survey-engine-v1.0.1';
+const CACHE_NAME = 'cohi-survey-engine-v1.0.4';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
