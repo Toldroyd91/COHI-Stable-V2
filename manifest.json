@@ -1,11 +1,10 @@
 {
   "name": "COHI Survey Pro",
   "short_name": "Survey Pro",
-  "description": "Blueprint Enterprise Survey Engine",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#0F3759",
+  "background_color": "#15202b",
+  "theme_color": "#15202b",
   "orientation": "portrait-primary",
   "icons": [
     {
