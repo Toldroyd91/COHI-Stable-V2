@@ -21,7 +21,7 @@ window.showToast = function(msg, isSuccess = true) {
 setTimeout(() => { const splash = document.getElementById('splashScreen'); if(splash) { splash.style.opacity = '0'; setTimeout(() => splash.style.display = 'none', 600); } }, 1200);
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("[Diagnostics] Blueprint Enterprise Engine Initialized.");
+    console.log("[Diagnostics] Blueprint Enterprise Engine Initialized (V2 Modular Hybrid).");
     let jsPDF = window.jspdf ? window.jspdf.jsPDF : null;
 
     // --- 1. CONTINUOUS AUTOSAVE ---
@@ -83,16 +83,17 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     document.querySelectorAll('.dyn-survey-select').forEach(sel => sel.addEventListener('change', updateDynamicLabel));
 
-    // --- 3. FABRIC CANVAS ENGINE (WITH AUTO-DIMENSIONING) ---
+    // --- 3. FABRIC CANVAS ENGINE (WITH DIMENSIONAL INTELLIGENCE) ---
     window.appCanvases = {};
     document.querySelectorAll('.canvas-group').forEach(group => {
         const id = group.getAttribute('data-id');
         const canvasEl = group.querySelector('canvas');
         if (!canvasEl) return;
 
-        const fCanvas = new fabric.Canvas(canvasEl.id, { isDrawingMode: false, allowTouchScrolling: true });
+        const fCanvas = new fabric.Canvas(canvasEl.id, { isDrawingMode: false, allowTouchScrolling: true, selection: false });
         window.appCanvases[id] = fCanvas;
-        fCanvas.isCalibrating = false; // Flag to prevent labeling the calibration line
+        fCanvas.isCalibrating = false; 
+        fCanvas.scaleRatio = 5; // Default: 1px = 5mm (Will be updated by measure tool)
 
         if(savedData['canvas_' + id]) fCanvas.loadFromJSON(savedData['canvas_' + id], fCanvas.renderAll.bind(fCanvas));
 
@@ -103,24 +104,82 @@ document.addEventListener('DOMContentLoaded', function() {
             triggerAutoSave();
         };
 
-        // AUTO-DIMENSIONING LOGIC
-        fCanvas.on('path:created', (e) => {
-            if(fCanvas.scaleRatio && !fCanvas.isCalibrating) {
-                const distance = e.path.width * fCanvas.scaleRatio;
-                if(distance > 20) { // Ignore tiny accidental scribbles
-                    const text = new fabric.Text(Math.round(distance) + 'mm', {
-                        left: e.path.left + (e.path.width / 2) - 20,
-                        top: e.path.top - 20,
-                        fontSize: 16,
-                        fill: '#ffc107',
-                        fontFamily: 'sans-serif',
-                        selectable: true
-                    });
-                    fCanvas.add(text);
+        // --- NEW LINE & AUTO-DIM TOOLS ---
+        let activeTool = 'locked';
+        let isDrawingLine = false;
+        let activeLineObj = null;
+        let startX = 0, startY = 0;
+
+        function bindDimLineTool() {
+            fCanvas.off('mouse:down'); fCanvas.off('mouse:move'); fCanvas.off('mouse:up');
+            fCanvas.on('mouse:down', function(o) {
+                if (activeTool !== 'dim-line' && activeTool !== 'line') return;
+                isDrawingLine = true;
+                const pointer = fCanvas.getPointer(o.e);
+                startX = pointer.x; startY = pointer.y;
+
+                activeLineObj = new fabric.Line([startX, startY, startX, startY], {
+                    strokeWidth: 3, 
+                    stroke: activeTool === 'dim-line' ? '#0D6EFD' : '#FF0000', 
+                    strokeDashArray: activeTool === 'dim-line' ? [5, 5] : null,
+                    originX: 'center', originY: 'center', selectable: false, hasControls: false
+                });
+                fCanvas.add(activeLineObj);
+            });
+
+            fCanvas.on('mouse:move', function(o) {
+                if (!isDrawingLine) return;
+                const pointer = fCanvas.getPointer(o.e);
+                let x2 = pointer.x; let y2 = pointer.y;
+
+                // DIMENSIONAL INTELLIGENCE: SHIFT-SNAP (45° Increments)
+                if (o.e.shiftKey) {
+                    const dx = x2 - startX;
+                    const dy = y2 - startY;
+                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                    const snappedAngle = Math.round(angle / 45) * 45;
+                    const dist = Math.hypot(dx, dy);
+                    x2 = startX + dist * Math.cos(snappedAngle * Math.PI / 180);
+                    y2 = startY + dist * Math.sin(snappedAngle * Math.PI / 180);
                 }
-            }
-            saveCanvas();
-        });
+
+                activeLineObj.set({ x2: x2, y2: y2 });
+                fCanvas.renderAll();
+            });
+
+            fCanvas.on('mouse:up', function() {
+                if (!isDrawingLine) return;
+                isDrawingLine = false;
+                
+                if (activeLineObj) {
+                    activeLineObj.setCoords();
+                    
+                    if (activeTool === 'dim-line') {
+                        const x1 = activeLineObj.x1, y1 = activeLineObj.y1, x2 = activeLineObj.x2, y2 = activeLineObj.y2;
+                        const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+                        const dist = Math.hypot(x2 - x1, y2 - y1);
+                        
+                        // Apply Scale Calibration
+                        const mmEstimate = Math.round(dist * (fCanvas.scaleRatio || 5)); 
+                        
+                        const label = new fabric.Text(`${mmEstimate} mm`, {
+                            left: (x1 + x2) / 2, top: (y1 + y2) / 2,
+                            originX: 'center', originY: 'center',
+                            fontSize: 16, fill: '#fff', backgroundColor: '#0D6EFD',
+                            padding: 4, fontWeight: 'bold', selectable: true
+                        });
+
+                        const arrow1 = new fabric.Triangle({ width: 12, height: 12, fill: '#0D6EFD', left: x1, top: y1, originX: 'center', originY: 'center', angle: angle - 90, selectable: false });
+                        const arrow2 = new fabric.Triangle({ width: 12, height: 12, fill: '#0D6EFD', left: x2, top: y2, originX: 'center', originY: 'center', angle: angle + 90, selectable: false });
+                        
+                        fCanvas.add(arrow1, arrow2, label);
+                    }
+                }
+                saveCanvas();
+                fCanvas.renderAll();
+            });
+        }
+
         fCanvas.on('object:modified', saveCanvas);
 
         group.querySelector('.camera-input')?.addEventListener('change', function(e) {
@@ -142,11 +201,12 @@ document.addEventListener('DOMContentLoaded', function() {
             reader.readAsDataURL(file);
         });
 
+        // Setup Calibration & Tool Buttons
         const toolSection = group.querySelector('.tool-section');
         if(toolSection && !group.querySelector('.measure-btn')) {
             const measureBtn = document.createElement('button');
             measureBtn.type = 'button'; measureBtn.className = 'tool-btn measure-btn'; measureBtn.title = 'Calibrate Scale';
-            measureBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="12" x2="3" y2="12"></line><line x1="21" y1="6" x2="21" y2="18"></line><line x1="3" y1="6" x2="3" y2="18"></line></svg>';
+            measureBtn.innerHTML = '📏';
             toolSection.appendChild(measureBtn);
 
             measureBtn.addEventListener('click', () => {
@@ -162,22 +222,35 @@ document.addEventListener('DOMContentLoaded', function() {
                     fCanvas.scaleRatio = knownSize / e.path.width;
                     window.showToast(`Calibrated! Lines will auto-label.`);
                     fCanvas.isDrawingMode = false; fCanvas.isCalibrating = false;
+                    fCanvas.remove(e.path); // Remove the ugly calibration scribble
                     measureBtn.classList.remove('active'); group.querySelector('.lock-btn')?.classList.add('active');
                 });
             });
+            
+            // Add Line & Dim Line buttons dynamically if missing
+            if(!group.querySelector('.line-btn')) {
+                const lineBtn = document.createElement('button'); lineBtn.type='button'; lineBtn.className='tool-btn line-btn'; lineBtn.innerHTML='|'; toolSection.appendChild(lineBtn);
+                lineBtn.addEventListener('click', function() { resetBtns(); this.classList.add('active'); activeTool = 'line'; fCanvas.isDrawingMode = false; bindDimLineTool(); });
+                
+                const dimBtn = document.createElement('button'); dimBtn.type='button'; dimBtn.className='tool-btn dim-line-btn'; dimBtn.innerHTML='⟷'; toolSection.appendChild(dimBtn);
+                dimBtn.addEventListener('click', function() { resetBtns(); this.classList.add('active'); activeTool = 'dim-line'; fCanvas.isDrawingMode = false; bindDimLineTool(); });
+            }
         }
 
-        const resetBtns = () => group.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-        group.querySelector('.lock-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); fCanvas.isDrawingMode = false; });
-        group.querySelector('.freehand-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); fCanvas.isDrawingMode = true; fCanvas.freeDrawingBrush = new fabric.PencilBrush(fCanvas); fCanvas.freeDrawingBrush.color = '#00E5FF'; fCanvas.freeDrawingBrush.width = 4; });
-        group.querySelector('.highlight-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); fCanvas.isDrawingMode = true; fCanvas.freeDrawingBrush = new fabric.PencilBrush(fCanvas); fCanvas.freeDrawingBrush.color = 'rgba(255, 255, 0, 0.4)'; fCanvas.freeDrawingBrush.width = 20; });
-        group.querySelector('.text-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); fCanvas.isDrawingMode = false; const text = new fabric.IText('Double click to edit', { left: 50, top: 50, fontFamily: 'sans-serif', fill: '#00E5FF', fontSize: 24 }); fCanvas.add(text); fCanvas.setActiveObject(text); saveCanvas(); });
+        const resetBtns = () => { 
+            group.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active')); 
+            fCanvas.off('mouse:down'); fCanvas.off('mouse:move'); fCanvas.off('mouse:up');
+        };
+        group.querySelector('.lock-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); activeTool = 'locked'; fCanvas.isDrawingMode = false; });
+        group.querySelector('.freehand-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); activeTool = 'freehand'; fCanvas.isDrawingMode = true; fCanvas.freeDrawingBrush = new fabric.PencilBrush(fCanvas); fCanvas.freeDrawingBrush.color = '#00E5FF'; fCanvas.freeDrawingBrush.width = 4; });
+        group.querySelector('.highlight-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); activeTool = 'highlight'; fCanvas.isDrawingMode = true; fCanvas.freeDrawingBrush = new fabric.PencilBrush(fCanvas); fCanvas.freeDrawingBrush.color = 'rgba(255, 255, 0, 0.4)'; fCanvas.freeDrawingBrush.width = 20; });
+        group.querySelector('.text-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); activeTool = 'text'; fCanvas.isDrawingMode = false; const text = new fabric.IText('Double click to edit', { left: 50, top: 50, fontFamily: 'sans-serif', fill: '#00E5FF', fontSize: 24 }); fCanvas.add(text); fCanvas.setActiveObject(text); saveCanvas(); });
         group.querySelector('.undo-btn')?.addEventListener('click', () => { const objs = fCanvas.getObjects(); if(objs.length > 0) { const last = objs[objs.length - 1]; if(objs.length === 1 && last.type === 'image') return; fCanvas.remove(last); saveCanvas(); } });
         group.querySelector('.clear-btn')?.addEventListener('click', () => { fCanvas.getObjects().filter(o => o.type !== 'image').forEach(o => fCanvas.remove(o)); saveCanvas(); });
     });
 
-    // --- 4. AI NOTES REWRITER (SIMULATED) ---
-    document.getElementById('aiRewriteBtn')?.addEventListener('click', () => {
+    // --- 4. LIVE AI NOTES REWRITER (FIREBASE CONNECTED) ---
+    document.getElementById('aiRewriteBtn')?.addEventListener('click', async () => {
         const rawText = document.getElementById('designerNotes').value.trim();
         if(!rawText) return window.showToast("No raw notes to rewrite.", false);
         
@@ -185,17 +258,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const btn = document.getElementById('aiRewriteBtn');
         btn.innerText = "Processing..."; btn.disabled = true;
 
-        // Simulate API Delay
-        setTimeout(() => {
-            // Standard fallback without Firebase Function active
-            document.getElementById('customerNotes').value = "Following our survey: " + rawText + "\n\n(Note: Full AI generation requires Firebase Cloud Function deployment).";
-            btn.innerText = "✨ AI Polish"; btn.disabled = false;
-            triggerAutoSave();
+        try {
+            const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js");
+            const functions = getFunctions();
+            const rewriteNotes = httpsCallable(functions, 'rewriteNotes');
+
+            const result = await rewriteNotes({ rawText: rawText });
+            document.getElementById('customerNotes').value = result.data.polishedText;
             window.showToast("Notes Polished!", true);
-        }, 1500);
+            triggerAutoSave();
+        } catch (error) {
+            console.error("AI Error:", error);
+            window.showToast("AI Request Failed. Check connection.", false);
+        } finally {
+            btn.innerText = "✨ AI Polish"; btn.disabled = false;
+        }
     });
 
-    // --- 5. MULTI-TIER PDF ENGINE ---
+    // --- 5. SECURE WATERMARK & PDF ENGINE ---
     async function generateMultiPagePDF(templateId, filename) {
         if (!jsPDF) return window.showToast("PDF Engine loading...", false);
         
@@ -227,9 +307,21 @@ document.addEventListener('DOMContentLoaded', function() {
             
             let heightLeft = imgHeight; let position = 0; const pdfHeight = pdf.internal.pageSize.getHeight();
             
+            // Render first page with Watermark Shield
             pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, position, pdf.internal.pageSize.getWidth(), imgHeight);
+            pdf.setTextColor(200, 200, 200); pdf.setFontSize(40);
+            pdf.text(profile.brand.toUpperCase(), pdf.internal.pageSize.getWidth() / 2, pdfHeight / 2, { angle: 45, align: 'center', opacity: 0.1 });
             heightLeft -= pdfHeight;
-            while (heightLeft > 0) { position = position - pdfHeight; pdf.addPage(); pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, position, pdf.internal.pageSize.getWidth(), imgHeight); heightLeft -= pdfHeight; }
+            
+            // Loop for subsequent pages
+            while (heightLeft > 0) { 
+                position = position - pdfHeight; 
+                pdf.addPage(); 
+                pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, position, pdf.internal.pageSize.getWidth(), imgHeight); 
+                pdf.text(profile.brand.toUpperCase(), pdf.internal.pageSize.getWidth() / 2, pdfHeight / 2, { angle: 45, align: 'center', opacity: 0.1 });
+                heightLeft -= pdfHeight; 
+            }
+            
             pdf.save(filename);
             window.showToast("PDF Export Complete!", true);
         } catch(e) { console.error(e); window.showToast("PDF Generation Failed", false); } 
