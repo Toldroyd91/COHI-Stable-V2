@@ -5,8 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>COHI Survey Pro</title>
     
-    <link rel="manifest" href="manifest.json">
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX'); // Replace with your actual GA4 Measurement ID
+    </script>
     
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#15202b">
     
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -27,53 +34,59 @@
     <div id="authOverlay" class="modal-overlay" style="display: flex; flex-direction: column; background: var(--base-bg); z-index: 99998; justify-content: center; align-items: center;">
         <div class="card" style="max-width: 400px; width: 90%; text-align: center; margin: 0;">
             <h2 class="card__title" style="border: none; margin-bottom: 10px;">ENGINE ACCESS</h2>
-            <p style="color: var(--secondary-text); margin-bottom: 25px; font-size: 0.9rem;">Authorized Designers Only</p>
             
-            <div class="form-group" style="text-align: left;">
-                <input type="email" id="authEmail" class="form-group__input" placeholder="Designer Email">
+            <div id="loginView">
+                <div class="form-group"><input type="email" id="authEmail" class="form-group__input" placeholder="Email Address"></div>
+                <div class="form-group mt-10"><input type="password" id="authPassword" class="form-group__input" placeholder="Password"></div>
+                <button id="loginBtn" class="button" style="width: 100%; margin-top: 25px;">Secure Log In</button>
+                <button id="showRegisterBtn" class="button button--secondary" style="width: 100%; margin-top: 10px;">Register New Designer</button>
             </div>
-            <div class="form-group" style="text-align: left; margin-top: 15px;">
-                <input type="password" id="authPassword" class="form-group__input" placeholder="Password">
+
+            <div id="registerView" style="display: none; text-align: left;">
+                <div class="form-group">
+                    <select id="regBrand" class="form-group__input">
+                        <option value="">Select Brand...</option>
+                        <option value="Yorkshire Windows">Yorkshire Windows</option>
+                        <option value="CO Home Improvements">CO Home Improvements</option>
+                        <option value="Clearview">Clearview</option>
+                        <option value="Orion Windows">Orion Windows</option>
+                        <option value="Planet">Planet</option>
+                        <option value="Trent Valley Windows">Trent Valley Windows</option>
+                        <option value="West Yorkshire Windows">West Yorkshire Windows</option>
+                    </select>
+                </div>
+                <div class="form-group mt-10"><input type="text" id="regName" class="form-group__input" placeholder="Full Name"></div>
+                <div class="form-group mt-10"><input type="tel" id="regPhone" class="form-group__input" placeholder="Contact Number"></div>
+                <div class="form-group mt-10"><textarea id="regBio" class="form-group__input" rows="2" placeholder="Short Designer Bio"></textarea></div>
+                <div class="form-group mt-10"><input type="email" id="regEmail" class="form-group__input" placeholder="Email Address"></div>
+                <div class="form-group mt-10"><input type="password" id="regPassword" class="form-group__input" placeholder="Create Password"></div>
+                
+                <button id="registerBtn" class="button" style="width: 100%; margin-top: 20px;">Create Profile & Enter</button>
+                <button id="cancelRegisterBtn" class="button button--secondary" style="width: 100%; margin-top: 10px;">Back to Login</button>
             </div>
-            
-            <button id="loginBtn" class="button" style="width: 100%; margin-top: 25px; margin-bottom: 15px;">Secure Log In</button>
-            <button id="registerBtn" class="button button--secondary" style="width: 100%;">Register New Designer</button>
             
             <p id="authError" style="color: #ff4444; margin-top: 15px; font-size: 0.85rem; display: none;"></p>
         </div>
     </div>
 
     <header class="navbar navbar--top" id="mainHeader">
-        <div class="navbar__container header-container">
-            <h1 class="navbar__title">Survey Pro</h1>
-            <div id="headerControls" class="nav-controls">
-                <select id="brandSelect" class="form-group__input form-group__input--touch nav-select" style="width: auto;">
-                    <option value="">Select Brand...</option>
-                    <option value="Clearview">Clearview</option>
-                    <option value="CO Home Improvements">CO Home Improvements</option>
-                    <option value="Orion Windows">Orion Windows</option>
-                    <option value="Planet">Planet</option>
-                    <option value="Trent Valley Windows">Trent Valley Windows</option>
-                    <option value="West Yorkshire Windows">West Yorkshire Windows</option>
-                    <option value="Yorkshire Windows">Yorkshire Windows</option>
-                </select>
-                <input list="designerList" id="designerSelect" class="form-group__input form-group__input--touch nav-input" placeholder="Designer..." style="width: 140px;">
-                <datalist id="designerList"></datalist>
-                
-                <button id="openProfileManagerBtn" class="nav-btn btn-icon tool-btn" style="background: var(--input-bg); border: 1px solid #444;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                </button>
-                
-                <button id="logoutBtn" class="nav-btn btn-icon tool-btn" style="background: var(--input-bg); border: 1px solid #444; color: #ff4444; margin-left: 5px;" title="Log Out">
+        <div class="navbar__container header-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <h1 class="navbar__title">Survey Pro</h1>
+                <span id="activeDesignerProfile" style="color: var(--accent); font-size: 0.9rem; font-weight: bold; border-left: 1px solid #444; padding-left: 15px; display: none;">
+                    </span>
+            </div>
+            <div class="nav-controls">
+                <button id="logoutBtn" class="nav-btn btn-icon tool-btn" style="background: var(--input-bg); border: 1px solid #444; color: #ff4444;" title="Log Out">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                 </button>
             </div>
         </div>
     </header>
 
-    <main class="main-container main-container--centered layout-wrapper">
+    <main id="designerApp" class="main-container main-container--centered layout-wrapper" style="display: none;">
 
-        <article class="card" id="cloudDashboard" style="display: none; border-color: var(--accent); background: #1E1E1E;">
+        <article class="card" id="cloudDashboard" style="border-color: var(--accent); background: #1E1E1E;">
             <h2 class="card__title" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; margin-bottom: 15px; padding-bottom: 10px;">
                 <span style="color: #fff;">☁️ Cloud Workspace</span>
                 <span id="syncStatus" style="font-size: 0.85rem; color: #0dcaf0; font-weight: normal;">Connected</span>
@@ -97,9 +110,9 @@
         <article class="card">
             <h2 class="card__title">Client Profile</h2>
             <div class="form-grid">
-                <div class="form-group"><label class="form-group__label">Name</label><input type="text" id="clientName" class="form-group__input"></div>
+                <div class="form-group"><label class="form-group__label">Name *</label><input type="text" id="clientName" class="form-group__input" required></div>
                 <div class="form-group"><label class="form-group__label">Phone</label><input type="tel" id="clientNum" class="form-group__input"></div>
-                <div class="form-group"><label class="form-group__label">Postcode</label><input type="text" id="postCode" class="form-group__input"></div>
+                <div class="form-group"><label class="form-group__label">Postcode *</label><input type="text" id="postCode" class="form-group__input" required></div>
                 <div class="form-group"><label class="form-group__label">Consultation Date</label><input type="date" id="apptDate" class="form-group__input"></div>
                 <div class="form-group"><label class="form-group__label">Revisit Date</label><input type="date" id="revisitDate" class="form-group__input"></div>
                 <div class="form-group"><label class="form-group__label">Revisit Location</label><input type="text" id="revisitLocation" class="form-group__input" placeholder="e.g. Showroom"></div>
@@ -212,7 +225,7 @@
         <article class="card">
             <h2 class="card__title">Design Ideas</h2>
             <div class="form-grid">
-                <div class="form-group"><label class="form-group__label">Build Type:</label><select id="buildType" class="form-group__input"><option value="">Select...</option><option value="Conservatory">Conservatory</option><option value="Extension">Extension</option><option value="Porch">Porch</option><option value="Roof and Frame">Roof and Frame</option><option value="Other">Other</option></select></div>
+                <div class="form-group"><label class="form-group__label">Build Type *</label><select id="buildType" class="form-group__input" required><option value="">Select...</option><option value="Conservatory">Conservatory</option><option value="Extension">Extension</option><option value="Porch">Porch</option><option value="Roof and Frame">Roof and Frame</option><option value="Other">Other</option></select></div>
                 <div class="form-group"><label class="form-group__label">Roof Type:</label>
                     <select id="roofType" class="form-group__input">
                         <option value="">Select...</option>
@@ -279,6 +292,13 @@
         <button id="resetFormBtn" class="button btn-danger" style="margin-top: 20px; width: 100%;">Clear Form for Next Appointment</button>
     </main>
 
+    <main id="adminDashboard" class="main-container main-container--centered layout-wrapper" style="display: none;">
+        <article class="card">
+            <h2 class="card__title">Manager Intelligence Hub</h2>
+            <p style="color: #ccc;">Loading all company surveys and designer metrics...</p>
+            </article>
+    </main>
+
     <div id="pdfTemplateCustomer" style="display: none; background: #ffffff; color: #333333; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; padding: 40px; box-sizing: border-box;">
         <div class="pdf-page" style="text-align: left; padding: 30px 50px; font-size: 15px; line-height: 1.8; color: #333; min-height: 1000px;">
             <div style="text-align: center; margin-bottom: 40px;">
@@ -324,19 +344,6 @@
         </div>
     </div>
 
-    <div id="profileModal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <h2 style="margin-bottom: 20px; color: #fff;">Manage Designer Profile</h2>
-            <div class="form-group"><label class="form-group__label">Name:</label><input type="text" id="profName" class="form-group__input"></div>
-            <div class="form-group"><label class="form-group__label">Email:</label><input type="email" id="profEmail" class="form-group__input"></div>
-            <div class="form-group"><label class="form-group__label">Phone:</label><input type="tel" id="profPhone" class="form-group__input"></div>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button id="saveProfileBtn" class="button" style="width: 50%;">Save</button>
-                <button id="closeProfileBtn" class="button btn-danger" style="width: 50%;">Cancel</button>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
@@ -347,7 +354,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDocs, query, where, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0",
@@ -362,144 +369,107 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        // UI Routing Elements
         const authOverlay = document.getElementById('authOverlay');
-        const cloudDashboard = document.getElementById('cloudDashboard');
-        let currentDrafts = {}; 
+        const designerApp = document.getElementById('designerApp');
+        const adminDashboard = document.getElementById('adminDashboard');
+        const activeProfileUI = document.getElementById('activeDesignerProfile');
 
-        // Core Security Listener
-        onAuthStateChanged(auth, (user) => {
+        // Toggle Login/Register UI
+        document.getElementById('showRegisterBtn').addEventListener('click', () => {
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('registerView').style.display = 'block';
+        });
+        document.getElementById('cancelRegisterBtn').addEventListener('click', () => {
+            document.getElementById('registerView').style.display = 'none';
+            document.getElementById('loginView').style.display = 'block';
+        });
+
+        // Smart Security & Routing Listener
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 authOverlay.style.display = 'none';
-                cloudDashboard.style.display = 'block';
-                if(window.showToast) window.showToast(`Logged in securely as ${user.email}`);
-                fetchCloudDrafts(user.uid);
-                injectCsvButton();
+                
+                // Fetch User Profile Data
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    window.currentUserProfile = userData; // Store globally for PDF/Saves
+
+                    if (userData.role === 'admin') {
+                        // Route to Admin
+                        designerApp.style.display = 'none';
+                        adminDashboard.style.display = 'block';
+                        if(window.showToast) window.showToast(`Welcome to the Hub, ${userData.name}`);
+                    } else {
+                        // Route to Designer App
+                        adminDashboard.style.display = 'none';
+                        designerApp.style.display = 'block';
+                        activeProfileUI.innerHTML = `${userData.brand} | ${userData.name}`;
+                        activeProfileUI.style.display = 'inline';
+                        if(window.showToast) window.showToast(`Engine unlocked: ${userData.name}`);
+                        
+                        // Trigger cloud sync for this designer (function from app.js)
+                        if(window.fetchCloudDrafts) window.fetchCloudDrafts(user.uid, db);
+                    }
+                }
             } else {
                 authOverlay.style.display = 'flex';
-                cloudDashboard.style.display = 'none';
+                designerApp.style.display = 'none';
+                adminDashboard.style.display = 'none';
+                activeProfileUI.style.display = 'none';
             }
         });
 
-        // Inject Manager CSV Button
-        function injectCsvButton() {
-            const cloudDashFormGrid = document.querySelector('#cloudDashboard .form-grid');
-            if (cloudDashFormGrid && !document.getElementById('exportCsvBtn')) {
-                const csvDiv = document.createElement('div');
-                csvDiv.className = 'form-group';
-                csvDiv.style.flexGrow = '1';
-                csvDiv.innerHTML = `<button id="exportCsvBtn" class="button" style="width: 100%; background: #ff9800; border-color: #e68a00;">📊 Export Leads (CSV)</button>`;
-                cloudDashFormGrid.appendChild(csvDiv);
+        // Advanced Registration (Captures Profile Data)
+        document.getElementById('registerBtn')?.addEventListener('click', async () => {
+            const errEl = document.getElementById('authError');
+            errEl.style.display = 'none';
+            
+            const brand = document.getElementById('regBrand').value;
+            const name = document.getElementById('regName').value.trim();
+            const phone = document.getElementById('regPhone').value.trim();
+            const bio = document.getElementById('regBio').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const pass = document.getElementById('regPassword').value;
 
-                document.getElementById('exportCsvBtn').addEventListener('click', async () => {
-                    if(window.showToast) window.showToast("Compiling Database Report...", false);
-                    try {
-                        const snapshot = await getDocs(collection(db, "surveys"));
-                        let csv = "Date Saved,Designer ID,Brand,Client Name,Build Type,Proposed Size,Frame Colour\n";
-                        snapshot.forEach(doc => {
-                            const data = doc.data();
-                            const inputs = data.data.inputs || {};
-                            const date = data.updatedAt ? new Date(data.updatedAt.toDate()).toLocaleDateString() : 'N/A';
-                            csv += `"${date}","${data.userId}","${inputs.brandSelect || ''}","${data.clientName || ''}","${inputs.buildType || ''}","${inputs.proposedSize || ''}","${inputs.frameColour || ''}"\n`;
-                        });
-                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                        const a = document.createElement('a');
-                        a.href = URL.createObjectURL(blob);
-                        a.download = `COHI_Leads_Report.csv`;
-                        a.click();
-                        if(window.showToast) window.showToast("Report Exported Successfully!", true);
-                    } catch (err) {
-                        console.error(err);
-                        if(window.showToast) window.showToast("Error generating Report", false);
-                    }
-                });
-            }
-        }
+            if(!brand || !name || !email || !pass) return errEl.innerText = "Please fill all required fields.", errEl.style.display = 'block';
 
-        const getFormState = () => {
-            const data = {};
-            document.querySelectorAll('.form-group__input').forEach(el => { if (el.id && el.type !== 'file') data[el.id] = el.value; });
-            const canvases = {};
-            if (window.appCanvases) { for (let key in window.appCanvases) canvases[key] = window.appCanvases[key].toJSON(); }
-            return { inputs: data, canvases: canvases };
-        };
-
-        const loadFormState = (payload) => {
-            if (payload.inputs) {
-                for (let key in payload.inputs) {
-                    const el = document.getElementById(key);
-                    if (el) el.value = payload.inputs[key];
-                }
-                document.querySelectorAll('.dyn-survey-select').forEach(el => el.dispatchEvent(new Event('change')));
-            }
-            if (payload.canvases && window.appCanvases) {
-                for (let key in payload.canvases) {
-                    if (window.appCanvases[key]) window.appCanvases[key].loadFromJSON(payload.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key]));
-                }
-            }
-        };
-
-        async function fetchCloudDrafts(uid) {
-            const q = query(collection(db, "surveys"), where("userId", "==", uid));
             try {
-                const querySnapshot = await getDocs(q);
-                const select = document.getElementById('cloudDrafts');
-                select.innerHTML = '<option value="">Select a saved survey...</option>';
-                currentDrafts = {};
+                const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+                const user = userCredential.user;
                 
-                querySnapshot.forEach((doc) => {
-                    const draft = doc.data();
-                    currentDrafts[doc.id] = draft;
-                    let dateStr = draft.updatedAt ? new Date(draft.updatedAt.toDate()).toLocaleDateString() : 'Recent';
-                    select.innerHTML += `<option value="${doc.id}">${draft.clientName} (${dateStr})</option>`;
+                // Create the profile document in Firestore
+                await setDoc(doc(db, "users", user.uid), {
+                    brand: brand,
+                    name: name,
+                    phone: phone,
+                    bio: bio,
+                    email: email,
+                    role: 'designer', // Default role. You manually change this to 'admin' in Firebase Console for yourself.
+                    createdAt: serverTimestamp()
                 });
             } catch (error) {
-                console.error("Fetch Error:", error);
-            }
-        }
-
-        document.getElementById('saveCloudBtn')?.addEventListener('click', async () => {
-            if (!auth.currentUser) return;
-            if(window.showToast) window.showToast("Uploading to Database...", false);
-            const clientName = document.getElementById('clientName').value.trim() || "Untitled Survey";
-            const surveyId = clientName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString().slice(-4);
-            
-            try {
-                await setDoc(doc(db, "surveys", surveyId), {
-                    userId: auth.currentUser.uid,
-                    clientName: clientName,
-                    data: getFormState(),
-                    updatedAt: serverTimestamp()
-                });
-                if(window.showToast) window.showToast("Draft Saved to Cloud!", true);
-                fetchCloudDrafts(auth.currentUser.uid); 
-            } catch (error) {
-                console.error("Save Error:", error);
-                if(window.showToast) window.showToast("Error Saving to Cloud", false);
+                errEl.innerText = error.message.replace('Firebase: ', ''); 
+                errEl.style.display = 'block';
             }
         });
 
-        document.getElementById('loadCloudBtn')?.addEventListener('click', () => {
-            const selectedId = document.getElementById('cloudDrafts').value;
-            if (!selectedId || !currentDrafts[selectedId]) return alert("Please select a survey from the dropdown.");
-            
-            loadFormState(currentDrafts[selectedId].data);
-            if(window.showToast) window.showToast(`Loaded ${currentDrafts[selectedId].clientName} successfully!`, true);
-        });
-
-        // Authentication Handlers
+        // Standard Login
         document.getElementById('loginBtn')?.addEventListener('click', () => {
             document.getElementById('authError').style.display = 'none';
             signInWithEmailAndPassword(auth, document.getElementById('authEmail').value.trim(), document.getElementById('authPassword').value)
-                .catch(err => { document.getElementById('authError').innerText = err.message.replace('Firebase: ', ''); document.getElementById('authError').style.display = 'block'; });
-        });
-
-        document.getElementById('registerBtn')?.addEventListener('click', () => {
-            document.getElementById('authError').style.display = 'none';
-            createUserWithEmailAndPassword(auth, document.getElementById('authEmail').value.trim(), document.getElementById('authPassword').value)
-                .catch(err => { document.getElementById('authError').innerText = err.message.replace('Firebase: ', ''); document.getElementById('authError').style.display = 'block'; });
+                .catch(err => { 
+                    document.getElementById('authError').innerText = err.message.replace('Firebase: ', ''); 
+                    document.getElementById('authError').style.display = 'block'; 
+                });
         });
 
         document.getElementById('logoutBtn')?.addEventListener('click', () => signOut(auth));
+        
+        // Expose db and auth globally so app.js can access them for continuous auto-save
+        window.fbDb = db;
+        window.fbAuth = auth;
     </script>
 </body>
 </html>
