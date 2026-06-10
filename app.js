@@ -32,19 +32,27 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- 1. CORE PDF ENGINE ---
     let jsPDF = window.jspdf ? window.jspdf.jsPDF : null;
 
-    // --- 2. AUTOSAVE (Local Fallback) ---
-    const saveForms = () => {
-        const data = {};
-        document.querySelectorAll('input:not([type="file"]), select, textarea').forEach(input => {
-            if(input.id) data[input.id] = input.value;
-        });
-        localStorage.setItem('surveyAppData', JSON.stringify(data));
+    // --- 2. CONTINUOUS AUTOSAVE (Local Fallback + Cloud Override) ---
+    let autoSaveTimeout;
+    const triggerAutoSave = () => {
+        clearTimeout(autoSaveTimeout);
+        autoSaveTimeout = setTimeout(() => {
+            // Local fallback
+            const data = {};
+            document.querySelectorAll('input:not([type="file"]), select, textarea').forEach(input => {
+                if(input.id) data[input.id] = input.value;
+            });
+            localStorage.setItem('surveyAppData', JSON.stringify(data));
+            
+            // Cloud Continuous Override
+            if(window.performCloudAutoSave) window.performCloudAutoSave();
+        }, 1000); // Triggers 1 second after user stops typing
     };
 
     const savedData = JSON.parse(localStorage.getItem('surveyAppData')) || {};
     document.querySelectorAll('input:not([type="file"]), select, textarea').forEach(input => {
         if (input.id && savedData[input.id]) input.value = savedData[input.id];
-        input.addEventListener('input', saveForms);
+        input.addEventListener('input', triggerAutoSave);
     });
 
     document.getElementById('resetFormBtn')?.addEventListener('click', () => {
@@ -54,7 +62,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- 3. DYNAMIC SURVEY LABEL ---
+    // --- 3. GLOBAL IMAGE COMPRESSOR ---
+    // This fixes the missing image logic and compresses everything to keep payloads small
+    window.uploadedImagesStore = { misc: [], survey: [], access: [] };
+    
+    const compressAndStoreFile = (file, storeKey) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX = 800; let w = img.width, h = img.height;
+                if(w > h && w > MAX) { h *= MAX/w; w = MAX; } else if (h > MAX) { w *= MAX/h; h = MAX; }
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                window.uploadedImagesStore[storeKey].push(canvas.toDataURL('image/jpeg', 0.6));
+                triggerAutoSave();
+                window.showToast("Image Compressed & Attached", true);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const setupMultiUpload = (id, key) => {
+        document.getElementById(id)?.addEventListener('change', (e) => {
+            Array.from(e.target.files).forEach(file => compressAndStoreFile(file, key));
+        });
+    };
+    setupMultiUpload('miscPhotos', 'misc');
+    setupMultiUpload('surveyPhotos', 'survey');
+    setupMultiUpload('accessPhotos', 'access');
+
+    // --- 4. DYNAMIC SURVEY LABEL ---
     const updateDynamicLabel = () => {
         const needs = [];
         if (document.getElementById('treesExist')?.value === 'Yes') needs.push('Trees');
@@ -68,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     document.querySelectorAll('.dyn-survey-select').forEach(sel => sel.addEventListener('change', updateDynamicLabel));
 
-    // --- 4. FABRIC CANVAS ENGINE (WITH COMPRESSION) ---
+    // --- 5. FABRIC CANVAS ENGINE (WITH MEASUREMENT TOOL) ---
     window.appCanvases = {};
     document.querySelectorAll('.canvas-group').forEach(group => {
         const id = group.getAttribute('data-id');
@@ -84,6 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = JSON.parse(localStorage.getItem('surveyAppData')) || {}; 
             data['canvas_' + id] = JSON.stringify(fCanvas.toJSON()); 
             localStorage.setItem('surveyAppData', JSON.stringify(data)); 
+            triggerAutoSave();
         };
         fCanvas.on('object:added', saveCanvas);
         fCanvas.on('object:modified', saveCanvas);
@@ -114,21 +155,65 @@ document.addEventListener('DOMContentLoaded', function() {
             reader.readAsDataURL(file);
         });
 
-        group.querySelector('.freehand-btn')?.addEventListener('click', () => { fCanvas.isDrawingMode = true; fCanvas.freeDrawingBrush.color = '#00E5FF'; });
-        group.querySelector('.lock-btn')?.addEventListener('click', () => { fCanvas.isDrawingMode = false; });
+        // Inject Measurement Tool dynamically
+        const toolSection = group.querySelector('.tool-section');
+        if(toolSection && !group.querySelector('.measure-btn')) {
+            const measureBtn = document.createElement('button');
+            measureBtn.type = 'button'; measureBtn.className = 'tool-btn measure-btn'; measureBtn.title = 'Calibrate Scale';
+            measureBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="12" x2="3" y2="12"></line><line x1="21" y1="6" x2="21" y2="18"></line><line x1="3" y1="6" x2="3" y2="18"></line></svg>';
+            toolSection.appendChild(measureBtn);
+
+            measureBtn.addEventListener('click', () => {
+                group.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                measureBtn.classList.add('active');
+                const knownSize = prompt("Enter real-world length of the line you will draw (in mm):");
+                if(!knownSize) return;
+                
+                fCanvas.isDrawingMode = true;
+                fCanvas.freeDrawingBrush = new fabric.PencilBrush(fCanvas);
+                fCanvas.freeDrawingBrush.color = '#ff0000'; 
+                fCanvas.freeDrawingBrush.width = 3;
+                
+                fCanvas.once('path:created', (e) => {
+                    const ratio = knownSize / e.path.width;
+                    fCanvas.scaleRatio = ratio;
+                    window.showToast(`Calibrated: 1px = ${parseFloat(ratio).toFixed(2)}mm`);
+                    fCanvas.isDrawingMode = false;
+                    measureBtn.classList.remove('active');
+                    group.querySelector('.lock-btn')?.classList.add('active');
+                });
+            });
+        }
+
+        // Repairing Tool Buttons
+        const resetBtns = () => group.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+
+        group.querySelector('.lock-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); fCanvas.isDrawingMode = false; });
+        group.querySelector('.freehand-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); fCanvas.isDrawingMode = true; fCanvas.freeDrawingBrush = new fabric.PencilBrush(fCanvas); fCanvas.freeDrawingBrush.color = '#00E5FF'; fCanvas.freeDrawingBrush.width = 4; });
+        group.querySelector('.highlight-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); fCanvas.isDrawingMode = true; fCanvas.freeDrawingBrush = new fabric.PencilBrush(fCanvas); fCanvas.freeDrawingBrush.color = 'rgba(255, 255, 0, 0.4)'; fCanvas.freeDrawingBrush.width = 20; });
+        group.querySelector('.text-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); fCanvas.isDrawingMode = false; const text = new fabric.IText('Double click to edit', { left: 50, top: 50, fontFamily: 'sans-serif', fill: '#00E5FF', fontSize: 24 }); fCanvas.add(text); fCanvas.setActiveObject(text); saveCanvas(); });
+        group.querySelector('.undo-btn')?.addEventListener('click', () => { const objs = fCanvas.getObjects(); if(objs.length > 0) { const last = objs[objs.length - 1]; if(objs.length === 1 && last.type === 'image') return; fCanvas.remove(last); saveCanvas(); } });
         group.querySelector('.clear-btn')?.addEventListener('click', () => { fCanvas.getObjects().filter(o => o.type !== 'image').forEach(o => fCanvas.remove(o)); saveCanvas(); });
     });
 
-    // --- 5. PDF ENGINE WITH BRANDING INJECTION ---
+    // --- 6. PROFILE-DRIVEN PDF ENGINE WITH BRANDING INJECTION ---
     async function generateMultiPagePDF(templateId, filename) {
         if (!jsPDF) return window.showToast("PDF Engine loading, try again in a moment.", false);
+        
+        // Block 1 Mandatory Field Logic
+        const clientName = document.getElementById('clientName')?.value.trim();
+        const postCode = document.getElementById('postCode')?.value.trim();
+        if(!clientName || !postCode) {
+            return window.showToast("Error: Client Name & Postcode are mandatory for PDF.", false);
+        }
+
         window.showToast("Generating Branded PDF...");
 
         const template = document.getElementById(templateId);
         if(!template) return;
 
-        // Apply Dynamic Brand Colors
-        const brand = document.getElementById('brandSelect')?.value;
+        // Apply Dynamic Brand Colors from User Profile
+        const profile = window.currentUserProfile || { brand: 'CO Home Improvements' };
         const brandStyles = {
             'Yorkshire Windows': '#005a9c',
             'CO Home Improvements': '#2C3E50',
@@ -138,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'Trent Valley Windows': '#c0392b',
             'West Yorkshire Windows': '#16a085'
         };
-        const brandColor = brandStyles[brand] || '#0F3759'; // Default Navy
+        const brandColor = brandStyles[profile.brand] || '#0F3759'; // Default Navy
 
         // Smart color swap for PDF template elements
         template.querySelectorAll('*').forEach(el => {
@@ -179,11 +264,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- 6. PDF POPULATION LISTENERS ---
+    // --- 7. PDF POPULATION LISTENERS ---
     document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', () => {
         const rawName = document.getElementById('clientName')?.value.trim() || 'Valued Customer';
         const surname = rawName.split(' ').pop() || 'Customer';
-        const brand = document.getElementById('brandSelect')?.value || "CO Home Improvements";
+        
+        // Fetch logic from secure profile, not the dropdowns
+        const profile = window.currentUserProfile || { name: 'Your Designer', phone: '07700 900000', email: 'designer@cohi.co.uk', brand: 'COHI' };
         
         document.getElementById('lp-greeting').innerText = `Dear ${rawName}, thank you for your time today to discuss your exciting new project.`;
         document.getElementById('lp-size').innerText = `Based on our measurements, we are looking at a proposed size of approximately ${document.getElementById('proposedSize')?.value || "TBC"}.`;
@@ -205,26 +292,37 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('lp-revisit').innerText = `We haven't booked in a date for our next catch-up just yet, but as soon as we work out a time, we will get you scheduled in.`;
         }
 
-        const dName = document.getElementById('designerSelect')?.value || "Your Designer";
-        document.getElementById('lp-designer-name').innerText = dName;
-        
-        let dPhone = "07700 900000", dEmail = "designer@cohi.co.uk";
-        if (window.designerProfiles && window.designerProfiles[dName]) {
-            dPhone = window.designerProfiles[dName].phone || dPhone;
-            dEmail = window.designerProfiles[dName].email || dEmail;
-        }
-        document.getElementById('lp-designer-contact').innerText = `${dPhone} | ${dEmail}`;
+        // Profile Injection
+        document.getElementById('lp-designer-name').innerText = profile.name;
+        document.getElementById('lp-designer-contact').innerText = `${profile.phone} | ${profile.email}`;
 
-        generateMultiPagePDF('pdfTemplateCustomer', `${surname}_${brand.replace(/\s+/g, '_')}_Consultation.pdf`);
+        // Re-integrated Image Grid Logic
+        const allCustImages = [...(window.uploadedImagesStore.misc || []), ...(window.uploadedImagesStore.survey || [])];
+        const imagePage = document.getElementById('customerPdfImagePage');
+        const imageGrid = document.getElementById('pdfCustomerImagesGrid');
+        
+        if (allCustImages.length > 0 && imagePage && imageGrid) {
+            imagePage.style.display = 'block';
+            imageGrid.innerHTML = allCustImages.map(imgSrc => 
+                `<div style="display: inline-block; width: 46%; margin: 1%; box-sizing: border-box;">
+                    <img src="${imgSrc}" style="width: 100%; height: 250px; object-fit: contain; border: 1px solid #ccc; border-radius: 4px; padding: 10px; background: #fff;">
+                </div>`
+            ).join('');
+        } else if (imagePage) {
+            imagePage.style.display = 'none';
+        }
+
+        generateMultiPagePDF('pdfTemplateCustomer', `${surname}_${profile.brand.replace(/\s+/g, '_')}_Consultation.pdf`);
     });
 
     document.getElementById('generateInternalPdfBtn')?.addEventListener('click', () => {
         const rawName = document.getElementById('clientName')?.value.trim() || 'Valued Customer';
         const surname = rawName.split(' ').pop() || 'Customer';
+        const profile = window.currentUserProfile || { name: 'N/A' };
 
         document.getElementById('intPdfName').innerText = rawName;
         document.getElementById('intPdfDate').innerText = document.getElementById('apptDate')?.value || "N/A";
-        document.getElementById('intPdfDesigner').innerText = document.getElementById('designerSelect')?.value || "N/A";
+        document.getElementById('intPdfDesigner').innerText = profile.name;
         document.getElementById('intPdfBuild').innerText = document.getElementById('buildType')?.value || "N/A";
         document.getElementById('intPdfRoof').innerText = document.getElementById('roofType')?.value || "N/A";
         document.getElementById('intPdfNotes').innerText = document.getElementById('designerNotes')?.value || "None";
