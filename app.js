@@ -268,25 +268,79 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- 5. SECURE WATERMARK & PDF ENGINE ---
+   // --- 5. SECURE WATERMARK & PDF ENGINE (ROBUST VERSION) ---
+const getBase64Logo = (brandName) => new Promise(resolve => {
+    // List of potential paths/names - check these match your actual files!
+    const fileNames = [`${brandName}.png`, `${brandName}.jpg`, `${brandName.replace(/ /g, '')}.png`, 'logo.png'];
     
-    // Auto-search for the correct logo based on the brand name
-    const getBase64Logo = (brandName) => new Promise(resolve => {
-        const fileNames = [`${brandName}.png`, `${brandName}.jpg`, `${brandName.replace(/ /g, '')}.png`, `logo.png`];
-        const tryLoad = (index) => {
-            if(index >= fileNames.length) return resolve(null);
-            const img = new Image();
-            img.crossOrigin = "Anonymous"; // Fix for potential canvas tainting
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width; canvas.height = img.height;
-                canvas.getContext('2d').drawImage(img, 0, 0);
-                resolve(canvas.toDataURL('image/png'));
-            };
-            img.onerror = () => tryLoad(index + 1);
-            img.src = fileNames[index];
+    const tryLoad = (index) => {
+        if(index >= fileNames.length) {
+            console.error("PDF Engine: Could not find any logo for", brandName);
+            return resolve(null);
+        }
+        
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+            console.log("PDF Engine: Successfully loaded logo:", fileNames[index]);
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width; 
+            canvas.height = img.height;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
         };
-        tryLoad(0);
+        img.onerror = () => {
+            console.warn("PDF Engine: Failed to load", fileNames[index]);
+            tryLoad(index + 1);
+        };
+        img.src = fileNames[index];
+    };
+    tryLoad(0);
+});
+
+    async function generateMultiPagePDF(templateId, filename) {
+        if (!jsPDF) return window.showToast("PDF Engine loading...", false);
+        
+        const clientName = document.getElementById('clientName')?.value.trim();
+        const postCode = document.getElementById('postCode')?.value.trim();
+        if(!clientName || !postCode) return window.showToast("Error: Client Name & Postcode are mandatory.", false);
+
+        window.showToast("Generating Branded PDF...");
+        const template = document.getElementById(templateId);
+        if(!template) return;
+
+        const profile = window.currentUserProfile || { brand: 'CO Home Improvements' };
+        const brandStyles = { 'Yorkshire Windows': '#005a9c', 'CO Home Improvements': '#2C3E50', 'Clearview': '#27ae60', 'Orion Windows': '#d35400', 'Planet': '#8e44ad', 'Trent Valley Windows': '#c0392b', 'West Yorkshire Windows': '#16a085' };
+        const brandColor = brandStyles[profile.brand] || '#0F3759';
+
+        // --- 5. SECURE WATERMARK & PDF ENGINE (ROBUST VERSION) ---
+    const getBase64Logo = (brandName) => new Promise(resolve => {
+        // Explicit mapping for your files
+        const logoMap = {
+            'CO Home Improvements': 'co-logo.png',
+            'Clearview': 'clearview.png',
+            'Orion Windows': 'orion.png',
+            'Planet': 'planet.png',
+            'Trent Valley Windows': 'trentvalley.png',
+            'West Yorkshire Windows': 'westyorkshire.png',
+            'Yorkshire Windows': 'yorkshire.png'
+        };
+
+        const fileName = logoMap[brandName] || 'logo.png';
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width; 
+            canvas.height = img.height;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = () => {
+            console.error("PDF Engine: Failed to load logo:", fileName);
+            resolve(null);
+        };
+        img.src = fileName;
     });
 
     async function generateMultiPagePDF(templateId, filename) {
@@ -304,30 +358,62 @@ document.addEventListener('DOMContentLoaded', function() {
         const brandStyles = { 'Yorkshire Windows': '#005a9c', 'CO Home Improvements': '#2C3E50', 'Clearview': '#27ae60', 'Orion Windows': '#d35400', 'Planet': '#8e44ad', 'Trent Valley Windows': '#c0392b', 'West Yorkshire Windows': '#16a085' };
         const brandColor = brandStyles[profile.brand] || '#0F3759';
 
+        // Apply dynamic brand colors
         template.querySelectorAll('*').forEach(el => {
-    if (el.classList.contains('brand-text')) el.style.color = brandColor;
-    if (el.classList.contains('brand-bg')) el.style.backgroundColor = brandColor;
-    if (el.classList.contains('brand-border-bottom')) el.style.borderBottomColor = brandColor;
-    if (el.classList.contains('brand-border-left')) el.style.borderLeftColor = brandColor;
-});
-        template.style.display = 'block'; template.style.position = 'absolute'; template.style.width = '800px'; template.style.zIndex = '-9999';
+            if (el.classList.contains('brand-text')) el.style.color = brandColor;
+            if (el.classList.contains('brand-bg')) el.style.backgroundColor = brandColor;
+            if (el.classList.contains('brand-border-bottom')) el.style.borderBottomColor = brandColor;
+            if (el.classList.contains('brand-border-left')) el.style.borderLeftColor = brandColor;
+        });
+
+        // Inject logo into the template images BEFORE taking the snapshot
+        const logoBase64 = await getBase64Logo(profile.brand);
+        if(logoBase64) {
+            template.querySelectorAll('.dynamic-brand-logo').forEach(img => img.src = logoBase64);
+        }
+
+        template.style.display = 'block'; 
+        template.style.position = 'absolute'; 
+        template.style.width = '800px'; 
+        template.style.zIndex = '-9999';
         
         try {
-            // Fetch the image logo
-            const logoBase64 = await getBase64Logo(profile.brand);
-            
-            // Inject logo into the premium header images
-            template.querySelectorAll('.dynamic-brand-logo').forEach(img => {
-                if(logoBase64) img.src = logoBase64; 
-                else img.style.display = 'none';
-            });
-
             const canvas = await html2canvas(template, { scale: 2, windowWidth: 800, windowHeight: template.scrollHeight });
             const pdf = new jsPDF('p', 'mm', 'a4');
             const imgHeight = (canvas.height * pdf.internal.pageSize.getWidth()) / canvas.width;
             
             let heightLeft = imgHeight; let position = 0; const pdfHeight = pdf.internal.pageSize.getHeight();
             
+            const stampLogo = () => {
+                if(logoBase64) {
+                    try {
+                        pdf.setGState(new pdf.GState({opacity: 0.08}));
+                        const size = 150;
+                        const x = (pdf.internal.pageSize.getWidth() - size) / 2;
+                        const y = (pdfHeight - size) / 2;
+                        pdf.addImage(logoBase64, 'PNG', x, y, size, size);
+                        pdf.setGState(new pdf.GState({opacity: 1.0}));
+                    } catch(e) { console.warn("Watermark error", e); }
+                }
+            };
+
+            pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, position, pdf.internal.pageSize.getWidth(), imgHeight);
+            stampLogo();
+            heightLeft -= pdfHeight;
+            
+            while (heightLeft > 0) { 
+                position = position - pdfHeight; 
+                pdf.addPage(); 
+                pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, position, pdf.internal.pageSize.getWidth(), imgHeight); 
+                stampLogo();
+                heightLeft -= pdfHeight; 
+            }
+            
+            pdf.save(filename);
+            window.showToast("PDF Export Complete!", true);
+        } catch(e) { console.error(e); window.showToast("PDF Generation Failed", false); } 
+        finally { template.style.display = 'none'; }
+    }            
             // Image stamping function
             const stampLogo = () => {
                 if(logoBase64) {
