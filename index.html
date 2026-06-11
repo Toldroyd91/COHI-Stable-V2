@@ -31,9 +31,7 @@
             display: flex; justify-content: center; align-items: center;
             transition: opacity 0.8s ease-in-out, visibility 0.8s;
         }
-        .logo-container {
-            position: relative; width: 280px; height: 140px;
-        }
+        .logo-container { position: relative; width: 280px; height: 140px; }
         .splash-logo {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             object-fit: contain; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -42,6 +40,10 @@
         #logoCoh.fade-out { opacity: 0; transform: scale(1.1); filter: drop-shadow(0 0 0px transparent); }
         #logoBrand { opacity: 0; transform: scale(0.9); }
         #logoBrand.fade-in { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 25px rgba(255,255,255,0.15)); }
+        
+        .photo-badge {
+            background: #FF6B00; color: #fff; padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: bold; margin-left: 5px; display: none;
+        }
     </style>
 </head>
 <body>
@@ -203,13 +205,14 @@
         <article class="card">
             <h2 class="card__title">Access & Logistics</h2>
             <div class="form-grid">
-                <div class="form-group"><label class="form-group__label">Wheelbarrow difficulties?</label><select id="accessDifficult" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Access Issues?</label><select id="accessDifficult" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
                 <div class="form-group"><label class="form-group__label">Narrowest access point (mm):</label><input type="number" id="accessWidth" class="form-group__input"></div>
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label class="form-group__label">Upload access photos:</label>
-                    <div class="custom-file-upload mt-10">
+                    <div class="custom-file-upload mt-10" style="display: flex; gap: 10px; align-items: center;">
                         <input type="file" id="accessPhotos" class="hidden-input" accept="image/*" multiple>
-                        <label for="accessPhotos" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Select Access Images</label>
+                        <label for="accessPhotos" class="upload-label" style="flex-grow: 1;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Select Access Images <span id="count-access" class="photo-badge">0</span></label>
+                        <button type="button" class="button btn-danger" onclick="window.clearPhotos('access')" style="padding: 10px; min-width: 40px;" title="Clear Photos">X</button>
                     </div>
                 </div>
             </div>
@@ -220,6 +223,7 @@
                 <div class="form-group"><label class="form-group__label">House material:</label><select id="houseMaterial" class="form-group__input"><option value="">Select...</option><option value="Brick">Brick</option><option value="Stone">Stone</option><option value="Render">Render</option><option value="Other">Other</option></select></div>
                 <div class="form-group"><label class="form-group__label">Fascia Height (mm):</label><input type="text" id="fasciaHeight" class="form-group__input"></div>
                 <div class="form-group"><label class="form-group__label">Air Bricks? How many?</label><select id="airbricks" class="form-group__input"><option value="">Select...</option><option value="No">No</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5+">5+</option></select></div>
+                <div class="form-group"><label class="form-group__label">SAP Calcs Required?</label><select id="sapCalcs" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
                 <div class="form-group" style="grid-column: 1 / -1;"><label class="form-group__label">Wall Obstacles:</label><textarea id="wallObstacles" class="form-group__input" rows="2"></textarea></div>
             </div>
 
@@ -232,9 +236,10 @@
             
             <div class="form-group" style="margin-top: 25px; background: #252525; padding: 15px; border-radius: 8px; border: 1px solid #333;">
                 <label id="dynamicSurveyUploadLabel" class="form-group__label" style="color: var(--accent); margin-bottom: 10px;">Site Survey Photos (General)</label>
-                <div class="custom-file-upload">
+                <div class="custom-file-upload" style="display: flex; gap: 10px; align-items: center;">
                     <input type="file" id="surveyPhotos" class="hidden-input" accept="image/*" multiple>
-                    <label for="surveyPhotos" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> Upload Survey Photos</label>
+                    <label for="surveyPhotos" class="upload-label" style="flex-grow: 1;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> Upload Survey Photos <span id="count-survey" class="photo-badge">0</span></label>
+                    <button type="button" class="button btn-danger" onclick="window.clearPhotos('survey')" style="padding: 10px; min-width: 40px;" title="Clear Photos">X</button>
                 </div>
             </div>
         </article>
@@ -254,19 +259,25 @@
                     </select>
                 </div>
                 <div class="form-group"><label class="form-group__label">Proposed Size (mm):</label><input type="text" id="proposedSize" class="form-group__input"></div>
-                <div class="form-group">
-                    <label class="form-group__label">Frame Colour:</label>
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                    <label class="form-group__label">Frame Colour (External):</label>
                     <select id="frameColour" class="form-group__input">
                         <option value="">Select...</option>
                         <option value="White">White</option>
-                        <option value="Light Oak Ext / White Int">Light Oak Ext / White Int</option>
-                        <option value="Light Oak Int & Ext">Light Oak Int & Ext</option>
                         <option value="Grey Foil">Grey Foil</option>
                         <option value="Rosewood">Rosewood</option>
+                        <option value="Light Oak">Light Oak</option>
                         <option value="Black Brown Foil">Black Brown Foil</option>
                         <option value="Cream Foil">Cream Foil</option>
                         <option value="Chartwell Green Foil">Chartwell Green Foil</option>
                         <option value="Agate Grey">Agate Grey</option>
+                    </select>
+                </div>
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                    <label class="form-group__label">Frame Colour (Internal):</label>
+                    <select id="internalFrameColour" class="form-group__input">
+                        <option value="White">White</option>
+                        <option value="Match External">Match External Colour</option>
                     </select>
                 </div>
                 <div class="form-group"><label class="form-group__label">Building Regs Required?</label><select id="buildingRegs" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
@@ -310,9 +321,10 @@
             <h2 class="card__title">Misc</h2>
             <div class="form-group" style="margin-top:15px;">
                 <label class="form-group__label">Additional Photos (Upload multiple):</label>
-                <div class="custom-file-upload mt-10">
+                <div class="custom-file-upload mt-10" style="display: flex; gap: 10px; align-items: center;">
                     <input type="file" id="miscPhotos" class="hidden-input" accept="image/*" multiple>
-                    <label for="miscPhotos" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg> Select Misc Images</label>
+                    <label for="miscPhotos" class="upload-label" style="flex-grow: 1;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg> Select Misc Images <span id="count-misc" class="photo-badge">0</span></label>
+                    <button type="button" class="button btn-danger" onclick="window.clearPhotos('misc')" style="padding: 10px; min-width: 40px;" title="Clear Photos">X</button>
                 </div>
             </div>
         </article>
@@ -325,8 +337,20 @@
             <div class="form-group" style="margin-top: 10px;">
                 <label style="color: #fff;"><input type="checkbox" id="includeNotesInPack" checked> Include Designer Notes</label>
             </div>
-            <div class="form-group" style="margin-top: 10px;">
-                <label style="color: #fff;"><input type="checkbox" id="includeFlyersInPack" checked> Include Pamphlets / Journey Guide</label>
+            
+            <h3 class="section-subtitle mt-20" style="color: #fff; font-size: 0.9rem; margin-bottom: 10px; border-top: 1px solid #333; padding-top: 15px;">Smart Pamphlets to Include:</h3>
+            <div id="flyerToggles" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9rem; color: #ccc;">
+                <label><input type="checkbox" class="pamphlet-cb" value="journey-1.jpg" checked> The Journey (Pt 1)</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="journey-2.jpg" checked> The Journey (Pt 2)</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="who-we-are.jpg" checked> Who We Are</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="protecting-home.jpg" checked> Protecting Your Home</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="tailored.jpg" checked> Tailored For You</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="why-choose-us.jpg" checked> Why Choose Us</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="planning.jpg" id="cb-planning" checked> Planning Permission</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="sap-calcs.jpg" id="cb-sap" checked> SAP Calcs</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="cavity.jpg" id="cb-cavity"> Cavity Trays</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="piling.jpg" id="cb-piling"> Piling System</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="roof-info.jpg" id="cb-roof"> Selected Roof Info</label>
             </div>
         </article>
 
@@ -433,7 +457,7 @@
                 </div>
                 <div style="width: 31%; background: #fff; padding: 15px 20px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.04);">
                     <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase;">Frame Colour</p>
-                    <p id="pdfFrameColour" style="margin: 5px 0 0 0; font-size: 16px; font-weight: bold; color: #111;"></p>
+                    <p id="pdfFrameColour" style="margin: 5px 0 0 0; font-size: 16px; font-weight: bold; color: #111; line-height: 1.2;"></p>
                 </div>
                 <div style="width: 31%; background: #fff; padding: 15px 20px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.04);">
                     <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase;">Building Regs</p>
@@ -460,7 +484,7 @@
                     <p style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111;"><span id="pdfAccessWidth"></span> mm</p>
                 </div>
                 <div style="width: 23%; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.03);">
-                    <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">Wheelbarrow</p>
+                    <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">Access Issues</p>
                     <p id="pdfAccessDifficult" style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111;"></p>
                 </div>
                 <div style="width: 100%; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.03);">
@@ -505,9 +529,12 @@
 
         <div class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px 50px;">
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 2px solid #ddd; padding-bottom: 15px;">
-                <h2 style="font-size: 22px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Access & <span class="brand-text" style="color: #002f54;">Logistics</span></h2>
+                <h2 style="font-size: 22px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Site <span class="brand-text" style="color: #002f54;">Imagery</span></h2>
                 <img class="dynamic-brand-logo" src="" style="max-width: 120px; max-height: 40px; object-fit: contain;">
             </div>
+
+            <p style="margin:0 0 10px 0; font-weight:800; font-size: 13px; text-transform:uppercase; color: #111; letter-spacing: 1px;">General Survey Uploads</p>
+            <div id="pdfSurveyPhotosGrid" style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 30px;"></div>
 
             <p style="margin:0 0 10px 0; font-weight:800; font-size: 13px; text-transform:uppercase; color: #111; letter-spacing: 1px;">Access Route Uploads</p>
             <div id="pdfAccessPhotosGrid" style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 30px;"></div>
@@ -644,6 +671,9 @@
         const loadFormState = (payload) => {
             if (payload.inputs) { for (let key in payload.inputs) { const el = document.getElementById(key); if (el) el.value = payload.inputs[key]; } }
             if (payload.canvases && window.appCanvases) { for (let key in payload.canvases) if (window.appCanvases[key]) window.appCanvases[key].loadFromJSON(payload.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key])); }
+            
+            // Re-trigger photo counters
+            ['misc', 'survey', 'access'].forEach(k => window.updatePhotoCount(k));
             window.showToast("Survey Loaded");
         };
 
