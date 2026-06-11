@@ -305,12 +305,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const brandColor = brandStyles[profile.brand] || '#0F3759';
 
         template.querySelectorAll('*').forEach(el => {
-            if (el.style.color === 'rgb(15, 55, 89)' || el.style.color === '#0F3759') el.style.color = brandColor;
-            if (el.style.backgroundColor === 'rgb(15, 55, 89)' || el.style.backgroundColor === '#0F3759') el.style.backgroundColor = brandColor;
-            if (el.style.borderBottomColor === 'rgb(15, 55, 89)' || el.style.borderBottomColor === '#0F3759') el.style.borderBottomColor = brandColor;
-            if (el.style.borderLeftColor === 'rgb(15, 55, 89)' || el.style.borderLeftColor === '#0F3759') el.style.borderLeftColor = brandColor;
-        });
-
+    if (el.classList.contains('brand-text')) el.style.color = brandColor;
+    if (el.classList.contains('brand-bg')) el.style.backgroundColor = brandColor;
+    if (el.classList.contains('brand-border-bottom')) el.style.borderBottomColor = brandColor;
+    if (el.classList.contains('brand-border-left')) el.style.borderLeftColor = brandColor;
+});
         template.style.display = 'block'; template.style.position = 'absolute'; template.style.width = '800px'; template.style.zIndex = '-9999';
         
         try {
@@ -468,14 +467,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if(notesEl) notesEl.innerText = document.getElementById('designerNotes')?.value || 'None';
 
         // 3. Populate Uploaded Photos Grids
-        const populateGrid = (storeKey, gridId) => {
-            const grid = document.getElementById(gridId);
-            if(grid) {
-                grid.innerHTML = (window.uploadedImagesStore[storeKey] || []).map(imgSrc => 
-                    `<img src="${imgSrc}" style="width: 100%; height: 200px; object-fit: contain; border: 1px solid #ccc; background: #fff;">`
-                ).join('');
-            }
-        };
+     const populateGrid = (storeKey, gridId) => {
+    const grid = document.getElementById(gridId);
+    if(grid) {
+        grid.innerHTML = (window.uploadedImagesStore[storeKey] || []).map(imgSrc => 
+            `<div style="position: relative; width: 48%; height: 220px; background: #fff; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                <img class="dynamic-brand-logo" src="" style="position: absolute; width: 60%; opacity: 0.08; pointer-events: none; mix-blend-mode: multiply;">
+                <img src="${imgSrc}" style="max-width: 100%; max-height: 100%; object-fit: contain; position: relative; z-index: 2;">
+            </div>`
+        ).join('');
+    }
+};
         populateGrid('access', 'pdfAccessPhotosGrid');
         populateGrid('misc', 'pdfMiscPhotosGrid');
 
