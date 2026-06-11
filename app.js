@@ -316,6 +316,12 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             // Fetch the image logo
             const logoBase64 = await getBase64Logo(profile.brand);
+            
+            // Inject logo into the premium header images
+            template.querySelectorAll('.dynamic-brand-logo').forEach(img => {
+                if(logoBase64) img.src = logoBase64; 
+                else img.style.display = 'none';
+            });
 
             const canvas = await html2canvas(template, { scale: 2, windowWidth: 800, windowHeight: template.scrollHeight });
             const pdf = new jsPDF('p', 'mm', 'a4');
