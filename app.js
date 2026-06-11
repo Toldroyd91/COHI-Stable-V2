@@ -75,8 +75,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const needs = [];
         if (document.getElementById('treesExist')?.value === 'Yes') needs.push('Trees');
         if (document.getElementById('manholeExist')?.value === 'Yes') needs.push('Manholes');
+        if (document.getElementById('weepventsExist')?.value === 'Yes') needs.push('Weep Vents');
+        if (document.getElementById('pipesExist')?.value === 'Yes') needs.push('Pipes');
+        
         const label = document.getElementById('dynamicSurveyUploadLabel');
-        if (label) { label.innerText = needs.length > 0 ? `Capture: ${needs.join(', ')}` : `Site Survey Photos (General)`; label.style.color = needs.length > 0 ? '#ffc107' : 'var(--accent)'; }
+        if (label) { 
+            label.innerText = needs.length > 0 ? `Capture: ${needs.join(', ')}` : `Site Survey Photos (General)`; 
+            label.style.color = needs.length > 0 ? '#ffc107' : 'var(--accent)'; 
+        }
     };
     document.querySelectorAll('.dyn-survey-select').forEach(sel => sel.addEventListener('change', updateDynamicLabel));
 
@@ -182,9 +188,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 imgObj.onload = () => {
                     const c = document.createElement('canvas'); c.width = 800; c.height = 800 * (imgObj.height/imgObj.width);
                     c.getContext('2d').drawImage(imgObj, 0, 0, c.width, c.height);
-                   fabric.Image.fromURL(c.toDataURL('image/jpeg', 0.6), (img) => {
+                    fabric.Image.fromURL(c.toDataURL('image/jpeg', 0.6), (img) => {
                         fCanvas.clear();
-                        // Calculate perfect fit scale ratio
                         const scale = Math.min(fCanvas.width / img.width, fCanvas.height / img.height);
                         img.set({ 
                             scaleX: scale, 
@@ -196,7 +201,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             selectable: false 
                         });
                         fCanvas.add(img); fCanvas.sendToBack(img); saveCanvas();
-                    });                };
+                    });                
+                };
                 imgObj.src = event.target.result;
             };
             reader.readAsDataURL(file);
@@ -276,7 +282,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- 5. SECURE WATERMARK & PDF ENGINE (ROBUST VERSION) ---
     const getBase64Logo = (brandName) => new Promise(resolve => {
-        // Explicit mapping for your files
         const logoMap = {
             'CO Home Improvements': 'co-logo.png',
             'Clearview': 'clearview.png',
@@ -316,10 +321,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if(!template) return;
 
         const profile = window.currentUserProfile || { brand: 'CO Home Improvements' };
-        const brandStyles = { 'Yorkshire Windows': '#005a9c', 'CO Home Improvements': '#2C3E50', 'Clearview': '#27ae60', 'Orion Windows': '#d35400', 'Planet': '#8e44ad', 'Trent Valley Windows': '#c0392b', 'West Yorkshire Windows': '#16a085' };
-        const brandColor = brandStyles[profile.brand] || '#0F3759';
+        // Apply universal brand color as requested
+        const brandColor = '#002f54';
 
-        // Apply dynamic brand colors
         template.querySelectorAll('*').forEach(el => {
             if (el.classList.contains('brand-text')) el.style.color = brandColor;
             if (el.classList.contains('brand-bg')) el.style.backgroundColor = brandColor;
@@ -327,10 +331,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (el.classList.contains('brand-border-left')) el.style.borderLeftColor = brandColor;
         });
 
-        // Inject logo into the template images BEFORE taking the snapshot
         const logoBase64 = await getBase64Logo(profile.brand);
         if(logoBase64) {
-            template.querySelectorAll('.dynamic-brand-logo').forEach(img => img.src = logoBase64);
+            template.querySelectorAll('.dynamic-brand-logo').forEach(img => {
+                img.src = logoBase64;
+            });
         }
 
         template.style.display = 'block'; 
@@ -376,87 +381,10 @@ document.addEventListener('DOMContentLoaded', function() {
         finally { template.style.display = 'none'; }
     }
 
-    // --- BUTTON 1: CUSTOMER FACTS SHEET ---
-    document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', () => {
-        const rawName = document.getElementById('clientName')?.value.trim() || 'Valued Customer';
-        const surname = rawName.split(' ').pop();
-        const profile = window.currentUserProfile || { name: 'Designer', phone: '', email: '' };
-        
-        document.getElementById('lp-greeting').innerText = `Dear ${rawName}, thank you for your time today to discuss your exciting new project.`;
-        document.getElementById('lp-size').innerText = `Based on our measurements, we are looking at a proposed size of approximately ${document.getElementById('proposedSize')?.value || "TBC"}.`;
-        document.getElementById('lp-roof').innerText = `We discussed utilizing the ${document.getElementById('roofType')?.value || "TBC"} system to ensure the space is perfect year-round.`;
-        document.getElementById('lp-frame').innerText = `For the aesthetics, we have noted your preference for ${document.getElementById('frameColour')?.value || "TBC"} frames.`;
-        
-        const bRegs = document.getElementById('buildingRegs')?.value; const pPerms = document.getElementById('planningPerms')?.value;
-        document.getElementById('lp-compliance').innerText = (bRegs === "Yes" || (pPerms !== "No" && pPerms !== "")) ? `Your project will require compliance oversight (Building Regs: ${bRegs}, Planning: ${pPerms}). Our team handles all of this for you.` : "Your project currently looks to be exempt from additional planning compliance, streamlining our timeline.";
-        
-        const custNotes = document.getElementById('customerNotes')?.value;
-        const noteBox = document.getElementById('lp-custom-notes-box');
-        if(custNotes && noteBox) {
-            document.getElementById('lp-custom-notes').innerText = custNotes;
-            noteBox.style.display = 'block';
-        } else if (noteBox) { noteBox.style.display = 'none'; }
-
-        const rDate = document.getElementById('revisitDate')?.value;
-        document.getElementById('lp-revisit').innerText = rDate ? `I look forward to our next catch-up scheduled for ${rDate}. We will go through your custom 3D designs together then.` : `We haven't booked in a date for our next catch-up just yet, but as soon as we work out a time, we will get you scheduled in.`;
-
-        document.getElementById('lp-designer-name').innerText = profile.name; document.getElementById('lp-designer-contact').innerText = `${profile.phone} | ${profile.email}`;
-
-        generateMultiPagePDF('pdfTemplateCustomer', `${surname}_Facts_Sheet.pdf`);
-    });
-
-    // --- BUTTON 2: FULL CUSTOMER PROPOSAL (HYBRID) ---
-    document.getElementById('generateHybridPdfBtn')?.addEventListener('click', () => {
-        const rawName = document.getElementById('clientName')?.value.trim() || 'Customer';
-        const surname = rawName.split(' ').pop();
-        
-        // 1. Intro Details
-        document.getElementById('full-greeting').innerText = `Dear ${rawName}, thank you for your time today. Below is a curated summary of our discussions and the technical specifications required to bring your vision to life.`;
-        document.getElementById('full-size').innerText = `Proposed Specs: ${document.getElementById('buildType')?.value || 'TBC'} - ${document.getElementById('proposedSize')?.value || 'TBC'}`;
-        document.getElementById('full-roof').innerText = `Roof Configuration: ${document.getElementById('roofType')?.value || 'TBC'}`;
-        document.getElementById('full-frame').innerText = `Frame Specification: ${document.getElementById('frameColour')?.value || 'TBC'}`;
-        
-        const bRegs = document.getElementById('buildingRegs')?.value; const pPerms = document.getElementById('planningPerms')?.value;
-        document.getElementById('full-compliance').innerText = (bRegs === "Yes" || (pPerms !== "No" && pPerms !== "")) ? `Your project will require compliance oversight (Building Regs: ${bRegs}, Planning: ${pPerms}). Our team handles all of this for you.` : "Your project currently looks to be exempt from additional planning compliance.";
-        
-        const rDate = document.getElementById('revisitDate')?.value;
-        document.getElementById('full-revisit').innerText = rDate ? `I look forward to our next catch-up on ${rDate}.` : `I will be in touch shortly to schedule our next catch-up.`;
-
-        // 2. Technical Data
-        ['BuildType', 'ProposedSize', 'RoofType', 'FrameColour', 'HouseMaterial', 'DpcDepth', 'FasciaHeight', 'AirBricks', 'WallObstacles'].forEach(k => {
-            const el = document.getElementById('full' + k);
-            const val = document.getElementById(k.charAt(0).toLowerCase() + k.slice(1))?.value;
-            if(el) el.innerText = val || 'N/A';
-        });
-
-        // 3. Toggles Logic
-        const includeNotes = document.getElementById('includeNotesInPack')?.checked;
-        const notesSection = document.getElementById('full-notes-section');
-        if(includeNotes) {
-            notesSection.style.display = 'block';
-            document.getElementById('fullDesignerNotes').innerText = document.getElementById('customerNotes')?.value || document.getElementById('designerNotes')?.value || 'None provided.';
-        } else {
-            notesSection.style.display = 'none';
-        }
-
-        const includeSketch = document.getElementById('includeSketchInPack')?.checked;
-        const sketchSection = document.getElementById('full-sketch-section');
-        const sketchCanvas = window.appCanvases['designersketch'];
-        if(includeSketch && sketchCanvas) {
-            sketchSection.style.display = 'block';
-            sketchCanvas.setViewportTransform([1,0,0,1,0,0]); 
-            sketchCanvas.discardActiveObject(); 
-            sketchCanvas.renderAll(); 
-            document.getElementById('pdfImgFull-designersketch').src = sketchCanvas.toDataURL({ format: 'png' }); 
-        } else {
-            sketchSection.style.display = 'none';
-        }
-
-        generateMultiPagePDF('pdfTemplateFull', `${surname}_Full_Proposal.pdf`);
-    });
-
-    // --- BUTTON 3: INTERNAL TECHNICAL PDF ---
-    document.getElementById('generateInternalPdfBtn')?.addEventListener('click', () => {
+    // --- CONSOLIDATED PDF GENERATOR LOGIC ---
+    // Uses pdfTemplateInternal as the master template structure for both Customer & Internal
+    async function generateSurvey(isCustomer) {
+        const templateId = 'pdfTemplateInternal'; 
         const rawName = document.getElementById('clientName')?.value.trim() || 'Valued Customer';
         const surname = rawName.split(' ').pop() || 'Customer';
         const profile = window.currentUserProfile || { name: 'N/A' };
@@ -476,11 +404,35 @@ document.addEventListener('DOMContentLoaded', function() {
             const textEl = document.getElementById(`pdf${key}`);
             if (inputEl && textEl) textEl.innerText = inputEl.value || 'N/A';
         });
-        
-        const notesEl = document.getElementById('pdfDesignerNotes');
-        if(notesEl) notesEl.innerText = document.getElementById('designerNotes')?.value || 'None';
 
-        // 3. Populate Uploaded Photos Grids
+        // 3. Notes Toggle Logic
+        const notesEl = document.getElementById('pdfDesignerNotes');
+        if(notesEl) {
+            if(isCustomer && !document.getElementById('includeNotesInPack')?.checked) {
+                notesEl.style.display = 'none';
+                if(notesEl.previousElementSibling) notesEl.previousElementSibling.style.display = 'none';
+            } else {
+                notesEl.style.display = 'block';
+                if(notesEl.previousElementSibling) notesEl.previousElementSibling.style.display = 'block';
+                notesEl.innerText = (isCustomer && document.getElementById('customerNotes')?.value) 
+                    ? document.getElementById('customerNotes').value 
+                    : (document.getElementById('designerNotes')?.value || 'None');
+            }
+        }
+
+        // 4. Sketch Toggle Logic
+        const sketchWrapper = document.getElementById('pdfImgInternal-designersketch')?.parentElement?.parentElement;
+        if (sketchWrapper) {
+            if (isCustomer && !document.getElementById('includeSketchInPack')?.checked) {
+                sketchWrapper.style.display = 'none';
+                if(sketchWrapper.previousElementSibling) sketchWrapper.previousElementSibling.style.display = 'none';
+            } else {
+                sketchWrapper.style.display = 'block';
+                if(sketchWrapper.previousElementSibling) sketchWrapper.previousElementSibling.style.display = 'block';
+            }
+        }
+
+        // 5. Populate Uploaded Photos Grids
         const populateGrid = (storeKey, gridId) => {
             const grid = document.getElementById(gridId);
             if(grid) {
@@ -495,7 +447,7 @@ document.addEventListener('DOMContentLoaded', function() {
         populateGrid('access', 'pdfAccessPhotosGrid');
         populateGrid('misc', 'pdfMiscPhotosGrid');
 
-        // 4. Render Canvases
+        // 6. Render Canvases
         ['frontelevation', 'sideelevation', 'rearelevation', 'designersketch'].forEach(id => {
             const fCanvas = window.appCanvases[id];
             const imgTag = document.getElementById(`pdfImgInternal-${id}`);
@@ -507,6 +459,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        generateMultiPagePDF('pdfTemplateInternal', `${surname}_Technical_Survey.pdf`);
-    });
+        // 7. Pamphlet Injection (Customer Only)
+        let flyerPage = document.getElementById('pdfFlyerPage');
+        if (isCustomer && document.getElementById('includeFlyersInPack')?.checked) {
+            if (!flyerPage) {
+                flyerPage = document.createElement('div');
+                flyerPage.id = 'pdfFlyerPage';
+                flyerPage.className = 'pdf-page';
+                flyerPage.style.padding = '40px 50px';
+                document.getElementById(templateId).appendChild(flyerPage);
+            }
+            const pamphletFiles = ['cavity.jpg', 'journey-1.jpg', 'journey-2.jpg', 'journey.jpg', 'piling.jpg', 'planning.jpg', 'protecting-home.jpg', 'sap-calcs.jpg', 'tailored.jpg', 'who-we-are.jpg', 'why-choose-us.jpg'];
+            flyerPage.innerHTML = pamphletFiles.map(f => `<img src="pamphlet/${f}" style="width:100%; margin-bottom:20px; object-fit:contain;">`).join('');
+            flyerPage.style.display = 'block';
+        } else if (flyerPage) {
+            flyerPage.style.display = 'none';
+        }
+
+        const fileNameType = isCustomer ? 'Customer_Survey' : 'Internal_Survey';
+        await generateMultiPagePDF(templateId, `${surname}_${fileNameType}.pdf`);
+    }
+
+    // Bind the two consolidated buttons
+    document.getElementById('generateInternalPdfBtn')?.addEventListener('click', () => generateSurvey(false));
+    document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', () => generateSurvey(true));
 });
