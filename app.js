@@ -428,7 +428,7 @@ document.addEventListener('DOMContentLoaded', function() {
             sketchCanvas.setViewportTransform([1,0,0,1,0,0]); 
             sketchCanvas.discardActiveObject(); 
             sketchCanvas.renderAll(); 
-            document.getElementById('pdfImgFull-designersketch').src = sketchCanvas.toDataURL({ format: 'jpeg', quality: 0.9 });
+            document.getElementById('pdfImgFull-designersketch').src = sketchCanvas.toDataURL({ format: 'png' }); // <-- PNG FIX APPLIED HERE
         } else {
             sketchSection.style.display = 'none';
         }
@@ -481,7 +481,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 fCanvas.setViewportTransform([1,0,0,1,0,0]); 
                 fCanvas.discardActiveObject(); 
                 fCanvas.renderAll(); 
-                imgTag.src = fCanvas.toDataURL({ format: 'jpeg', quality: 0.9 }); 
+                imgTag.src = fCanvas.toDataURL({ format: 'png' }); // <-- PNG FIX APPLIED HERE
             }
         });
 
