@@ -21,30 +21,67 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log("[Diagnostics] Blueprint Enterprise Engine Initialized (V2 Final).");
     let jsPDF = window.jspdf ? window.jspdf.jsPDF : null;
 
+    // --- PHOTO MANAGEMENT UTILS ---
+    window.uploadedImagesStore = { misc: [], survey: [], access: [] };
+    
+    window.updatePhotoCount = function(storeKey) {
+        const badge = document.getElementById(`count-${storeKey}`);
+        if(badge) {
+            const count = window.uploadedImagesStore[storeKey].length;
+            badge.innerText = count > 0 ? `(${count})` : '';
+            badge.style.display = count > 0 ? 'inline-block' : 'none';
+        }
+    };
+
+    window.clearPhotos = function(storeKey) {
+        if(confirm(`Clear all ${storeKey} photos?`)) {
+            window.uploadedImagesStore[storeKey] = [];
+            window.updatePhotoCount(storeKey);
+            triggerAutoSave();
+        }
+    };
+
     // --- 1. CONTINUOUS AUTOSAVE ---
     let autoSaveTimeout;
     const triggerAutoSave = () => {
         clearTimeout(autoSaveTimeout);
         autoSaveTimeout = setTimeout(() => {
             const data = {};
-            document.querySelectorAll('input:not([type="file"]), select, textarea').forEach(input => { if(input.id) data[input.id] = input.value; });
+            document.querySelectorAll('input:not([type="file"]):not(.pamphlet-cb), select, textarea').forEach(input => { if(input.id) data[input.id] = input.value; });
             localStorage.setItem('surveyAppData', JSON.stringify(data));
             if(window.performCloudAutoSave) window.performCloudAutoSave();
         }, 1000); 
     };
 
     const savedData = JSON.parse(localStorage.getItem('surveyAppData')) || {};
-    document.querySelectorAll('input:not([type="file"]), select, textarea').forEach(input => {
+    document.querySelectorAll('input:not([type="file"]):not(.pamphlet-cb), select, textarea').forEach(input => {
         if (input.id && savedData[input.id]) input.value = savedData[input.id];
         input.addEventListener('input', triggerAutoSave);
     });
 
     document.getElementById('resetFormBtn')?.addEventListener('click', () => {
-        if(confirm("Clear all data for a new appointment?")) { localStorage.removeItem('surveyAppData'); location.reload(); }
+        if(confirm("Clear all data for a new appointment?")) { 
+            localStorage.removeItem('surveyAppData'); 
+            window.uploadedImagesStore = { misc: [], survey: [], access: [] };
+            location.reload(); 
+        }
     });
 
-    // --- 2. GLOBAL IMAGE COMPRESSOR ---
-    window.uploadedImagesStore = { misc: [], survey: [], access: [] };
+    // --- 2. SMART PAMPHLET AUTO-TICKERS ---
+    document.getElementById('planningPerms')?.addEventListener('change', (e) => {
+        const cb = document.getElementById('cb-planning');
+        if(cb) cb.checked = (e.target.value !== 'No' && e.target.value !== '');
+    });
+    document.getElementById('sapCalcs')?.addEventListener('change', (e) => {
+        const cb = document.getElementById('cb-sap');
+        if(cb) cb.checked = (e.target.value === 'Yes');
+    });
+    document.getElementById('roofType')?.addEventListener('change', (e) => {
+        const cb = document.getElementById('cb-roof');
+        if(cb) cb.checked = (e.target.value !== '');
+    });
+
+    // --- 3. GLOBAL IMAGE COMPRESSOR & INDICATORS ---
     const compressAndStoreFile = (file, storeKey) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -56,6 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 canvas.width = w; canvas.height = h;
                 canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                 window.uploadedImagesStore[storeKey].push(canvas.toDataURL('image/jpeg', 0.6));
+                window.updatePhotoCount(storeKey);
                 triggerAutoSave();
             };
             img.src = e.target.result;
@@ -80,13 +118,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const label = document.getElementById('dynamicSurveyUploadLabel');
         if (label) { 
-            label.innerText = needs.length > 0 ? `Capture: ${needs.join(', ')}` : `Site Survey Photos (General)`; 
+            label.innerHTML = needs.length > 0 ? `Capture: ${needs.join(', ')}` : `Site Survey Photos (General)`; 
             label.style.color = needs.length > 0 ? '#ffc107' : 'var(--accent)'; 
         }
     };
     document.querySelectorAll('.dyn-survey-select').forEach(sel => sel.addEventListener('change', updateDynamicLabel));
 
-    // --- 3. FABRIC CANVAS ENGINE (WITH DIMENSIONAL INTELLIGENCE) ---
+    // --- 4. FABRIC CANVAS ENGINE (FIXED ZOOM & SCROLL INTERCEPTION) ---
     window.appCanvases = {};
     document.querySelectorAll('.canvas-group').forEach(group => {
         const id = group.getAttribute('data-id');
@@ -190,7 +228,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     c.getContext('2d').drawImage(imgObj, 0, 0, c.width, c.height);
                     fabric.Image.fromURL(c.toDataURL('image/jpeg', 0.6), (img) => {
                         fCanvas.clear();
-                        const scale = Math.min(fCanvas.width / img.width, fCanvas.height / img.height);
+                        // Scale slightly down to ensure it perfectly fits inside boundaries
+                        const scale = Math.min(fCanvas.width / img.width, fCanvas.height / img.height) * 0.98;
                         img.set({ 
                             scaleX: scale, 
                             scaleY: scale, 
@@ -198,7 +237,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             originY: 'center', 
                             left: fCanvas.width / 2, 
                             top: fCanvas.height / 2, 
-                            selectable: false 
+                            selectable: false,   // Prevent selection ring
+                            evented: false       // Ignore touches (allows scrolling over image)
                         });
                         fCanvas.add(img); fCanvas.sendToBack(img); saveCanvas();
                     });                
@@ -254,7 +294,7 @@ document.addEventListener('DOMContentLoaded', function() {
         group.querySelector('.clear-btn')?.addEventListener('click', () => { fCanvas.getObjects().filter(o => o.type !== 'image').forEach(o => fCanvas.remove(o)); saveCanvas(); });
     });
 
-    // --- 4. LIVE AI NOTES REWRITER (FIREBASE CONNECTED) ---
+    // --- 5. LIVE AI NOTES REWRITER ---
     document.getElementById('aiRewriteBtn')?.addEventListener('click', async () => {
         const rawText = document.getElementById('designerNotes').value.trim();
         if(!rawText) return window.showToast("No raw notes to rewrite.", false);
@@ -280,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- 5. SECURE WATERMARK & PDF ENGINE (ROBUST VERSION) ---
+    // --- 6. SECURE WATERMARK & PDF ENGINE ---
     const getBase64Logo = (brandName) => new Promise(resolve => {
         const logoMap = {
             'CO Home Improvements': 'co-logo.png',
@@ -309,7 +349,21 @@ document.addEventListener('DOMContentLoaded', function() {
         img.src = fileName;
     });
 
-    async function generateMultiPagePDF(templateId, filename) {
+    // Helper: Convert Pamphlet Image URL to Base64 to append as dedicated JS PDF Pages
+    const urlToBase64 = (url) => new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width; canvas.height = img.height;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.onerror = () => resolve(null);
+        img.src = url;
+    });
+
+    async function generateMultiPagePDF(templateId, filename, isCustomer) {
         if (!jsPDF) return window.showToast("PDF Engine loading...", false);
         
         const clientName = document.getElementById('clientName')?.value.trim();
@@ -321,7 +375,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if(!template) return;
 
         const profile = window.currentUserProfile || { brand: 'CO Home Improvements' };
-        // Apply universal brand color as requested
         const brandColor = '#002f54';
 
         template.querySelectorAll('*').forEach(el => {
@@ -333,9 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const logoBase64 = await getBase64Logo(profile.brand);
         if(logoBase64) {
-            template.querySelectorAll('.dynamic-brand-logo').forEach(img => {
-                img.src = logoBase64;
-            });
+            template.querySelectorAll('.dynamic-brand-logo').forEach(img => { img.src = logoBase64; });
         }
 
         template.style.display = 'block'; 
@@ -353,8 +404,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const stampLogo = () => {
                 if(logoBase64) {
                     try {
-                        pdf.setGState(new pdf.GState({opacity: 0.08}));
-                        const size = 150;
+                        pdf.setGState(new pdf.GState({opacity: 0.06})); // slightly softer
+                        const size = 250; // ENLARGED WATERMARK
                         const x = (pdf.internal.pageSize.getWidth() - size) / 2;
                         const y = (pdfHeight - size) / 2;
                         pdf.addImage(logoBase64, 'PNG', x, y, size, size);
@@ -374,6 +425,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 stampLogo();
                 heightLeft -= pdfHeight; 
             }
+
+            // --- INJECT PERFECT A4 PAMPHLETS (CUSTOMER ONLY) ---
+            if (isCustomer) {
+                const selectedFlyers = Array.from(document.querySelectorAll('.pamphlet-cb:checked')).map(cb => cb.value);
+                for (const flyerUrl of selectedFlyers) {
+                    const flyerBase64 = await urlToBase64('pamphlet/' + flyerUrl);
+                    if (flyerBase64) {
+                        pdf.addPage();
+                        // 210x297mm is perfect A4
+                        pdf.addImage(flyerBase64, 'JPEG', 0, 0, 210, 297);
+                    }
+                }
+            }
             
             pdf.save(filename);
             window.showToast("PDF Export Complete!", true);
@@ -382,7 +446,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- CONSOLIDATED PDF GENERATOR LOGIC ---
-    // Uses pdfTemplateInternal as the master template structure for both Customer & Internal
     async function generateSurvey(isCustomer) {
         const templateId = 'pdfTemplateInternal'; 
         const rawName = document.getElementById('clientName')?.value.trim() || 'Valued Customer';
@@ -393,17 +456,22 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.bind-name').forEach(el => el.innerText = rawName);
         document.querySelectorAll('.bind-num').forEach(el => el.innerText = document.getElementById('clientNum')?.value || 'N/A');
         document.querySelectorAll('.bind-address').forEach(el => el.innerText = document.getElementById('postCode')?.value || 'N/A');
-        document.querySelectorAll('.bind-date').forEach(el => el.innerText = document.getElementById('apptDate')?.value ? new Date(document.getElementById('apptDate').value).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB'));
         
         const designerEl = document.getElementById('pdfPrintDesigner');
         if (designerEl) designerEl.innerText = profile.name;
 
         // 2. Data Fields
-        ['BuildType', 'RoofType', 'ProposedSize', 'FrameColour', 'HouseMaterial', 'DpcDepth', 'FasciaHeight', 'AirBricks', 'BuildingRegs', 'PlanningPerms', 'SapCalcs', 'AccessDifficult', 'AccessWidth', 'WallObstacles'].forEach(key => {
+        ['BuildType', 'RoofType', 'ProposedSize', 'HouseMaterial', 'DpcDepth', 'FasciaHeight', 'AirBricks', 'BuildingRegs', 'PlanningPerms', 'AccessDifficult', 'AccessWidth', 'WallObstacles'].forEach(key => {
             const inputEl = document.getElementById(key.charAt(0).toLowerCase() + key.slice(1));
             const textEl = document.getElementById(`pdf${key}`);
             if (inputEl && textEl) textEl.innerText = inputEl.value || 'N/A';
         });
+
+        // Frame Colours custom merge
+        const extFrame = document.getElementById('frameColour')?.value || 'N/A';
+        const intFrame = document.getElementById('internalFrameColour')?.value || 'N/A';
+        const frameTextEl = document.getElementById('pdfFrameColour');
+        if (frameTextEl) frameTextEl.innerText = `Ext: ${extFrame}\nInt: ${intFrame === 'Match External' ? extFrame : intFrame}`;
 
         // 3. Notes Toggle Logic
         const notesEl = document.getElementById('pdfDesignerNotes');
@@ -416,7 +484,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if(notesEl.previousElementSibling) notesEl.previousElementSibling.style.display = 'block';
                 notesEl.innerText = (isCustomer && document.getElementById('customerNotes')?.value) 
                     ? document.getElementById('customerNotes').value 
-                    : (document.getElementById('designerNotes')?.value || 'None');
+                    : (document.getElementById('designerNotes')?.value || 'None provided.');
             }
         }
 
@@ -436,14 +504,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const populateGrid = (storeKey, gridId) => {
             const grid = document.getElementById(gridId);
             if(grid) {
-                grid.innerHTML = (window.uploadedImagesStore[storeKey] || []).map(imgSrc => 
-                    `<div style="position: relative; width: 48%; height: 220px; background: #fff; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
-                        <img class="dynamic-brand-logo" src="" style="position: absolute; width: 60%; opacity: 0.08; pointer-events: none; mix-blend-mode: multiply;">
-                        <img src="${imgSrc}" style="max-width: 100%; max-height: 100%; object-fit: contain; position: relative; z-index: 2;">
-                    </div>`
-                ).join('');
+                const photos = window.uploadedImagesStore[storeKey] || [];
+                if (photos.length === 0) {
+                    grid.innerHTML = `<p style="color:#999; font-style:italic; font-size:12px; margin:0;">No ${storeKey} photos attached.</p>`;
+                } else {
+                    grid.innerHTML = photos.map(imgSrc => 
+                        `<div style="position: relative; width: 48%; height: 220px; background: #fff; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                            <img class="dynamic-brand-logo" src="" style="position: absolute; width: 60%; opacity: 0.08; pointer-events: none; mix-blend-mode: multiply;">
+                            <img src="${imgSrc}" style="max-width: 100%; max-height: 100%; object-fit: contain; position: relative; z-index: 2;">
+                        </div>`
+                    ).join('');
+                }
             }
         };
+        populateGrid('survey', 'pdfSurveyPhotosGrid');
         populateGrid('access', 'pdfAccessPhotosGrid');
         populateGrid('misc', 'pdfMiscPhotosGrid');
 
@@ -459,28 +533,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // 7. Pamphlet Injection (Customer Only)
-        let flyerPage = document.getElementById('pdfFlyerPage');
-        if (isCustomer && document.getElementById('includeFlyersInPack')?.checked) {
-            if (!flyerPage) {
-                flyerPage = document.createElement('div');
-                flyerPage.id = 'pdfFlyerPage';
-                flyerPage.className = 'pdf-page';
-                flyerPage.style.padding = '40px 50px';
-                document.getElementById(templateId).appendChild(flyerPage);
-            }
-            const pamphletFiles = ['cavity.jpg', 'journey-1.jpg', 'journey-2.jpg', 'journey.jpg', 'piling.jpg', 'planning.jpg', 'protecting-home.jpg', 'sap-calcs.jpg', 'tailored.jpg', 'who-we-are.jpg', 'why-choose-us.jpg'];
-            flyerPage.innerHTML = pamphletFiles.map(f => `<img src="pamphlet/${f}" style="width:100%; margin-bottom:20px; object-fit:contain;">`).join('');
-            flyerPage.style.display = 'block';
-        } else if (flyerPage) {
-            flyerPage.style.display = 'none';
-        }
-
         const fileNameType = isCustomer ? 'Customer_Survey' : 'Internal_Survey';
-        await generateMultiPagePDF(templateId, `${surname}_${fileNameType}.pdf`);
+        await generateMultiPagePDF(templateId, `${surname}_${fileNameType}.pdf`, isCustomer);
     }
 
-    // Bind the two consolidated buttons
+    // Bind Buttons
     document.getElementById('generateInternalPdfBtn')?.addEventListener('click', () => generateSurvey(false));
     document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', () => generateSurvey(true));
 });
