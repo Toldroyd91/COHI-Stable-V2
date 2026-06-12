@@ -43,12 +43,38 @@ document.getElementById('unlockBtn').addEventListener('click', async () => {
     }
 });
 
+// --- Helper: Render Static Canvases ---
+function renderStaticCanvas(canvasId, containerId, jsonData) {
+    if (!jsonData) return;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    // Unhide the container if data exists
+    container.classList.remove('hidden');
+    container.classList.add('flex');
+
+    // Create a read-only static canvas
+    const staticCanvas = new fabric.StaticCanvas(canvasId, { width: 600, height: 400 });
+    
+    staticCanvas.loadFromJSON(jsonData, () => {
+        // Calculate the scale to fit the CSS grid container dynamically
+        const wrapperWidth = container.clientWidth - 32; // minus padding
+        const scale = wrapperWidth / 600;
+        
+        staticCanvas.setZoom(scale);
+        staticCanvas.setWidth(wrapperWidth);
+        staticCanvas.setHeight(400 * scale);
+        staticCanvas.renderAll();
+    });
+}
+
 // --- 2. RENDER DASHBOARD ---
 function initDashboard(docData) {
     document.getElementById('vaultLogin').classList.add('hidden');
     document.getElementById('vaultDashboard').classList.remove('hidden');
 
     const inputs = docData.data.inputs || {};
+    const canvases = docData.data.canvases || {};
 
     // Populate Text Data
     document.getElementById('portalClientName').innerText = docData.clientName || "Valued Client";
@@ -59,11 +85,21 @@ function initDashboard(docData) {
     document.getElementById('portalFrame').innerText = inputs.frameColour || "TBC";
     document.getElementById('portalPlanning').innerText = inputs.planningPerms || "TBC";
 
+    // Render Canvas Imagery
+    renderStaticCanvas('view-frontelevation', 'container-frontelevation', canvases.frontelevation);
+    renderStaticCanvas('view-sideelevation', 'container-sideelevation', canvases.sideelevation);
+    renderStaticCanvas('view-rearelevation', 'container-rearelevation', canvases.rearelevation);
+    renderStaticCanvas('view-designersketch', 'container-designersketch', canvases.designersketch);
+
+    // Hide Imagery section entirely if no canvases exist
+    if (Object.keys(canvases).length === 0) {
+        document.getElementById('imageryGrid').parentElement.classList.add('hidden');
+    }
+
     // Render Roadmap
     const container = document.getElementById('roadmapContainer');
     const currentStageIdx = PIPELINE_STAGES.indexOf(docData.status || "Contract Signed");
 
-    // Add connecting line behind dots
     container.innerHTML = `<div class="absolute top-2 left-0 w-full h-0.5 bg-slate-700 z-0"></div>`;
 
     PIPELINE_STAGES.forEach((stage, idx) => {
@@ -99,7 +135,6 @@ closeChatBtn.addEventListener('click', () => {
 function initChat(surveyId) {
     const chatRef = collection(db, `surveys/${surveyId}/messages`);
     
-    // Listen for incoming messages
     onSnapshot(query(chatRef, orderBy("timestamp", "asc")), (snapshot) => {
         chatMessages.innerHTML = '<div class="text-center text-xs text-slate-500 my-2">Secure Chat Initialized</div>';
         
@@ -116,7 +151,6 @@ function initChat(surveyId) {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     });
 
-    // Send Message
     const sendMessage = async () => {
         const text = chatInput.value.trim();
         if (!text) return;
