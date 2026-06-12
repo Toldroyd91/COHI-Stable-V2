@@ -141,6 +141,16 @@
 
         <article class="card">
             <h2 class="card__title">Elevations & Markup</h2>
+            
+            <div class="form-group" style="margin-bottom: 20px; background: #252525; padding: 15px; border-radius: 8px; border: 1px solid #333;">
+                <label class="form-group__label" style="color: #0dcaf0;">Primary Build Area (Shows enlarged on report for notes):</label>
+                <select id="primaryBuildArea" class="form-group__input">
+                    <option value="frontelevation">Front Elevation</option>
+                    <option value="sideelevation">Side Elevation</option>
+                    <option value="rearelevation" selected>Rear Elevation</option>
+                </select>
+            </div>
+
             <div class="canvas-group" data-id="frontelevation">
                 <div class="custom-file-upload">
                     <input type="file" id="front-cam" class="camera-input hidden-input" accept="image/*">
@@ -393,17 +403,17 @@
         </article>
     </main>
 
-    <div id="pdfTemplateInternal" style="display: none; background: #f4f7f6; color: #222; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; box-sizing: border-box;">
+    <div id="pdfTemplateInternal" style="display: none; background: #fff; color: #222; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; box-sizing: border-box;">
         
-        <div class="pdf-page" style="position: relative; height: 1131px; overflow: hidden;">
-            <div style="background: #ffffff; padding: 35px 50px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.03);">
+        <div class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px;">
                 <div>
-                    <h1 style="font-size: 38px; font-weight: 900; color: #111; margin: 0; letter-spacing: -1px; text-transform: uppercase;">Designer<br><span class="brand-text" style="color: #002f54;">Survey.</span></h1>
+                    <h1 style="font-size: 42px; font-weight: 900; color: #111; margin: 0; letter-spacing: -1px; text-transform: uppercase;">Designer<br><span class="brand-text" style="color: #002f54;">Survey.</span></h1>
                 </div>
                 <img class="dynamic-brand-logo" src="" style="max-width: 200px; max-height: 80px; object-fit: contain;">
             </div>
 
-            <div class="brand-bg" style="background: #002f54; padding: 25px 50px; color: #ffffff;">
+            <div class="brand-bg" style="background: #002f54; padding: 25px 40px; color: #ffffff; border-radius: 8px;">
                 <div style="display: flex; flex-wrap: wrap; gap: 20px;">
                     <div style="width: 45%;">
                         <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px;">Customer Name</p>
@@ -424,46 +434,41 @@
                 </div>
             </div>
 
-            <div style="padding: 40px 50px;">
-                <h3 style="margin: 0 0 15px 0; font-size: 14px; text-transform: uppercase; color: #666; letter-spacing: 2px;">Front Elevation Render</h3>
-                <div style="background: #ffffff; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.06); padding: 15px; position: relative;">
-                    <div style="width: 100%; height: 500px; background: #fafafa; border-radius: 8px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                        <img class="dynamic-brand-logo" src="" style="position: absolute; width: 60%; opacity: 0.08; pointer-events: none; mix-blend-mode: multiply;">
-                        <img id="pdfImgInternal-frontelevation" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; position: relative; z-index: 2;">
-                    </div>
-                </div>
+            <div style="width: 100%; height: 600px; background: #fafafa; border-radius: 12px; margin-top: 30px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid #eaeaea;">
+                <img class="dynamic-brand-logo" src="" style="position: absolute; width: 60%; opacity: 0.05; pointer-events: none; mix-blend-mode: multiply;">
+                <img id="pdfHeroImg" src="" style="width: 100%; height: 100%; object-fit: cover; position: relative; z-index: 2;">
             </div>
         </div>
 
-        <div class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px 50px;">
+        <div class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px; box-sizing: border-box;">
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 2px solid #ddd; padding-bottom: 15px;">
-                <h2 style="font-size: 22px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Project <span class="brand-text" style="color: #002f54;">Specifications</span></h2>
+                <h2 style="font-size: 24px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Project <span class="brand-text" style="color: #002f54;">Specifications</span></h2>
                 <img class="dynamic-brand-logo" src="" style="max-width: 120px; max-height: 40px; object-fit: contain;">
             </div>
             
             <h4 style="color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 15px 0;">Design & Architecture</h4>
             <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 35px;">
-                <div class="brand-border-bottom" style="width: 31%; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); border-bottom: 4px solid #002f54;">
+                <div class="brand-border-bottom" style="width: 31%; background: #f9f9f9; padding: 20px; border-radius: 12px; border-bottom: 4px solid #002f54;">
                     <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px;">Build Type</p>
                     <p id="pdfBuildType" style="margin: 5px 0 0 0; font-size: 20px; font-weight: 800; color: #111;"></p>
                 </div>
-                <div class="brand-border-bottom" style="width: 31%; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); border-bottom: 4px solid #002f54;">
+                <div class="brand-border-bottom" style="width: 31%; background: #f9f9f9; padding: 20px; border-radius: 12px; border-bottom: 4px solid #002f54;">
                     <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px;">Proposed Size</p>
                     <p id="pdfProposedSize" style="margin: 5px 0 0 0; font-size: 20px; font-weight: 800; color: #111;"></p>
                 </div>
-                <div class="brand-border-bottom" style="width: 31%; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); border-bottom: 4px solid #002f54;">
+                <div class="brand-border-bottom" style="width: 31%; background: #f9f9f9; padding: 20px; border-radius: 12px; border-bottom: 4px solid #002f54;">
                     <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px;">Roof Style</p>
                     <p id="pdfRoofType" style="margin: 5px 0 0 0; font-size: 20px; font-weight: 800; color: #111;"></p>
                 </div>
-                <div style="width: 31%; background: #fff; padding: 15px 20px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.04);">
+                <div style="width: 31%; background: #f9f9f9; padding: 15px 20px; border-radius: 12px;">
                     <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase;">Frame Colour</p>
-                    <p id="pdfFrameColour" style="margin: 5px 0 0 0; font-size: 16px; font-weight: bold; color: #111; line-height: 1.2;"></p>
+                    <p id="pdfFrameColour" style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111; line-height: 1.3;"></p>
                 </div>
-                <div style="width: 31%; background: #fff; padding: 15px 20px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.04);">
+                <div style="width: 31%; background: #f9f9f9; padding: 15px 20px; border-radius: 12px;">
                     <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase;">Building Regs</p>
                     <p id="pdfBuildingRegs" style="margin: 5px 0 0 0; font-size: 16px; font-weight: bold; color: #111;"></p>
                 </div>
-                <div style="width: 31%; background: #fff; padding: 15px 20px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.04);">
+                <div style="width: 31%; background: #f9f9f9; padding: 15px 20px; border-radius: 12px;">
                     <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase;">Planning Perms</p>
                     <p id="pdfPlanningPerms" style="margin: 5px 0 0 0; font-size: 16px; font-weight: bold; color: #111;"></p>
                 </div>
@@ -471,77 +476,79 @@
 
             <h4 style="color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 15px 0;">Structural & Access Logistics</h4>
             <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 35px;">
-                <div style="width: 23%; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.03);">
+                <div style="width: 23%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
                     <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">House Material</p>
                     <p id="pdfHouseMaterial" style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111;"></p>
                 </div>
-                <div style="width: 23%; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.03);">
+                <div style="width: 23%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
                     <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">DPC Depth</p>
                     <p style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111;"><span id="pdfDpcDepth"></span> mm</p>
                 </div>
-                <div style="width: 23%; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.03);">
+                <div style="width: 23%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
                     <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">Access Width</p>
                     <p style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111;"><span id="pdfAccessWidth"></span> mm</p>
                 </div>
-                <div style="width: 23%; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.03);">
+                <div style="width: 23%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
                     <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">Access Issues</p>
                     <p id="pdfAccessDifficult" style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111;"></p>
                 </div>
-                <div style="width: 100%; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.03);">
+                <div style="width: 100%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
                     <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">Wall Obstacles</p>
                     <p id="pdfWallObstacles" style="margin: 5px 0 0 0; font-size: 14px; font-weight: bold; color: #111;"></p>
                 </div>
             </div>
 
             <h4 style="color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px 0;">Designer Insights</h4>
-            <div style="font-size: 14px; padding: 25px; border-radius: 12px; min-height: 120px; background: #fff; box-shadow: inset 0 2px 10px rgba(0,0,0,0.02); color: #444; line-height: 1.7; border: 1px solid #eee;" id="pdfDesignerNotes"></div>
+            <div style="font-size: 14px; padding: 25px; border-radius: 12px; min-height: 120px; background: #f9f9f9; color: #444; line-height: 1.7; border: 1px solid #eee;" id="pdfDesignerNotes"></div>
         </div>
 
-        <div class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px 50px;">
+        <div class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px; box-sizing: border-box;">
             <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 2px solid #ddd; padding-bottom: 15px;">
-                <h2 style="font-size: 22px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Elevations & <span class="brand-text" style="color: #002f54;">Annotations</span></h2>
+                <h2 style="font-size: 24px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Property <span class="brand-text" style="color: #002f54;">Elevations</span></h2>
                 <img class="dynamic-brand-logo" src="" style="max-width: 120px; max-height: 40px; object-fit: contain;">
             </div>
             
-            <div style="display: flex; flex-wrap: wrap; gap: 4%; justify-content: space-between;">
-                <div style="width: 48%; margin-bottom: 25px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+                <div style="width: 32%;">
+                    <p style="margin:0 0 8px 0; font-weight:800; font-size: 12px; text-transform:uppercase; color: #444; letter-spacing: 1px;">Front Elevation</p>
+                    <div style="background: #f9f9f9; height: 200px; display: flex; justify-content: center; align-items: center; border-radius: 8px; border: 1px solid #ddd; position: relative; overflow: hidden;">
+                        <img id="pdfThumbFront" src="" style="width: 100%; height: 100%; object-fit: cover; position: relative; z-index: 2;">
+                    </div>
+                </div>
+                <div style="width: 32%;">
                     <p style="margin:0 0 8px 0; font-weight:800; font-size: 12px; text-transform:uppercase; color: #444; letter-spacing: 1px;">Side Elevation</p>
-                    <div style="background: #fff; height: 250px; display: flex; justify-content: center; align-items: center; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); position: relative; overflow: hidden;">
-                        <img class="dynamic-brand-logo" src="" style="position: absolute; width: 60%; opacity: 0.08; pointer-events: none;">
-                        <img id="pdfImgInternal-sideelevation" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; position: relative; z-index: 2;">
+                    <div style="background: #f9f9f9; height: 200px; display: flex; justify-content: center; align-items: center; border-radius: 8px; border: 1px solid #ddd; position: relative; overflow: hidden;">
+                        <img id="pdfThumbSide" src="" style="width: 100%; height: 100%; object-fit: cover; position: relative; z-index: 2;">
                     </div>
                 </div>
-                <div style="width: 48%; margin-bottom: 25px;">
+                <div style="width: 32%;">
                     <p style="margin:0 0 8px 0; font-weight:800; font-size: 12px; text-transform:uppercase; color: #444; letter-spacing: 1px;">Rear Elevation</p>
-                    <div style="background: #fff; height: 250px; display: flex; justify-content: center; align-items: center; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); position: relative; overflow: hidden;">
-                        <img class="dynamic-brand-logo" src="" style="position: absolute; width: 60%; opacity: 0.08; pointer-events: none;">
-                        <img id="pdfImgInternal-rearelevation" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; position: relative; z-index: 2;">
+                    <div style="background: #f9f9f9; height: 200px; display: flex; justify-content: center; align-items: center; border-radius: 8px; border: 1px solid #ddd; position: relative; overflow: hidden;">
+                        <img id="pdfThumbRear" src="" style="width: 100%; height: 100%; object-fit: cover; position: relative; z-index: 2;">
                     </div>
                 </div>
-            </div>
-            
-            <p style="margin:10px 0 8px 0; font-weight:800; font-size: 12px; text-transform:uppercase; color: #444; letter-spacing: 1px;">Designer Base Sketch</p>
-            <div style="background: #fff; height: 420px; display: flex; justify-content: center; align-items: center; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); position: relative; overflow: hidden;">
-                <img class="dynamic-brand-logo" src="" style="position: absolute; width: 50%; opacity: 0.08; pointer-events: none;">
-                <img id="pdfImgInternal-designersketch" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; position: relative; z-index: 2;">
             </div>
         </div>
 
-        <div class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px 50px;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 2px solid #ddd; padding-bottom: 15px;">
-                <h2 style="font-size: 22px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Site <span class="brand-text" style="color: #002f54;">Imagery</span></h2>
+        <div id="pdfFocusPage" class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 15px;">
+                <h2 id="pdfFocusTitle" style="font-size: 24px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Primary Build <span class="brand-text" style="color: #002f54;">Focus</span></h2>
                 <img class="dynamic-brand-logo" src="" style="max-width: 120px; max-height: 40px; object-fit: contain;">
             </div>
+            
+            <div style="background: #fafafa; height: 400px; display: flex; justify-content: center; align-items: center; border-radius: 12px; border: 1px solid #ddd; position: relative; overflow: hidden; margin-bottom: 30px;">
+                <img class="dynamic-brand-logo" src="" style="position: absolute; width: 50%; opacity: 0.05; pointer-events: none;">
+                <img id="pdfFocusImg" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; position: relative; z-index: 2;">
+            </div>
 
-            <p style="margin:0 0 10px 0; font-weight:800; font-size: 13px; text-transform:uppercase; color: #111; letter-spacing: 1px;">General Survey Uploads</p>
-            <div id="pdfSurveyPhotosGrid" style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 30px;"></div>
-
-            <p style="margin:0 0 10px 0; font-weight:800; font-size: 13px; text-transform:uppercase; color: #111; letter-spacing: 1px;">Access Route Uploads</p>
-            <div id="pdfAccessPhotosGrid" style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 30px;"></div>
-
-            <p style="margin:0 0 10px 0; font-weight:800; font-size: 13px; text-transform:uppercase; color: #111; letter-spacing: 1px;">Misc / Extra Uploads</p>
-            <div id="pdfMiscPhotosGrid" style="display: flex; flex-wrap: wrap; gap: 15px;"></div>
+            <h2 id="pdfSketchTitle" style="font-size: 20px; margin: 0 0 15px 0; font-weight: 800; text-transform: uppercase; color: #111; border-bottom: 2px solid #ddd; padding-bottom: 10px;">Designer <span class="brand-text" style="color: #002f54;">Sketch</span></h2>
+            
+            <div id="pdfSketchWrapper" style="background: #fafafa; height: 400px; display: flex; justify-content: center; align-items: center; border-radius: 12px; border: 1px solid #ddd; position: relative; overflow: hidden;">
+                <img class="dynamic-brand-logo" src="" style="position: absolute; width: 50%; opacity: 0.05; pointer-events: none;">
+                <img id="pdfSketchImg" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; position: relative; z-index: 2;">
+            </div>
         </div>
+
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -565,7 +572,6 @@
         });
         const auth = getAuth(app); const db = getFirestore(app);
 
-        // Dynamic Version Injection
         document.getElementById('appVersionDisplay').innerText = "Engine Build: " + new Date(document.lastModified).toLocaleString();
 
         const authOverlay = document.getElementById('authOverlay');
@@ -573,11 +579,9 @@
         const adminDashboard = document.getElementById('adminDashboard');
         const activeProfileUI = document.getElementById('activeDesignerProfile');
 
-        // Toggle UI
         document.getElementById('showRegisterBtn')?.addEventListener('click', () => { document.getElementById('loginView').style.display = 'none'; document.getElementById('registerView').style.display = 'block'; });
         document.getElementById('cancelRegisterBtn')?.addEventListener('click', () => { document.getElementById('registerView').style.display = 'none'; document.getElementById('loginView').style.display = 'block'; });
 
-        // --- SPLASH SCREEN TRANSITION LOGIC ---
         const splash = document.getElementById('splashScreen');
         const logoCoh = document.getElementById('logoCoh');
         const logoBrand = document.getElementById('logoBrand');
@@ -592,24 +596,20 @@
             'Yorkshire Windows': 'yorkshire.png'
         };
 
-        // Security Routing & Splash Animation
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 const userDoc = await getDoc(doc(db, "users", user.uid));
                 if (userDoc.exists()) {
                     const userData = userDoc.data(); window.currentUserProfile = userData;
                     
-                    // Setup custom animation based on profile brand
                     const brandFile = logoMap[userData.brand] || 'logo.png';
                     logoBrand.src = brandFile;
 
-                    // Execute Cinematic Crossfade
                     setTimeout(() => {
                         logoCoh.classList.add('fade-out');
                         logoBrand.classList.add('fade-in');
                     }, 500); 
 
-                    // Reveal Dashboard
                     setTimeout(() => {
                         splash.style.opacity = '0';
                         setTimeout(() => splash.style.display = 'none', 800);
@@ -627,11 +627,7 @@
                     }, 2200);
                 }
             } else { 
-                // No user logged in -> Just fade COHI logo out to Login Screen
-                setTimeout(() => {
-                    logoCoh.classList.add('fade-out');
-                }, 500);
-                
+                setTimeout(() => { logoCoh.classList.add('fade-out'); }, 500);
                 setTimeout(() => {
                     splash.style.opacity = '0';
                     setTimeout(() => splash.style.display = 'none', 800);
@@ -643,7 +639,6 @@
             }
         });
 
-        // Registration
         document.getElementById('registerBtn')?.addEventListener('click', async () => {
             const errEl = document.getElementById('authError'); errEl.style.display = 'none';
             const brand = document.getElementById('regBrand').value, name = document.getElementById('regName').value.trim(), email = document.getElementById('regEmail').value.trim(), pass = document.getElementById('regPassword').value;
@@ -655,13 +650,8 @@
         });
 
         document.getElementById('loginBtn')?.addEventListener('click', () => signInWithEmailAndPassword(auth, document.getElementById('authEmail').value, document.getElementById('authPassword').value));
-        document.getElementById('logoutBtn')?.addEventListener('click', () => {
-            signOut(auth).then(() => {
-                location.reload(); // Hard reload on logout to reset splash state
-            });
-        });
+        document.getElementById('logoutBtn')?.addEventListener('click', () => { signOut(auth).then(() => { location.reload(); }); });
 
-        // State Manager
         const getFormState = () => {
             const data = {}; document.querySelectorAll('.form-group__input').forEach(el => { if (el.id && el.type !== 'file') data[el.id] = el.value; });
             const canvases = {}; if (window.appCanvases) { for (let key in window.appCanvases) canvases[key] = window.appCanvases[key].toJSON(); }
@@ -671,28 +661,22 @@
         const loadFormState = (payload) => {
             if (payload.inputs) { for (let key in payload.inputs) { const el = document.getElementById(key); if (el) el.value = payload.inputs[key]; } }
             if (payload.canvases && window.appCanvases) { for (let key in payload.canvases) if (window.appCanvases[key]) window.appCanvases[key].loadFromJSON(payload.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key])); }
-            
-            // Re-trigger photo counters
             ['misc', 'survey', 'access'].forEach(k => window.updatePhotoCount(k));
             window.showToast("Survey Loaded");
         };
 
-        // --- CONTINUOUS AUTOSAVE ENGINE (WITH SYNC RESILIENCE) ---
         let offlineQueue = false;
         window.performCloudAutoSave = async () => {
             if (!auth.currentUser) return;
             const cName = document.getElementById('clientName').value.trim();
             if (!cName) return; 
-
             const sId = cName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + auth.currentUser.uid.slice(-4);
             const syncStatus = document.getElementById('syncStatus');
             
             if (!navigator.onLine) {
                 if(syncStatus) { syncStatus.innerText = "Offline - Queued"; syncStatus.style.color = "#ff4444"; }
-                offlineQueue = true;
-                return;
+                offlineQueue = true; return;
             }
-
             if(syncStatus) { syncStatus.innerText = "Autosaving..."; syncStatus.style.color = "#ffc107"; }
             
             try {
@@ -702,16 +686,8 @@
             } catch (error) { console.error(error); if(syncStatus) syncStatus.innerText = "Error Saving"; }
         };
 
-        // Offline Network Listeners
-        window.addEventListener('online', () => { 
-            window.showToast("Signal Restored. Syncing...", true); 
-            if(offlineQueue) window.performCloudAutoSave(); 
-        });
-        window.addEventListener('offline', () => { 
-            window.showToast("Dead Zone: Working Offline", false); 
-            const syncStatus = document.getElementById('syncStatus');
-            if(syncStatus) { syncStatus.innerText = "Offline Mode"; syncStatus.style.color = "#ff4444"; }
-        });
+        window.addEventListener('online', () => { window.showToast("Signal Restored. Syncing...", true); if(offlineQueue) window.performCloudAutoSave(); });
+        window.addEventListener('offline', () => { window.showToast("Dead Zone: Working Offline", false); const syncStatus = document.getElementById('syncStatus'); if(syncStatus) { syncStatus.innerText = "Offline Mode"; syncStatus.style.color = "#ff4444"; } });
 
         let currentDrafts = {};
         async function fetchCloudDrafts(uid) {
@@ -724,25 +700,18 @@
         }
         document.getElementById('loadCloudBtn')?.addEventListener('click', () => { const id = document.getElementById('cloudDrafts').value; if(id) loadFormState(currentDrafts[id].data); });
 
-        // --- ADMIN HUB LOGIC WITH STATS ---
         async function fetchAdminLeads() {
             const container = document.getElementById('adminLeadsContainer');
             try {
                 const snapshot = await getDocs(collection(db, "surveys"));
                 container.innerHTML = snapshot.empty ? '<p style="color:#888;">No surveys yet.</p>' : '';
                 
-                let totalSurveys = 0;
-                let todaySurveys = 0;
-                let designersSet = new Set();
+                let totalSurveys = 0, todaySurveys = 0; let designersSet = new Set();
                 const todayStr = new Date().toLocaleDateString();
 
                 snapshot.forEach(doc => {
                     const data = doc.data(), inputs = data.data.inputs || {}, dDate = data.updatedAt ? new Date(data.updatedAt.toDate()).toLocaleDateString() : 'N/A';
-                    
-                    // Stat Calc
-                    totalSurveys++;
-                    designersSet.add(data.userId);
-                    if (dDate === todayStr) todaySurveys++;
+                    totalSurveys++; designersSet.add(data.userId); if (dDate === todayStr) todaySurveys++;
 
                     container.innerHTML += `
                         <div class="admin-lead-card" style="background:#2a2a2a; padding:15px; border-radius:8px; border-left:4px solid #ff9800; display:flex; justify-content:space-between; margin-bottom:10px;">
@@ -753,12 +722,9 @@
                             </div>
                         </div>`;
                 });
-
-                // Update Stat UI
                 document.getElementById('statTotal').innerText = totalSurveys;
                 document.getElementById('statDesigners').innerText = designersSet.size;
                 document.getElementById('statToday').innerText = todaySurveys;
-
             } catch (error) { console.error(error); }
         }
 
@@ -767,7 +733,6 @@
             document.querySelectorAll('.admin-lead-card').forEach(card => { card.style.display = card.innerText.toLowerCase().includes(term) ? 'flex' : 'none'; });
         });
 
-        // --- CSV EXPORT LOGIC ---
         document.getElementById('adminExportBtn')?.addEventListener('click', async () => {
             if(window.showToast) window.showToast("Compiling Report...", false);
             try {
