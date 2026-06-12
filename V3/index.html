@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COHI Project Hub V3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <style>
+        body { background-color: #0b1118; color: white; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .hidden-view { display: none !important; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <div id="view-login" class="flex-1 flex items-center justify-center p-4">
+        <div class="glass p-8 rounded-2xl w-full max-w-sm text-center">
+            <h1 class="text-3xl font-black mb-2 tracking-tight text-white">SYSTEM <span class="text-orange-500">LOGIN</span></h1>
+            <p class="text-slate-400 text-sm mb-6">Enter your credentials or project code.</p>
+            
+            <input type="text" id="loginId" placeholder="Postcode / Email" class="w-full bg-slate-900/80 p-3 rounded-lg mb-4 border border-slate-700 text-white outline-none focus:border-orange-500 transition">
+            <input type="password" id="loginPin" placeholder="Customer Num / Password" class="w-full bg-slate-900/80 p-3 rounded-lg mb-6 border border-slate-700 text-white outline-none focus:border-orange-500 transition">
+            
+            <button id="btn-login" class="w-full bg-orange-600 py-3 rounded-lg font-bold hover:bg-orange-500 transition shadow-[0_0_15px_rgba(234,88,12,0.4)]">ACCESS SYSTEM</button>
+            <p id="login-error" class="text-red-400 text-sm mt-4 hidden">Credentials not recognized.</p>
+        </div>
+    </div>
+
+    <nav id="global-nav" class="hidden-view bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <h2 class="font-bold text-lg tracking-wider" id="nav-role-badge">COMMAND CENTER</h2>
+                <select id="brand-selector" class="hidden bg-slate-800 text-sm p-1 rounded border border-slate-700 text-orange-400 outline-none">
+                    <option value="all">All COHI Brands</option>
+                    <option value="yorkshirewindows">Yorkshire Windows</option>
+                    <option value="westyorkshirewindows">West Yorkshire Windows</option>
+                    <option value="trentvalleywindows">Trent Valley Windows</option>
+                    <option value="orionwindows">Orion Windows</option>
+                    <option value="clearview">Clearview Home Improvements</option>
+                    <option value="planethome">Planet Home Improvements</option>
+                </select>
+            </div>
+            <button id="btn-logout" class="text-sm text-slate-400 hover:text-white transition">Sign Out</button>
+        </div>
+    </nav>
+
+    <main id="view-customer" class="hidden-view flex-1 w-full max-w-5xl mx-auto p-4 md:p-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-2xl font-bold">Project Vault: <span id="vault-client-name" class="text-orange-500"></span></h1>
+            <select id="vault-quote-selector" class="bg-slate-800 p-2 rounded-lg border border-slate-700 text-sm outline-none hidden">
+                </select>
+        </div>
+        <div class="glass h-64 rounded-xl flex items-center justify-center text-slate-500">Customer Vault Modules Loading...</div>
+    </main>
+
+    <main id="view-designer" class="hidden-view flex-1 w-full max-w-7xl mx-auto p-4 md:p-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">My Active Pipeline</h1>
+            <button class="bg-blue-600 px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-500">+ New Survey</button>
+        </div>
+        <div class="glass h-96 rounded-xl flex items-center justify-center text-slate-500">RAG Pipeline Loading...</div>
+    </main>
+
+    <main id="view-admin" class="hidden-view flex-1 w-full max-w-7xl mx-auto p-4 md:p-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="glass p-6 rounded-xl border-t-4 border-orange-500">
+                <p class="text-sm text-slate-400 uppercase">Total Pipeline Value</p>
+                <h2 class="text-3xl font-black mt-2">£0.00</h2>
+            </div>
+            <div class="glass p-6 rounded-xl border-t-4 border-red-500">
+                <p class="text-sm text-slate-400 uppercase">Urgent Action (Red Status)</p>
+                <h2 class="text-3xl font-black mt-2" id="admin-red-count">0 Leads</h2>
+            </div>
+            <div class="glass p-6 rounded-xl border-t-4 border-green-500">
+                <p class="text-sm text-slate-400 uppercase">Healthy Leads</p>
+                <h2 class="text-3xl font-black mt-2" id="admin-green-count">0 Leads</h2>
+            </div>
+        </div>
+        <div class="glass h-96 rounded-xl flex items-center justify-center text-slate-500">Global CRM Loading...</div>
+    </main>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
