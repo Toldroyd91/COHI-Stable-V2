@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>COHI Project Vault</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <style>
         body { background-color: #0b1118; color: white; font-family: 'Inter', sans-serif; }
         .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
@@ -49,6 +50,32 @@
                     <li class="flex justify-between border-b border-slate-700/50 pb-2"><span>Frames:</span> <strong id="portalFrame"></strong></li>
                     <li class="flex justify-between"><span>Planning:</span> <strong id="portalPlanning"></strong></li>
                 </ul>
+            </div>
+        </div>
+
+        <div class="glass p-6 rounded-2xl mb-8">
+            <h2 class="text-lg font-bold mb-6 text-orange-500">Project Imagery & Elevations</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="imageryGrid">
+                
+                <div id="container-frontelevation" class="hidden flex-col items-center bg-slate-900 rounded-xl p-4 border border-slate-700">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 w-full text-left">Front Elevation</p>
+                    <canvas id="view-frontelevation"></canvas>
+                </div>
+                
+                <div id="container-sideelevation" class="hidden flex-col items-center bg-slate-900 rounded-xl p-4 border border-slate-700">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 w-full text-left">Side Elevation</p>
+                    <canvas id="view-sideelevation"></canvas>
+                </div>
+                
+                <div id="container-rearelevation" class="hidden flex-col items-center bg-slate-900 rounded-xl p-4 border border-slate-700">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 w-full text-left">Rear Elevation</p>
+                    <canvas id="view-rearelevation"></canvas>
+                </div>
+
+                <div id="container-designersketch" class="hidden flex-col items-center bg-slate-900 rounded-xl p-4 border border-slate-700">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 w-full text-left">Designer Sketch</p>
+                    <canvas id="view-designersketch"></canvas>
+                </div>
             </div>
         </div>
 
