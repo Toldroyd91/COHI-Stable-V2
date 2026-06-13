@@ -41,13 +41,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // --- 1. CONTINUOUS AUTOSAVE ---
+    // --- 1. CONTINUOUS AUTOSAVE (V3 CRM UPGRADED) ---
     let autoSaveTimeout;
     const triggerAutoSave = () => {
         clearTimeout(autoSaveTimeout);
         autoSaveTimeout = setTimeout(() => {
             const data = {};
-            document.querySelectorAll('input:not([type="file"]):not(.pamphlet-cb), select, textarea').forEach(input => { if(input.id) data[input.id] = input.value; });
+            document.querySelectorAll('input:not([type="file"]):not(.pamphlet-cb), select, textarea').forEach(input => { 
+                if(input.id) data[input.id] = input.value; 
+            });
+
+            // --- POWERHOUSE METADATA INJECTION ---
+            // This silently prepares the data for the multi-brand V3 Command Center
+            data['_brandTag'] = document.getElementById('companyBrand')?.value || "CO Home Improvements"; 
+            data['_designerName'] = "Tom";
+            data['_lastContacted'] = Date.now(); // Powers the Green/Amber/Red status
+            data['_pipelineStatus'] = "Pre-Quote"; 
+            
+            // Terminology lock
+            if (data['roofType'] && data['roofType'].toLowerCase().includes('edwardian room')) {
+                data['roofType'] = 'Edwardian roof';
+            }
+
             localStorage.setItem('surveyAppData', JSON.stringify(data));
             if(window.performCloudAutoSave) window.performCloudAutoSave();
         }, 1000); 
