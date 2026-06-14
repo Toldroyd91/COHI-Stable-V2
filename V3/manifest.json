@@ -1,0 +1,16 @@
+{
+  "short_name": "Powerhouse CRM",
+  "name": "Powerhouse CRM Command Center",
+  "icons": [
+    {
+      "src": "../icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#0b1118",
+  "theme-color": "#15202b",
+  "display": "standalone",
+  "orientation": "portrait"
+}
