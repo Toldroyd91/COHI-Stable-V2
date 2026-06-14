@@ -676,6 +676,16 @@
             if (!auth.currentUser) return;
             const cName = document.getElementById('clientName').value.trim();
             if (!cName) return; 
+
+            // --- V3 METADATA INJECTION ---
+            const metadata = {
+                _designerName: window.currentUserProfile?.name || 'Unassigned',
+                _pipelineStatus: 'Active Survey',
+                _lastContacted: Date.now(),
+                _brand: window.currentUserProfile?.brand || 'COHI'
+            };
+            // -----------------------------
+
             const sId = cName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + auth.currentUser.uid.slice(-4);
             const syncStatus = document.getElementById('syncStatus');
             
@@ -686,7 +696,13 @@
             if(syncStatus) { syncStatus.innerText = "Autosaving..."; syncStatus.style.color = "#ffc107"; }
             
             try {
-                await setDoc(doc(db, "surveys", sId), { userId: auth.currentUser.uid, clientName: cName, data: getFormState(), updatedAt: serverTimestamp() });
+                // --- MERGE METADATA INTO THE SAVED OBJECT ---
+                await setDoc(doc(db, "surveys", sId), { 
+                    userId: auth.currentUser.uid, 
+                    clientName: cName, 
+                    data: { ...getFormState(), inputs: { ...getFormState().inputs, ...metadata } }, 
+                    updatedAt: serverTimestamp() 
+                });
                 if(syncStatus) { syncStatus.innerText = "Saved"; syncStatus.style.color = "#28a745"; }
                 offlineQueue = false;
             } catch (error) { console.error(error); if(syncStatus) syncStatus.innerText = "Error Saving"; }
