@@ -1,105 +1,71 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, getDocs, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Survey Engine V3 | CRM</title>
+    <link rel="stylesheet" href="../style.css"> 
+    <style>
+        .hidden-view { display: none !important; }
+        .dashboard-container { padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .rag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 20px; }
+        .rag-card { background: #1E1E1E; border-left: 5px solid #444; padding: 15px; border-radius: 8px; color: #fff; }
+        .rag-card.green { border-color: #28a745; }
+        .rag-card.amber { border-color: #ffc107; }
+        .rag-card.red { border-color: #dc3545; }
+    </style>
+</head>
+<body style="background: #0b1118; color: #fff; font-family: sans-serif; margin: 0;">
 
-// === 1. FIREBASE CONFIGURATION (LIVE) ===
-const appConfig = {
-    apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0",
-    authDomain: "cohi-survey-engine.firebaseapp.com",
-    projectId: "cohi-survey-engine",
-    storageBucket: "cohi-survey-engine.firebasestorage.app",
-    messagingSenderId: "208212115382",
-    appId: "1:208212115382:web:db7d4276b194f89a274b17"
-};
-const app = initializeApp(appConfig);
-const db = getFirestore(app);
+    <header id="global-nav" class="hidden-view" style="background: #15202b; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <h1 style="margin: 0; font-size: 1.2rem; color: #fff;">Survey Pro <span style="color: #0dcaf0;">V3</span></h1>
+            <span id="nav-role-badge" style="background: #0dcaf0; color: #000; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;"></span>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <select id="brand-selector" class="hidden-view" style="padding: 5px; background: #222; color: #fff; border: 1px solid #444; border-radius: 4px;">
+                <option value="ALL">All Brands</option>
+                <option value="CO Home Improvements">CO Home Improvements</option>
+                <option value="Yorkshire Windows">Yorkshire Windows</option>
+            </select>
+            <button id="btn-logout" style="background: #dc3545; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">Logout</button>
+        </div>
+    </header>
 
-// === 2. UI ROUTING ENGINE ===
-const views = {
-    login: document.getElementById('view-login'),
-    customer: document.getElementById('view-customer'),
-    designer: document.getElementById('view-designer'),
-    admin: document.getElementById('view-admin'),
-    nav: document.getElementById('global-nav')
-};
+    <main id="view-login" style="height: 100vh; display: flex; align-items: center; justify-content: center;">
+        <div style="background: #15202b; padding: 40px; border-radius: 12px; width: 100%; max-width: 350px; text-align: center; border: 1px solid #333;">
+            <h2 style="margin-top: 0; color: #fff; letter-spacing: 1px;">VAULT ACCESS</h2>
+            <div style="margin-top: 20px;">
+                <input type="text" id="loginId" placeholder="User ID / Postcode" style="width: 100%; padding: 12px; margin-bottom: 10px; box-sizing: border-box; background: #222; border: 1px solid #444; color: #fff; border-radius: 6px;">
+                <input type="password" id="loginPin" placeholder="PIN / Auth Code" style="width: 100%; padding: 12px; margin-bottom: 20px; box-sizing: border-box; background: #222; border: 1px solid #444; color: #fff; border-radius: 6px;">
+                <button id="btn-login" style="width: 100%; padding: 12px; background: #0dcaf0; color: #000; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem;">Authenticate</button>
+            </div>
+            <p id="login-error" class="hidden-view" style="color: #ff4444; margin-top: 15px; font-size: 0.9rem;"></p>
+        </div>
+    </main>
 
-function switchView(targetView, roleLabel = "") {
-    Object.values(views).forEach(v => v.classList.add('hidden-view'));
-    views[targetView].classList.remove('hidden-view');
-    
-    if (targetView === 'admin' || targetView === 'designer') {
-        views.nav.classList.remove('hidden-view');
-        document.getElementById('nav-role-badge').innerText = roleLabel;
-        
-        if(targetView === 'admin') {
-            document.getElementById('brand-selector').classList.remove('hidden');
-        } else {
-            document.getElementById('brand-selector').classList.add('hidden');
-        }
-    }
-}
+    <main id="view-admin" class="hidden-view dashboard-container">
+        <h2 style="border-bottom: 1px solid #333; padding-bottom: 10px; color: #0dcaf0;">Global Pipeline Overview</h2>
+        <div id="admin-rag-container" class="rag-grid">
+            <p style="color: #888;">Fetching live lead data...</p>
+        </div>
+    </main>
 
-// === 3. AUTHENTICATION LOGIC ===
-document.getElementById('btn-login').addEventListener('click', async () => {
-    const id = document.getElementById('loginId').value.trim().toLowerCase();
-    const pin = document.getElementById('loginPin').value.trim();
-    const err = document.getElementById('login-error');
-    
-    err.classList.add('hidden');
+    <main id="view-designer" class="hidden-view dashboard-container">
+        <h2 style="border-bottom: 1px solid #333; padding-bottom: 10px; color: #28a745;">My Active Leads</h2>
+        <div id="designer-pipeline-container" class="rag-grid">
+            <p style="color: #888;">Fetching your pipeline...</p>
+        </div>
+    </main>
 
-    // Admin Access
-    if (id === 'admin' && pin === 'master123') {
-        switchView('admin', 'GLOBAL ADMIN COMMAND');
-        initAdminDashboard();
-        return;
-    }
+    <main id="view-customer" class="hidden-view dashboard-container">
+        <h2 style="border-bottom: 1px solid #333; padding-bottom: 10px; color: #ffc107;">Welcome back, <span id="vault-client-name"></span></h2>
+        <div style="background: #1E1E1E; padding: 20px; border-radius: 8px; margin-top: 20px;">
+            <h3>Your Project Documents</h3>
+            <p style="color: #aaa;">Your finalized designs, specifications, and quotes will appear here once published by your designer.</p>
+        </div>
+    </main>
 
-    // Designer Access
-    if (id === 'designer' && pin === 'survey123') {
-        switchView('designer', 'DESIGNER PORTAL');
-        initDesignerDashboard('Tom'); 
-        return;
-    }
-
-    // Customer Vault Lookup
-    try {
-        const q = query(collection(db, "surveys"), 
-            where("data.inputs.postCode", "==", id.toUpperCase()), 
-            where("data.inputs.clientNum", "==", pin)
-        );
-        const snap = await getDocs(q);
-
-        if (!snap.empty) {
-            switchView('customer');
-            initCustomerVault(snap.docs); 
-        } else {
-            err.innerText = "Access Denied. Please check your details.";
-            err.classList.remove('hidden');
-        }
-    } catch (error) {
-        console.error("Login Error:", error);
-        err.innerText = "Database connection failed.";
-        err.classList.remove('hidden');
-    }
-});
-
-document.getElementById('btn-logout').addEventListener('click', () => {
-    document.getElementById('loginId').value = '';
-    document.getElementById('loginPin').value = '';
-    switchView('login');
-});
-
-// === 4. DASHBOARD INITIALIZERS ===
-function initAdminDashboard() {
-    console.log("Loading Admin Global Data...");
-    // We will build the live RAG readouts here next!
-}
-
-function initDesignerDashboard(designerName) {
-    console.log(`Loading Pipeline for ${designerName}...`);
-}
-
-function initCustomerVault(docs) {
-    console.log(`Loading Vault with ${docs.length} active quotes...`);
-    const clientName = docs[0].data().clientName || "Valued Client";
-    document.getElementById('vault-client-name').innerText = clientName;
-}
+    <script type="module" src="app.js"></script>
+</body>
+</html>
