@@ -1,201 +1,382 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, getDocs, doc, updateDoc, query, where, onSnapshot, addDoc, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// === 1. FIREBASE CONFIGURATION (LIVE) ===
+const appConfig = {
+    apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0",
+    authDomain: "cohi-survey-engine.firebaseapp.com",
+    projectId: "cohi-survey-engine",
+    storageBucket: "cohi-survey-engine.firebasestorage.app",
+    messagingSenderId: "208212115382",
+    appId: "1:208212115382:web:db7d4276b194f89a274b17"
+};
+const app = initializeApp(appConfig);
+const db = getFirestore(app);
+
+// === 2. UI ROUTING ENGINE ===
+const views = {
+    login: document.getElementById('view-login'),
+    customer: document.getElementById('view-customer'),
+    designer: document.getElementById('view-designer'),
+    admin: document.getElementById('view-admin'),
+    nav: document.getElementById('global-nav')
+};
+
+function switchView(targetView, roleLabel = "") {
+    Object.values(views).forEach(v => v.classList.add('hidden-view'));
+    views[targetView].classList.remove('hidden-view');
     
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#15202b">
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="../icon-192.png">
-    
-    <title>Powerhouse CRM | V3</title>
-    
-    <style>
-        /* Base Styling & Reset */
-        body { background: #0b1118; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
-        * { box-sizing: border-box; }
+    if (targetView === 'admin' || targetView === 'designer') {
+        views.nav.classList.remove('hidden-view');
+        document.getElementById('nav-role-badge').innerText = roleLabel;
         
-        /* Core UI Utilities */
-        .hidden-view { display: none !important; }
-        .dashboard-container { padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; }
-        button { font-family: inherit; transition: opacity 0.2s; }
-        button:hover:not(:disabled) { opacity: 0.85; }
-        
-        /* Grid & Card System */
-        .rag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 20px; }
-        .rag-card { background: #15202b; border: 1px solid #333; padding: 20px; border-radius: 12px; position: relative; display: flex; flex-direction: column; }
-        
-        /* RAG Indicators */
-        .rag-indicator { position: absolute; top: 0; left: 0; width: 6px; height: 100%; border-radius: 12px 0 0 12px; }
-        .bg-green { background: #28a745; }
-        .bg-amber { background: #ffc107; }
-        .bg-red { background: #dc3545; }
-        
-        /* Form Elements */
-        .glass-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px 15px; border-radius: 8px; width: 100%; outline: none; transition: border 0.3s; }
-        .glass-input:focus { border-color: #0dcaf0; }
-        
-        /* Chat UI */
-        .chat-bubble { padding: 10px 14px; border-radius: 12px; max-width: 85%; font-size: 0.95rem; line-height: 1.4; position: relative; }
-        .chat-bubble-user { background: #0dcaf0; color: #000; align-self: flex-end; border-bottom-right-radius: 2px; }
-        .chat-bubble-them { background: #2a2a2a; color: #fff; align-self: flex-start; border-bottom-left-radius: 2px; }
-        .chat-meta { font-size: 0.65rem; opacity: 0.6; margin-top: 4px; text-align: right; }
-        
-        /* Notifications */
-        .badge { background: #dc3545; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; position: absolute; top: 15px; right: 15px; }
-    </style>
-</head>
-<body>
-
-    <header id="global-nav" class="hidden-view" style="background: rgba(21, 32, 43, 0.95); backdrop-filter: blur(10px); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); position: sticky; top: 0; z-index: 100;">
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <h1 style="margin: 0; font-size: 1.2rem; font-weight: 800; letter-spacing: -0.5px;">Powerhouse <span style="color: #0dcaf0;">CRM</span></h1>
-            <span id="nav-role-badge" style="background: rgba(13, 202, 240, 0.1); color: #0dcaf0; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; border: 1px solid rgba(13, 202, 240, 0.2);"></span>
-        </div>
-        <div style="display: flex; gap: 12px; align-items: center;">
-            <select id="brand-selector" class="hidden-view glass-input" style="padding: 6px 12px; width: auto; font-size: 0.85rem;">
-                <option value="ALL">All Brands</option>
-                <option value="CO Home Improvements">CO Home Improvements</option>
-                <option value="Yorkshire Windows">Yorkshire Windows</option>
-            </select>
-            <button id="btn-logout" style="background: transparent; color: #ff4444; border: 1px solid #ff4444; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">Sign Out</button>
-        </div>
-    </header>
-
-    <main id="view-login" style="height: 100vh; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, #15202b 0%, #0b1118 100%); padding: 20px;">
-        <div style="background: rgba(21, 32, 43, 0.8); backdrop-filter: blur(20px); padding: 40px; border-radius: 16px; width: 100%; max-width: 380px; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
-            <div style="text-align: center; margin-bottom: 30px;">
-                <h2 style="margin: 0; font-size: 1.8rem; font-weight: 900; letter-spacing: -1px;">Client <span style="color: #0dcaf0;">Vault.</span></h2>
-                <p style="color: #888; font-size: 0.9rem; margin-top: 5px;">Enter your secure project credentials.</p>
-            </div>
-            <div>
-                <input type="text" id="loginId" class="glass-input" placeholder="User ID / Postcode" style="margin-bottom: 15px;">
-                <input type="password" id="loginPin" class="glass-input" placeholder="Secure PIN" style="margin-bottom: 25px;">
-                <button id="btn-login" style="width: 100%; padding: 14px; background: #0dcaf0; color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; box-shadow: 0 4px 15px rgba(13, 202, 240, 0.3);">Access Vault</button>
-            </div>
-            <p id="login-error" class="hidden-view" style="color: #ff4444; margin-top: 20px; font-size: 0.9rem; text-align: center; background: rgba(255,68,68,0.1); padding: 10px; border-radius: 6px;"></p>
-        </div>
-    </main>
-
-    <main id="view-admin" class="hidden-view dashboard-container">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
-            <div style="background: #15202b; padding: 25px; border-radius: 12px; border-top: 4px solid #28a745; text-align: center; border-left: 1px solid #333; border-right: 1px solid #333; border-bottom: 1px solid #333;">
-                <h4 style="margin: 0; color: #888; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Active Leads</h4>
-                <p id="v3-stat-active" style="margin: 10px 0 0 0; font-size: 2.5rem; color: #fff; font-weight: 900;">0</p>
-            </div>
-            <div style="background: #15202b; padding: 25px; border-radius: 12px; border-top: 4px solid #ffc107; text-align: center; border-left: 1px solid #333; border-right: 1px solid #333; border-bottom: 1px solid #333;">
-                <h4 style="margin: 0; color: #888; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Stalled (3-7 Days)</h4>
-                <p id="v3-stat-stalled" style="margin: 10px 0 0 0; font-size: 2.5rem; color: #ffc107; font-weight: 900;">0</p>
-            </div>
-            <div style="background: #15202b; padding: 25px; border-radius: 12px; border-top: 4px solid #dc3545; text-align: center; border-left: 1px solid #333; border-right: 1px solid #333; border-bottom: 1px solid #333;">
-                <h4 style="margin: 0; color: #888; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Critical Attention</h4>
-                <p id="v3-stat-critical" style="margin: 10px 0 0 0; font-size: 2.5rem; color: #dc3545; font-weight: 900;">0</p>
-            </div>
-        </div>
-
-        <div id="admin-rag-container" class="rag-grid">
-            <div style="text-align: center; padding: 40px; color: #888; grid-column: 1 / -1;">
-                <div style="width: 30px; height: 30px; border: 3px solid #333; border-top-color: #0dcaf0; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
-                Syncing global pipeline...
-            </div>
-        </div>
-    </main>
-
-    <main id="view-designer" class="hidden-view dashboard-container">
-        <h2 style="font-size: 1.5rem; margin-top: 0; margin-bottom: 20px; font-weight: 800;">My Active <span style="color: #28a745;">Pipeline.</span></h2>
-        <div id="designer-pipeline-container" class="rag-grid"></div>
-
-        <div id="designer-chat-modal" class="hidden-view" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 20px;">
-            <div style="background: #15202b; border-radius: 16px; width: 100%; max-width: 600px; border: 1px solid #333; display: flex; flex-direction: column; height: 75vh; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding: 20px; background: rgba(255,255,255,0.02); border-radius: 16px 16px 0 0;">
-                    <div>
-                        <h3 style="margin: 0; color: #fff; font-size: 1.1rem;" id="designer-chat-title">Client Messaging</h3>
-                        <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: #888;">Secure connection established</p>
-                    </div>
-                    <button id="btn-close-designer-chat" style="background: rgba(255,68,68,0.1); color: #ff4444; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
-                </div>
-                
-                <div id="designer-chat-window" style="flex-grow: 1; background: #0b1118; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
-                    <p style="text-align: center; color: #555; font-size: 0.85rem; margin: 20px 0;">Select a lead to initialize chat instance.</p>
-                </div>
-                
-                <div style="padding: 20px; border-top: 1px solid #333; background: rgba(255,255,255,0.02); border-radius: 0 0 16px 16px; display: flex; gap: 10px;">
-                    <input type="text" id="designer-chat-input" class="glass-input" placeholder="Type a reply..." style="flex-grow: 1;">
-                    <button id="btn-designer-send-chat" style="background: #0dcaf0; color: #000; border: none; padding: 0 25px; border-radius: 8px; font-weight: bold; cursor: pointer;">Send</button>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <main id="view-customer" class="hidden-view dashboard-container">
-        
-        <div style="margin-bottom: 30px; text-align: center;">
-            <h2 style="font-size: 2rem; margin: 0; font-weight: 900; letter-spacing: -1px;">Welcome to your <span style="color: #0dcaf0;">Vault.</span></h2>
-            <p style="color: #888; font-size: 1rem; margin-top: 5px;">Project Dashboard for <strong id="vault-client-name" style="color: #fff;">...</strong></p>
-        </div>
-        
-        <div id="vault-download-area" class="hidden-view" style="background: linear-gradient(135deg, #15202b 0%, #1a2938 100%); padding: 30px; border-radius: 12px; border: 1px solid rgba(13, 202, 240, 0.3); text-align: center; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#0dcaf0" stroke-width="1.5" style="margin-bottom: 15px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><polyline points="9 15 12 18 15 15"></polyline></svg>
-            <h3 style="margin: 0 0 10px 0; font-size: 1.2rem;">Your Design Pack is Ready</h3>
-            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px; max-width: 400px; margin-left: auto; margin-right: auto;">Review your finalized specifications, architectural sketches, and project notes in a single, secure document.</p>
-            <button id="btn-download-pack" style="background: #0dcaf0; color: #000; border: none; padding: 12px 30px; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; box-shadow: 0 4px 15px rgba(13, 202, 240, 0.4);">Download PDF Proposal</button>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px;">
-            
-            <div style="background: #15202b; padding: 25px; border-radius: 12px; border: 1px solid #333; position: relative; overflow: hidden;">
-                <div class="rag-indicator bg-amber"></div>
-                <h3 style="margin-top: 0; font-size: 1.1rem; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px;">Live Specifications</h3>
-                <div id="vault-specs-container" style="color: #ccc; font-size: 0.95rem; line-height: 1.8;">
-                    <div style="text-align: center; padding: 20px;">
-                        <div style="width: 20px; height: 20px; border: 2px solid #555; border-top-color: #0dcaf0; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
-                        Loading data block...
-                    </div>
-                </div>
-            </div>
-
-            <div style="background: #15202b; border-radius: 12px; border: 1px solid #333; display: flex; flex-direction: column; position: relative; overflow: hidden;">
-                <div class="rag-indicator bg-green"></div>
-                
-                <div style="padding: 20px 25px; border-bottom: 1px solid #333; background: rgba(255,255,255,0.02);">
-                    <h3 style="margin: 0; font-size: 1.1rem;">Direct Messaging</h3>
-                    <p style="color: #888; font-size: 0.85rem; margin: 5px 0 0 0;">Designer: <strong id="vault-designer-name" style="color: #fff;">...</strong></p>
-                </div>
-                
-                <div id="chat-window" style="flex-grow: 1; background: #0b1118; padding: 20px; height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
-                    <p style="text-align: center; color: #555; font-size: 0.85rem; margin: auto;">Establishing secure socket...</p>
-                </div>
-                
-                <div style="padding: 20px; border-top: 1px solid #333; background: rgba(255,255,255,0.02); display: flex; gap: 10px;">
-                    <input type="text" id="chat-input" class="glass-input" placeholder="Type a message..." style="flex-grow: 1; padding: 12px;">
-                    <button id="btn-send-chat" style="background: #28a745; color: #fff; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer;">Send</button>
-                </div>
-            </div>
-
-        </div>
-    </main>
-
-    <style>
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
-
-    <script type="module" src="app.js"></script>
-    <script>
-        // PWA Registration Hook
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('../sw.js').then(reg => {
-                    console.log('V3 ServiceWorker Scope:', reg.scope);
-                }).catch(err => {
-                    console.log('V3 ServiceWorker registration failed: ', err);
-                });
-            });
+        if(targetView === 'admin') {
+            document.getElementById('brand-selector').classList.remove('hidden-view');
+        } else {
+            document.getElementById('brand-selector').classList.add('hidden-view');
         }
-    </script>
-</body>
-</html>
+    }
+}
+
+// === 3. AUTHENTICATION LOGIC ===
+document.getElementById('btn-login').addEventListener('click', async () => {
+    const id = document.getElementById('loginId').value.trim().toLowerCase();
+    const pin = document.getElementById('loginPin').value.trim();
+    const err = document.getElementById('login-error');
+    const btn = document.getElementById('btn-login');
+    
+    err.classList.add('hidden-view');
+    btn.innerText = "Authenticating...";
+    btn.disabled = true;
+
+    // --- Hardcoded Roles ---
+    if (id === 'admin' && pin === 'master123') {
+        switchView('admin', 'GLOBAL ADMIN');
+        initAdminDashboard();
+        btn.innerText = "Access Vault"; btn.disabled = false;
+        return;
+    }
+
+    if (id === 'designer' && pin === 'survey123') {
+        switchView('designer', 'DESIGNER PORTAL');
+        initDesignerDashboard('Tom'); // Default test profile
+        btn.innerText = "Access Vault"; btn.disabled = false;
+        return;
+    }
+
+    // --- Customer Lookup ---
+    try {
+        const q = query(collection(db, "surveys"), 
+            where("data.inputs.postCode", "==", id.toUpperCase()), 
+            where("data.inputs.clientNum", "==", pin)
+        );
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+            switchView('customer');
+            initCustomerVault(snap.docs); 
+        } else {
+            err.innerText = "Credentials not recognized. Please check your Postcode and PIN.";
+            err.classList.remove('hidden-view');
+        }
+    } catch (error) {
+        console.error("Auth Error:", error);
+        err.innerText = "Network secure connection failed.";
+        err.classList.remove('hidden-view');
+    }
+    
+    btn.innerText = "Access Vault"; btn.disabled = false;
+});
+
+document.getElementById('btn-logout').addEventListener('click', () => {
+    document.getElementById('loginId').value = '';
+    document.getElementById('loginPin').value = '';
+    // Unsubscribe from any active listeners to prevent memory leaks
+    if(window.activeDesignerChatUnsubscribe) window.activeDesignerChatUnsubscribe();
+    if(window.activeVaultChatUnsubscribe) window.activeVaultChatUnsubscribe();
+    switchView('login');
+});
+
+// === 4. CORE ENGINE: PIPELINE RENDERER ===
+
+// Expose status update function globally so inline HTML buttons can trigger it
+window.updateLeadStatus = async (docId, newStatus) => {
+    try {
+        const docRef = doc(db, "surveys", docId);
+        await updateDoc(docRef, { "data.inputs._pipelineStatus": newStatus, "data.inputs._lastContacted": Date.now() });
+        // Force refresh the dashboard
+        if(document.getElementById('view-designer').classList.contains('hidden-view') === false) {
+            initDesignerDashboard('Tom');
+        } else {
+            initAdminDashboard();
+        }
+    } catch (error) {
+        console.error("Failed to update status", error);
+        alert("Failed to sync status to cloud.");
+    }
+};
+
+async function fetchAndRenderPipeline(targetContainerId, designerFilter = null, brandFilter = "ALL") {
+    const container = document.getElementById(targetContainerId);
+    container.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: #888; grid-column: 1 / -1;">
+            <div style="width: 30px; height: 30px; border: 3px solid #333; border-top-color: #0dcaf0; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+            Syncing data matrix...
+        </div>
+    `;
+
+    let countActive = 0, countStalled = 0, countCritical = 0;
+
+    try {
+        const snap = await getDocs(collection(db, "surveys"));
+        container.innerHTML = ''; 
+        let foundRecords = false;
+        
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            const inputs = data.data?.inputs || {};
+            
+            const clientName = data.clientName || 'Unnamed Client';
+            const postCode = inputs.postCode || 'No Postcode';
+            
+            // Fallback for older V2 data that lacks metadata
+            const assignedDesigner = inputs._designerName || 'Tom'; 
+            const pipelineStatus = inputs._pipelineStatus || 'Pre-Quote';
+            const projectBrand = inputs._brand || 'CO Home Improvements';
+            
+            if (designerFilter && assignedDesigner !== designerFilter) return;
+            if (brandFilter !== "ALL" && projectBrand !== brandFilter) return;
+
+            foundRecords = true;
+            
+            // --- RAG Calculus ---
+            const lastContacted = inputs._lastContacted || (data.updatedAt ? data.updatedAt.toMillis() : Date.now());
+            const daysSinceContact = (Date.now() - lastContacted) / (1000 * 60 * 60 * 24);
+            
+            let ragClass = 'bg-green', ragText = 'Active', borderClass = 'border-green-500';
+            if (daysSinceContact > 7) { 
+                ragClass = 'bg-red'; ragText = 'Critical Action Required'; countCritical++;
+            } else if (daysSinceContact > 3) { 
+                ragClass = 'bg-amber'; ragText = 'Pending Follow-up'; countStalled++;
+            } else { countActive++; }
+
+            // --- Status Updater Dropdown (Interactive Component) ---
+            const statusOptions = ['Pre-Quote', 'Quoted', 'Follow-Up', 'Surveyed', 'Sold', 'Dead Lead'];
+            let statusSelectHtml = `<select onchange="window.updateLeadStatus('${docSnap.id}', this.value)" class="glass-input" style="padding: 4px 8px; font-size: 0.8rem; border-color: #444; width: 100%; margin-top: 5px;">`;
+            statusOptions.forEach(opt => {
+                statusSelectHtml += `<option value="${opt}" ${pipelineStatus === opt ? 'selected' : ''}>${opt}</option>`;
+            });
+            statusSelectHtml += `</select>`;
+
+            // Action Buttons based on role
+            let actionArea = '';
+            if (designerFilter) {
+                // Designer gets interactive controls
+                actionArea = `
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05);">
+                        <label style="font-size: 0.75rem; color: #888; text-transform: uppercase;">Update Pipeline Stage:</label>
+                        ${statusSelectHtml}
+                        <button onclick="openDesignerChat('${docSnap.id}', '${clientName}')" style="margin-top: 10px; width: 100%; padding: 10px; background: rgba(13, 202, 240, 0.1); color: #0dcaf0; border: 1px solid rgba(13, 202, 240, 0.3); border-radius: 6px; font-weight: bold; cursor: pointer;">Open Communication</button>
+                    </div>
+                `;
+            }
+
+            container.innerHTML += `
+                <div class="rag-card">
+                    <div class="rag-indicator ${ragClass}"></div>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-left: 10px;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.1rem; color: #fff;">${clientName}</h3>
+                            <p style="margin: 4px 0 0 0; color: #888; font-size: 0.8rem;">${postCode} &nbsp;|&nbsp; ${projectBrand}</p>
+                        </div>
+                    </div>
+                    
+                    <div style="padding-left: 10px; margin-top: 15px; flex-grow: 1;">
+                        <p style="margin: 0; color: #aaa; font-size: 0.85rem;">Designer: <span style="color: #fff;">${assignedDesigner}</span></p>
+                        <p style="margin: 5px 0 0 0; color: #aaa; font-size: 0.85rem;">Current Stage: <span style="color: #fff; font-weight: bold;">${pipelineStatus}</span></p>
+                    </div>
+
+                    <div style="padding-left: 10px; margin-top: 10px;">
+                        <span style="font-size: 0.7rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 8px; border-radius: 4px; background: rgba(255,255,255,0.05); color: #ccc;">
+                            ${ragText}
+                        </span>
+                    </div>
+                    ${actionArea}
+                </div>
+            `;
+        });
+        
+        if (targetContainerId === 'admin-rag-container') {
+            document.getElementById('v3-stat-active').innerText = countActive;
+            document.getElementById('v3-stat-stalled').innerText = countStalled;
+            document.getElementById('v3-stat-critical').innerText = countCritical;
+        }
+
+        if(!foundRecords) container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #666; padding: 40px; background: #15202b; border-radius: 12px; border: 1px dashed #333;">No records match current filters.</div>';
+
+    } catch (error) {
+        console.error("Dashboard error:", error);
+        container.innerHTML = '<p style="color: #ff4444; text-align: center;">Secure connection interrupted.</p>';
+    }
+}
+
+window.initAdminDashboard = function() { fetchAndRenderPipeline('admin-rag-container', null, document.getElementById('brand-selector').value); }
+window.initDesignerDashboard = function(designerName) { fetchAndRenderPipeline('designer-pipeline-container', designerName, "ALL"); }
+
+document.getElementById('brand-selector').addEventListener('change', window.initAdminDashboard);
+
+
+// === 5. CUSTOMER VAULT LOGIC ===
+window.activeVaultChatUnsubscribe = null;
+
+window.initCustomerVault = function(docs) {
+    const docSnap = docs[0];
+    const data = docSnap.data();
+    const inputs = data.data?.inputs || {};
+    window.activeVaultSurveyId = docSnap.id; 
+    
+    document.getElementById('vault-client-name').innerText = data.clientName || "Valued Client";
+    document.getElementById('vault-designer-name').innerText = inputs._designerName || "Tom";
+
+    // 1. Setup Specs Panel
+    document.getElementById('vault-specs-container').innerHTML = `
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 8px;">
+            <span style="color: #888;">Build Directive:</span> <strong style="color: #fff;">${inputs.buildType || "TBC"}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 8px;">
+            <span style="color: #888;">Dimensions:</span> <strong style="color: #fff;">${inputs.proposedSize || "Subject to final measure"}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 8px;">
+            <span style="color: #888;">Roofing Sys:</span> <strong style="color: #fff;">${inputs.roofType || "TBC"}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 20px;">
+            <span style="color: #888;">Finish Matrix:</span> <strong style="color: #fff;">${inputs.frameColour || "TBC"}</strong>
+        </div>
+        <div style="background: rgba(13, 202, 240, 0.05); padding: 15px; border-radius: 8px; border-left: 3px solid #0dcaf0;">
+            <p style="margin: 0; font-size: 0.75rem; color: #0dcaf0; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; letter-spacing: 0.5px;">Architectural Notes</p>
+            <p style="margin: 0; font-style: italic; color: #ddd; font-size: 0.95rem;">"${inputs.customerNotes || "Design notes are currently being formalized. Check back shortly."}"</p>
+        </div>
+    `;
+
+    // 2. Check for finalized PDF URL
+    const downloadArea = document.getElementById('vault-download-area');
+    if (data.generatedPdfUrl) {
+        downloadArea.classList.remove('hidden-view');
+        document.getElementById('btn-download-pack').onclick = () => window.open(data.generatedPdfUrl, '_blank');
+    } else {
+        downloadArea.classList.add('hidden-view');
+    }
+
+    // 3. Init Chat
+    initVaultChat(window.activeVaultSurveyId);
+}
+
+// === 6. TWO-WAY SECURE WEBSOCKET CHAT ===
+
+// Format timestamps nicely
+function formatTime(timestamp) {
+    if(!timestamp) return 'Just now';
+    const d = timestamp.toDate();
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// --- Customer View Chat ---
+function initVaultChat(surveyId) {
+    const chatWindow = document.getElementById('chat-window');
+    if(window.activeVaultChatUnsubscribe) window.activeVaultChatUnsubscribe();
+    
+    const q = query(collection(db, `surveys/${surveyId}/messages`), orderBy('timestamp', 'asc'));
+    
+    window.activeVaultChatUnsubscribe = onSnapshot(q, (snapshot) => {
+        chatWindow.innerHTML = '';
+        if(snapshot.empty) {
+            chatWindow.innerHTML = '<p style="text-align: center; color: #555; font-size: 0.85rem; margin: auto;">Connection secure. Send a message to your designer.</p>';
+            return;
+        }
+        
+        snapshot.forEach(doc => {
+            const msg = doc.data();
+            const isCustomer = msg.sender === 'Customer';
+            const bubbleClass = isCustomer ? 'chat-bubble-user' : 'chat-bubble-them';
+            
+            chatWindow.innerHTML += `
+                <div class="chat-bubble ${bubbleClass}">
+                    ${msg.text}
+                    <div class="chat-meta">${formatTime(msg.timestamp)}</div>
+                </div>
+            `;
+        });
+        chatWindow.scrollTop = chatWindow.scrollHeight; 
+    });
+}
+
+document.getElementById('btn-send-chat').addEventListener('click', async () => {
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim();
+    if(!text || !window.activeVaultSurveyId) return;
+    
+    input.value = ''; 
+    await addDoc(collection(db, `surveys/${window.activeVaultSurveyId}/messages`), {
+        sender: 'Customer',
+        text: text,
+        timestamp: serverTimestamp()
+    });
+});
+
+document.getElementById('chat-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') document.getElementById('btn-send-chat').click(); });
+
+// --- Designer View Chat Modal ---
+window.activeDesignerChatUnsubscribe = null;
+
+window.openDesignerChat = function(surveyId, clientName) {
+    window.activeDesignerSurveyId = surveyId;
+    document.getElementById('designer-chat-title').innerText = clientName;
+    document.getElementById('designer-chat-modal').classList.remove('hidden-view');
+    
+    const chatWindow = document.getElementById('designer-chat-window');
+    const q = query(collection(db, `surveys/${surveyId}/messages`), orderBy('timestamp', 'asc'));
+    
+    if (window.activeDesignerChatUnsubscribe) window.activeDesignerChatUnsubscribe();
+    
+    window.activeDesignerChatUnsubscribe = onSnapshot(q, (snapshot) => {
+        chatWindow.innerHTML = '';
+        if(snapshot.empty) {
+            chatWindow.innerHTML = '<p style="text-align: center; color: #555; font-size: 0.85rem; margin: auto;">No message history. Reach out to the client to initialize.</p>';
+            return;
+        }
+        
+        snapshot.forEach(doc => {
+            const msg = doc.data();
+            const isDesigner = msg.sender === 'Designer';
+            const bubbleClass = isDesigner ? 'chat-bubble-user' : 'chat-bubble-them';
+            
+            chatWindow.innerHTML += `
+                <div class="chat-bubble ${bubbleClass}">
+                    ${msg.text}
+                    <div class="chat-meta">${formatTime(msg.timestamp)}</div>
+                </div>
+            `;
+        });
+        chatWindow.scrollTop = chatWindow.scrollHeight; 
+    });
+}
+
+document.getElementById('btn-close-designer-chat').addEventListener('click', () => {
+    document.getElementById('designer-chat-modal').classList.add('hidden-view');
+    if (window.activeDesignerChatUnsubscribe) { window.activeDesignerChatUnsubscribe(); window.activeDesignerChatUnsubscribe = null; }
+});
+
+document.getElementById('btn-designer-send-chat').addEventListener('click', async () => {
+    const input = document.getElementById('designer-chat-input');
+    const text = input.value.trim();
+    if(!text || !window.activeDesignerSurveyId) return;
+    
+    input.value = ''; 
+    await addDoc(collection(db, `surveys/${window.activeDesignerSurveyId}/messages`), {
+        sender: 'Designer',
+        text: text,
+        timestamp: serverTimestamp()
+    });
+});
+
+document.getElementById('designer-chat-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') document.getElementById('btn-designer-send-chat').click(); });
