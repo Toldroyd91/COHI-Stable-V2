@@ -166,8 +166,43 @@ window.initDesignerDashboard = function(designerName) {
     fetchAndRenderPipeline('designer-pipeline-container', designerName); // specifically pulls "Tom"
 }
 
+// --- UPGRADED VAULT INITIALIZER ---
 window.initCustomerVault = function(docs) {
     console.log(`Loading Vault...`);
-    const clientName = docs[0].data().clientName || "Valued Client";
-    document.getElementById('vault-client-name').innerText = clientName;
+    const data = docs[0].data();
+    const inputs = data.data?.inputs || {};
+    
+    // 1. Set Customer Greeting
+    document.getElementById('vault-client-name').innerText = data.clientName || "Valued Client";
+    
+    // 2. Set Designer Name
+    document.getElementById('vault-designer-name').innerText = inputs._designerName || "Unassigned";
+
+    // 3. Populate Project Specs
+    const specsContainer = document.getElementById('vault-specs-container');
+    
+    const buildType = inputs.buildType || "TBC";
+    const proposedSize = inputs.proposedSize || "TBC";
+    const roofType = inputs.roofType || "TBC";
+    const frameColour = inputs.frameColour || "TBC";
+    const customerNotes = inputs.customerNotes || "We are currently finalizing the details of your project.";
+
+    specsContainer.innerHTML = `
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 5px;">
+            <span>Build Type:</span> <strong style="color: #fff;">${buildType}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 5px;">
+            <span>Proposed Size:</span> <strong style="color: #fff;">${proposedSize}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 5px;">
+            <span>Roof Style:</span> <strong style="color: #fff;">${roofType}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 15px;">
+            <span>Frame Colour:</span> <strong style="color: #fff;">${frameColour}</strong>
+        </div>
+        <div style="background: #2a2a2a; padding: 15px; border-radius: 6px; border-left: 3px solid #0dcaf0;">
+            <p style="margin: 0; font-size: 0.85rem; color: #0dcaf0; text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">Designer Notes</p>
+            <p style="margin: 0; font-style: italic;">"${customerNotes}"</p>
+        </div>
+    `;
 }
