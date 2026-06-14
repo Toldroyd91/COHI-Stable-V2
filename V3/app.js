@@ -88,18 +88,86 @@ document.getElementById('btn-logout').addEventListener('click', () => {
     switchView('login');
 });
 
-// === 4. DASHBOARD INITIALIZERS ===
-function initAdminDashboard() {
+// === 4. DASHBOARD INITIALIZERS & RAG ENGINE ===
+
+async function fetchAndRenderPipeline(targetContainerId, designerFilter = null) {
+    const container = document.getElementById(targetContainerId);
+    container.innerHTML = '<p style="color: #888;">Fetching live pipeline data...</p>';
+
+    try {
+        const snap = await getDocs(collection(db, "surveys"));
+        if (snap.empty) {
+            container.innerHTML = '<p style="color: #888;">No leads found in the system.</p>';
+            return;
+        }
+
+        container.innerHTML = ''; 
+        
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            const inputs = data.data?.inputs || {};
+            
+            const clientName = data.clientName || 'Unnamed Client';
+            const postCode = inputs.postCode || 'No Postcode';
+            const assignedDesigner = inputs._designerName || 'Unassigned';
+            const pipelineStatus = inputs._pipelineStatus || 'Pre-Quote';
+            
+            // Fallback to the document creation date if _lastContacted isn't available yet
+            const lastContacted = inputs._lastContacted || (data.updatedAt ? data.updatedAt.toMillis() : Date.now());
+            
+            if (designerFilter && assignedDesigner !== designerFilter) return;
+
+            // --- THE RAG MATH ---
+            const daysSinceContact = (Date.now() - lastContacted) / (1000 * 60 * 60 * 24);
+            let ragClass = 'green';
+            let ragText = 'Active (Recently updated)';
+            
+            if (daysSinceContact > 7) { 
+                ragClass = 'red'; 
+                ragText = 'Action Required (> 7 Days)'; 
+            } else if (daysSinceContact > 3) { 
+                ragClass = 'amber'; 
+                ragText = 'Pending (3-7 Days)'; 
+            }
+
+            // --- BUILD THE UI CARD ---
+            const cardHtml = `
+                <div class="rag-card ${ragClass}">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <h3 style="margin: 0; font-size: 1.1rem;">${clientName}</h3>
+                        <span style="font-size: 0.8rem; background: rgba(255,255,255,0.1); padding: 3px 6px; border-radius: 4px;">${postCode}</span>
+                    </div>
+                    <p style="margin: 8px 0 0 0; color: #ccc; font-size: 0.9rem;">Designer: <strong style="color: #fff;">${assignedDesigner}</strong></p>
+                    <p style="margin: 4px 0 0 0; color: #aaa; font-size: 0.9rem;">Stage: ${pipelineStatus}</p>
+                    <div style="margin-top: 15px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
+                        Status: ${ragText}
+                    </div>
+                </div>
+            `;
+            container.innerHTML += cardHtml;
+        });
+        
+        if(container.innerHTML === '') container.innerHTML = '<p style="color: #888;">No leads match this view.</p>';
+
+    } catch (error) {
+        console.error("Error fetching pipeline:", error);
+        container.innerHTML = '<p style="color: #ff4444;">Failed to load database.</p>';
+    }
+}
+
+// These are called automatically when you log in via the router above!
+window.initAdminDashboard = function() {
     console.log("Loading Admin Global Data...");
-    // We will build the live RAG readouts here next!
+    fetchAndRenderPipeline('admin-rag-container', null); // null means show ALL designers
 }
 
-function initDesignerDashboard(designerName) {
+window.initDesignerDashboard = function(designerName) {
     console.log(`Loading Pipeline for ${designerName}...`);
+    fetchAndRenderPipeline('designer-pipeline-container', designerName); // specifically pulls "Tom"
 }
 
-function initCustomerVault(docs) {
-    console.log(`Loading Vault with ${docs.length} active quotes...`);
+window.initCustomerVault = function(docs) {
+    console.log(`Loading Vault...`);
     const clientName = docs[0].data().clientName || "Valued Client";
     document.getElementById('vault-client-name').innerText = clientName;
 }
