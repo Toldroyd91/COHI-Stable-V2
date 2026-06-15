@@ -20,12 +20,13 @@
         /* Core UI Utilities */
         .hidden-view { display: none !important; }
         .dashboard-container { padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; }
-        button { font-family: inherit; transition: opacity 0.2s; }
+        button { font-family: inherit; transition: opacity 0.2s; cursor: pointer; }
         button:hover:not(:disabled) { opacity: 0.85; }
         
         /* Grid & Card System */
         .rag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 20px; }
-        .rag-card { background: #15202b; border: 1px solid #333; padding: 20px; border-radius: 12px; position: relative; display: flex; flex-direction: column; }
+        .rag-card { background: #15202b; border: 1px solid #333; padding: 20px; border-radius: 12px; position: relative; display: flex; flex-direction: column; transition: transform 0.2s; }
+        .rag-card:hover { border-color: #555; }
         
         /* RAG Indicators */
         .rag-indicator { position: absolute; top: 0; left: 0; width: 6px; height: 100%; border-radius: 12px 0 0 12px; }
@@ -42,9 +43,10 @@
         .chat-bubble-user { background: #0dcaf0; color: #000; align-self: flex-end; border-bottom-right-radius: 2px; }
         .chat-bubble-them { background: #2a2a2a; color: #fff; align-self: flex-start; border-bottom-left-radius: 2px; }
         .chat-meta { font-size: 0.65rem; opacity: 0.6; margin-top: 4px; text-align: right; }
-        
-        /* Notifications */
-        .badge { background: #dc3545; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; position: absolute; top: 15px; right: 15px; }
+
+        /* Filter Buttons */
+        .filter-btn { background: #222; border: 1px solid #444; color: #888; padding: 8px 18px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; white-space: nowrap; transition: all 0.2s; }
+        .filter-btn.active { background: rgba(13, 202, 240, 0.15); color: #0dcaf0; border-color: #0dcaf0; }
     </style>
 </head>
 <body>
@@ -60,7 +62,7 @@
                 <option value="CO Home Improvements">CO Home Improvements</option>
                 <option value="Yorkshire Windows">Yorkshire Windows</option>
             </select>
-            <button id="btn-logout" style="background: transparent; color: #ff4444; border: 1px solid #ff4444; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">Sign Out</button>
+            <button id="btn-logout" style="background: transparent; color: #ff4444; border: 1px solid #ff4444; padding: 6px 16px; border-radius: 6px; font-weight: bold; font-size: 0.85rem;">Sign Out</button>
         </div>
     </header>
 
@@ -73,7 +75,7 @@
             <div>
                 <input type="text" id="loginId" class="glass-input" placeholder="User ID / Postcode" style="margin-bottom: 15px;">
                 <input type="password" id="loginPin" class="glass-input" placeholder="Secure PIN" style="margin-bottom: 25px;">
-                <button id="btn-login" style="width: 100%; padding: 14px; background: #0dcaf0; color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; box-shadow: 0 4px 15px rgba(13, 202, 240, 0.3);">Access Vault</button>
+                <button id="btn-login" style="width: 100%; padding: 14px; background: #0dcaf0; color: #000; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 15px rgba(13, 202, 240, 0.3);">Access Vault</button>
             </div>
             <p id="login-error" class="hidden-view" style="color: #ff4444; margin-top: 20px; font-size: 0.9rem; text-align: center; background: rgba(255,68,68,0.1); padding: 10px; border-radius: 6px;"></p>
         </div>
@@ -105,6 +107,16 @@
 
     <main id="view-designer" class="hidden-view dashboard-container">
         <h2 style="font-size: 1.5rem; margin-top: 0; margin-bottom: 20px; font-weight: 800;">My Active <span style="color: #28a745;">Pipeline.</span></h2>
+        
+        <div id="designer-filters" style="display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <button onclick="window.setDesignerFilter('ALL', this)" class="filter-btn active">All Active</button>
+            <button onclick="window.setDesignerFilter('Pre-Quote', this)" class="filter-btn">Pre-Quote</button>
+            <button onclick="window.setDesignerFilter('Quoted', this)" class="filter-btn">Quoted</button>
+            <button onclick="window.setDesignerFilter('Follow-Up', this)" class="filter-btn">Follow-Up</button>
+            <button onclick="window.setDesignerFilter('Surveyed', this)" class="filter-btn">Surveyed</button>
+            <button onclick="window.setDesignerFilter('Sold', this)" class="filter-btn" style="border-color: #28a745; color: #28a745;">Sold</button>
+        </div>
+
         <div id="designer-pipeline-container" class="rag-grid"></div>
 
         <div id="designer-chat-modal" class="hidden-view" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 20px;">
@@ -115,7 +127,7 @@
                         <h3 style="margin: 0; color: #fff; font-size: 1.1rem;" id="designer-chat-title">Client Messaging</h3>
                         <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: #888;">Secure connection established</p>
                     </div>
-                    <button id="btn-close-designer-chat" style="background: rgba(255,68,68,0.1); color: #ff4444; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+                    <button id="btn-close-designer-chat" style="background: rgba(255,68,68,0.1); color: #ff4444; border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
                 </div>
@@ -126,7 +138,7 @@
                 
                 <div style="padding: 20px; border-top: 1px solid #333; background: rgba(255,255,255,0.02); border-radius: 0 0 16px 16px; display: flex; gap: 10px;">
                     <input type="text" id="designer-chat-input" class="glass-input" placeholder="Type a reply..." style="flex-grow: 1;">
-                    <button id="btn-designer-send-chat" style="background: #0dcaf0; color: #000; border: none; padding: 0 25px; border-radius: 8px; font-weight: bold; cursor: pointer;">Send</button>
+                    <button id="btn-designer-send-chat" style="background: #0dcaf0; color: #000; border: none; padding: 0 25px; border-radius: 8px; font-weight: bold;">Send</button>
                 </div>
             </div>
         </div>
@@ -134,6 +146,11 @@
 
     <main id="view-customer" class="hidden-view dashboard-container">
         
+        <button id="btn-return-designer" class="hidden-view filter-btn" style="margin-bottom: 20px; display: flex; align-items: center; gap: 5px; color: #fff; border-color: #555;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            Back to Pipeline
+        </button>
+
         <div style="margin-bottom: 30px; text-align: center;">
             <h2 style="font-size: 2rem; margin: 0; font-weight: 900; letter-spacing: -1px;">Welcome to your <span style="color: #0dcaf0;">Vault.</span></h2>
             <p style="color: #888; font-size: 1rem; margin-top: 5px;">Project Dashboard for <strong id="vault-client-name" style="color: #fff;">...</strong></p>
@@ -143,7 +160,7 @@
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#0dcaf0" stroke-width="1.5" style="margin-bottom: 15px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><polyline points="9 15 12 18 15 15"></polyline></svg>
             <h3 style="margin: 0 0 10px 0; font-size: 1.2rem;">Your Design Pack is Ready</h3>
             <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 20px; max-width: 400px; margin-left: auto; margin-right: auto;">Review your finalized specifications, architectural sketches, and project notes in a single, secure document.</p>
-            <button id="btn-download-pack" style="background: #0dcaf0; color: #000; border: none; padding: 12px 30px; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; box-shadow: 0 4px 15px rgba(13, 202, 240, 0.4);">Download PDF Proposal</button>
+            <button id="btn-download-pack" style="background: #0dcaf0; color: #000; border: none; padding: 12px 30px; border-radius: 8px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 15px rgba(13, 202, 240, 0.4);">Download PDF Proposal</button>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px;">
@@ -173,7 +190,7 @@
                 
                 <div style="padding: 20px; border-top: 1px solid #333; background: rgba(255,255,255,0.02); display: flex; gap: 10px;">
                     <input type="text" id="chat-input" class="glass-input" placeholder="Type a message..." style="flex-grow: 1; padding: 12px;">
-                    <button id="btn-send-chat" style="background: #28a745; color: #fff; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer;">Send</button>
+                    <button id="btn-send-chat" style="background: #28a745; color: #fff; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold;">Send</button>
                 </div>
             </div>
 
@@ -182,18 +199,15 @@
 
     <style>
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .notification-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(220,53,69,0.7); } 70% { box-shadow: 0 0 0 10px rgba(220,53,69,0); } 100% { box-shadow: 0 0 0 0 rgba(220,53,69,0); } }
     </style>
 
     <script type="module" src="app.js"></script>
     <script>
-        // PWA Registration Hook
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('../sw.js').then(reg => {
-                    console.log('V3 ServiceWorker Scope:', reg.scope);
-                }).catch(err => {
-                    console.log('V3 ServiceWorker registration failed: ', err);
-                });
+                navigator.serviceWorker.register('../sw.js').catch(err => console.log('SW fail: ', err));
             });
         }
     </script>
