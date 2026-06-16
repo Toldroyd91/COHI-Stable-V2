@@ -10,7 +10,7 @@ const app = initializeApp(appConfig);
 const db = getFirestore(app);
 
 // CLOUDINARY CONFIG 
-const cloudinaryConfig = { cloudName: "YOUR_CLOUD_NAME", uploadPreset: "crm_document_uploads" };
+const cloudinaryConfig = { cloudName: "dqk1hz0f8", uploadPreset: "crm_document_uploads" };
 
 const views = { login: document.getElementById('view-login'), customer: document.getElementById('view-customer'), designer: document.getElementById('view-designer'), nav: document.getElementById('global-nav') };
 
