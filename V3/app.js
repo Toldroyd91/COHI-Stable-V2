@@ -9,23 +9,67 @@ const appConfig = {
 const app = initializeApp(appConfig);
 const db = getFirestore(app);
 
-// CLOUDINARY CONFIG 
-const cloudinaryConfig = { cloudName: "dqk1hz0f8", uploadPreset: "crm_document_uploads" };
+// PRODUCTION CLOUDINARY CONFIG 
+const cloudinaryConfig = { 
+    cloudName: "dqk1hz0f8", 
+    uploadPreset: "crm_document_uploads" 
+};
 
 const views = { login: document.getElementById('view-login'), customer: document.getElementById('view-customer'), designer: document.getElementById('view-designer'), nav: document.getElementById('global-nav') };
 
-// --- 13-STEP ROADMAP CONFIG ---
+// --- RESTORED 13-STEP ROADMAP ---
 const projectPhases = [
-    { category: "Sales & Planning", steps: ["1. Consultation & Survey", "2. Design & Proposal", "3. Order Placed"] },
-    { category: "Pre-Commencement", steps: ["4. Awaiting Survey Appt", "5. Awaiting Planning", "6. Awaiting Survey Report", "7. Awaiting Test Dig", "8. Awaiting Building Regs", "9. Awaiting Customer Sign-Off"] },
-    { category: "Build & Finish", steps: ["10. Procurement", "11. Commencement of Building Works", "12. Installation Commences", "13. Finishing Trades & Completion"] }
+    { 
+        category: "Sales & Planning", 
+        name: "Sales & Planning", 
+        totalTime: "2-4 Weeks",
+        steps: [
+            { id: "1. Consultation & Survey", time: "1 wk" },
+            { id: "2. Design & Proposal", time: "1-2 wks" },
+            { id: "3. Order Placed", time: "Immediate" }
+        ]
+    },
+    { 
+        category: "Pre-Commencement", 
+        name: "Planning & Survey", 
+        totalTime: "10-18 Weeks",
+        steps: [
+            { id: "4. Survey Appointment", time: "2 wks" },
+            { id: "5. Planning Permission", time: "8-16 wks" },
+            { id: "6. Survey Report", time: "1 wk" },
+            { id: "7. Test Dig Conducted", time: "1 wk" },
+            { id: "8. Building Regulations", time: "1 wk" },
+            { id: "9. Customer Sign-Off", time: "1 wk" }
+        ]
+    },
+    { 
+        category: "Build & Finish", 
+        name: "Execution", 
+        totalTime: "5-8 Weeks",
+        steps: [
+            { id: "10. Procurement", time: "2 wks" },
+            { id: "11. Commencement of Building Works", time: "1-2 wks" },
+            { id: "12. Installation Commences", time: "1 wk" },
+            { id: "13. Finishing Trades & Completion", time: "2-4 wks" }
+        ]
+    }
 ];
-const journeySteps = projectPhases.flatMap(p => p.steps);
+const journeySteps = projectPhases.flatMap(p => p.steps.map(s => s.id));
 
 function switchView(targetView, roleLabel = "") {
     Object.values(views).forEach(v => v.classList.add('hidden-view'));
     views[targetView].classList.remove('hidden-view');
     if (targetView === 'designer') { views.nav.classList.remove('hidden-view'); document.getElementById('nav-role-badge').innerText = roleLabel; }
+}
+
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.style.borderLeftColor = type === 'success' ? 'var(--accent-cyan)' : '#ef4444';
+    toast.innerHTML = `<strong>${type === 'success' ? 'Success' : 'Error'}</strong><br><span style="font-size:0.85rem; color:#aaa;">${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
 // === AUTHENTICATION ===
@@ -47,12 +91,12 @@ document.getElementById('btn-login').addEventListener('click', async () => {
         } else {
             document.getElementById('login-error').innerText = "Credentials not recognized."; document.getElementById('login-error').classList.remove('hidden-view');
         }
-    } catch (error) { console.error(error); }
+    } catch (error) { console.error(error); showToast("Network error. Please try again.", "error"); }
     btn.innerText = "Authenticate";
 });
 document.getElementById('btn-logout').addEventListener('click', () => { window.location.reload(); });
 
-// === DESIGNER DASHBOARD LOGIC ===
+// === DESIGNER DASHBOARD ===
 window.activeDesignerStageFilter = 'ALL';
 window.setDesignerFilter = function(stage, btnElement) {
     window.activeDesignerStageFilter = stage;
@@ -72,11 +116,12 @@ async function fetchAndRenderPipeline() {
         
         snap.forEach(docSnap => {
             const data = docSnap.data(); const inputs = data.data?.inputs || {};
+            // RESTORED DEFAULT STATUS
             const status = inputs._pipelineStatus || '1. Consultation & Survey';
             const lastContacted = inputs._lastContacted || Date.now();
             
             let currentCategory = "Sales & Planning";
-            projectPhases.forEach(p => { if(p.steps.includes(status)) currentCategory = p.category; });
+            projectPhases.forEach(p => { if(p.steps.map(s=>s.id).includes(status)) currentCategory = p.category; });
             if (window.activeDesignerStageFilter !== 'ALL' && currentCategory !== window.activeDesignerStageFilter) return;
 
             const daysSinceContact = (Date.now() - lastContacted) / (1000 * 60 * 60 * 24);
@@ -88,27 +133,29 @@ async function fetchAndRenderPipeline() {
                 <div class="glass-panel" style="padding: 25px;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
                         <div>
-                            <h3 style="margin: 0; font-size: 1.3rem; color: #fff;">${data.clientName || 'Unnamed Project'}</h3>
+                            <h3 style="margin: 0; font-size: 1.25rem; color: #fff;">${data.clientName || 'Unnamed Project'}</h3>
                             <p style="margin: 5px 0 0 0; color: var(--text-muted); font-size: 0.85rem;">${inputs.postCode || 'N/A'}</p>
                         </div>
-                        <div style="background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; display: flex; align-items: center; gap: 8px;">
+                        <div style="background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; display: flex; align-items: center; gap: 6px;">
                             <span class="rag-dot ${ragStatus}"></span> ${heatText}
                         </div>
                     </div>
                     
-                    <div style="margin-bottom: 25px;">
-                        <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Current Phase</p>
-                        <p style="margin: 4px 0 0 0; color: var(--accent-cyan); font-weight: 600; font-size: 1rem;">${status}</p>
+                    <div style="margin-bottom: 20px;">
+                        <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Current Phase</p>
+                        <p style="margin: 4px 0 0 0; color: var(--accent-cyan); font-weight: 600; font-size: 0.95rem;">${status}</p>
                     </div>
                     
-                    <div style="display: flex; gap: 10px;">
-                        <button onclick="openVaultPreview('${docSnap.id}')" style="flex:1; padding:10px; background:var(--accent-cyan); color:#000; border-radius:8px; font-weight:bold;">View Vault</button>
-                        <button onclick="triggerQuickUpload('${docSnap.id}')" style="flex:1; padding:10px; background:rgba(255,255,255,0.05); color:#fff; border-radius:8px; font-weight:bold;">Attach PDF</button>
-                        <button onclick="openActionModal('status', '${docSnap.id}', '${status}')" style="flex:none; padding:10px 15px; background:rgba(255,255,255,0.05); color:#fff; border-radius:8px;">⚙️</button>
+                    <div style="display: flex; gap: 8px; border-top: 1px solid var(--glass-border); padding-top: 15px;">
+                        <button class="btn-quick btn-quick-primary" onclick="openVaultPreview('${docSnap.id}')">Vault</button>
+                        <button class="btn-quick" onclick="openActionModal('notes', '${docSnap.id}')">Notes</button>
+                        <button class="btn-quick" onclick="triggerQuickUpload('${docSnap.id}')">Sync PDF</button>
+                        <button class="btn-quick" onclick="openActionModal('contact', '${docSnap.id}')">Log</button>
+                        <button class="btn-quick" onclick="openActionModal('status', '${docSnap.id}', '${status}')">Status</button>
                     </div>
                 </div>`;
         });
-    } catch (error) { console.error(error); }
+    } catch (error) { console.error(error); showToast("Failed to load pipeline.", "error"); }
 }
 window.initDesignerDashboard = function() { fetchAndRenderPipeline(); }
 
@@ -120,89 +167,128 @@ window.openVaultPreview = async function(surveyId) {
         initCustomerVault(docSnap);
     }
 };
-document.getElementById('btn-return-designer').addEventListener('click', () => { switchView('designer', 'DESIGNER HUB'); initDesignerDashboard(); });
+document.getElementById('btn-return-designer').addEventListener('click', () => { 
+    if(window.activeChatUnsubscribe) window.activeChatUnsubscribe();
+    if(window.activeDocsUnsubscribe) window.activeDocsUnsubscribe();
+    switchView('designer', 'DESIGNER HUB'); 
+    initDesignerDashboard(); 
+});
 
+// === ACTION MODALS LOGIC ===
 window.openActionModal = function(type, surveyId, currentStatus = "") {
     window.activeActionSurveyId = surveyId;
+    if (type === 'notes') document.getElementById('modal-notes').classList.remove('hidden-view');
+    if (type === 'contact') document.getElementById('modal-contact').classList.remove('hidden-view');
     if (type === 'status') {
         document.getElementById('input-status-select').innerHTML = journeySteps.concat(['Stalled', 'Dead Lead']).map(s => `<option value="${s}" ${s===currentStatus?'selected':''}>${s}</option>`).join('');
         document.getElementById('modal-status').classList.remove('hidden-view');
     }
 }
+
+document.getElementById('btn-save-note').addEventListener('click', async () => {
+    const val = document.getElementById('input-note-text').value; if(!val) return;
+    await addDoc(collection(db, `surveys/${window.activeActionSurveyId}/internalNotes`), { content: `[Internal Note] ${val}`, timestamp: serverTimestamp() });
+    document.getElementById('modal-notes').classList.add('hidden-view'); document.getElementById('input-note-text').value='';
+    showToast("Internal note secured.");
+});
+
+document.getElementById('btn-save-contact').addEventListener('click', async () => {
+    const type = document.getElementById('input-contact-type').value; const val = document.getElementById('input-contact-note').value;
+    await addDoc(collection(db, `surveys/${window.activeActionSurveyId}/internalNotes`), { content: `[Contact: ${type}] ${val}`, timestamp: serverTimestamp() });
+    await updateDoc(doc(db, "surveys", window.activeActionSurveyId), { "data.inputs._lastContacted": Date.now() });
+    document.getElementById('modal-contact').classList.add('hidden-view'); document.getElementById('input-contact-note').value=''; 
+    showToast(`Logged contact via ${type}.`);
+    initDesignerDashboard();
+});
+
 document.getElementById('btn-save-status').addEventListener('click', async () => {
     const newStatus = document.getElementById('input-status-select').value;
     await updateDoc(doc(db, "surveys", window.activeActionSurveyId), { "data.inputs._pipelineStatus": newStatus, "data.inputs._lastContacted": Date.now() });
-    document.getElementById('modal-status').classList.add('hidden-view'); initDesignerDashboard();
+    document.getElementById('modal-status').classList.add('hidden-view'); 
+    showToast(`Project advanced to: ${newStatus}`);
+    initDesignerDashboard();
 });
 
-// Quick PDF Sync Button Logic (Uploads to Cloudinary, auto-displays in Vault)
+// Quick PDF Sync Button
 window.triggerQuickUpload = function(surveyId) {
     window.activeVaultSurveyId = surveyId; 
     document.getElementById('designer-quick-upload-input').click();
 };
 document.getElementById('designer-quick-upload-input').addEventListener('change', async (e) => {
     const file = e.target.files[0]; if(!file) return;
+    if (file.type !== 'application/pdf') { showToast("Please select a PDF document.", "error"); return; }
     
-    // Quick validation to ensure it's a PDF for the viewer
-    if (file.type !== 'application/pdf') { alert("Please select a PDF document for the Master Blueprint."); return; }
-    
-    alert("Uploading Blueprint...");
+    showToast("Syncing Blueprint to Cloudinary...");
     const formData = new FormData(); formData.append('file', file); formData.append('upload_preset', cloudinaryConfig.uploadPreset);
     try {
         const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/upload`, { method: 'POST', body: formData });
         const data = await res.json();
         if (data.secure_url) {
             await addDoc(collection(db, `surveys/${window.activeVaultSurveyId}/documents`), { name: file.name, url: data.secure_url, type: 'pdf', uploadedAt: serverTimestamp() });
-            alert("Success! PDF mounted in client vault.");
+            showToast("Blueprint successfully mounted.");
         }
-    } catch (err) { alert("Upload Failed. Check Cloudinary settings."); }
+    } catch (err) { showToast("Upload Failed. Check connection.", "error"); }
 });
 
+// === CUSTOMER VAULT LOGIC ===
+window.activeChatUnsubscribe = null;
+window.activeDocsUnsubscribe = null;
 
-// === LUXURY CUSTOMER VAULT LOGIC ===
 window.initCustomerVault = function(docSnap) {
     const data = docSnap.data(); const inputs = data.data?.inputs || {};
     window.activeVaultSurveyId = docSnap.id; 
     const currentStatus = inputs._pipelineStatus || "1. Consultation & Survey";
     
+    const brand = inputs._brand || 'CO Home Improvements';
+    if(brand === 'Yorkshire Windows') { document.getElementById('vault-brand-logo').src = '../yorkshire.png'; document.getElementById('vault-brand-logo').classList.remove('hidden-view'); }
+    else if (brand === 'Clearview') { document.getElementById('vault-brand-logo').src = '../clearview.png'; document.getElementById('vault-brand-logo').classList.remove('hidden-view'); }
+    else { document.getElementById('vault-brand-logo').src = '../co-logo.png'; document.getElementById('vault-brand-logo').classList.remove('hidden-view'); }
+    
     document.getElementById('vault-client-name').innerText = data.clientName || "Valued Client";
 
-    // 13-Step Vertical Timeline with Glow Effects
+    // 13-Step Collapsible Phase Timeline
     const tContainer = document.getElementById('vault-timeline-container');
     tContainer.innerHTML = '';
     
-    let globalIndex = 0; let currentIndex = 0;
-    journeySteps.forEach((step, idx) => { if(step === currentStatus) currentIndex = idx; });
+    let globalStepIndex = 0; let currentGlobalStatusIndex = 0;
+    projectPhases.forEach(phase => { phase.steps.forEach(step => { if(step.id === currentStatus) currentGlobalStatusIndex = globalStepIndex; globalStepIndex++; }); });
+    globalStepIndex = 0;
 
-    journeySteps.forEach((step, idx) => {
-        let stateClass = ''; let icon = ''; let textColor = 'var(--text-muted)';
-        
-        if (idx < currentIndex) { stateClass = 'step-done'; icon = '✓'; }
-        else if (idx === currentIndex) { stateClass = 'step-active'; icon = '●'; textColor = '#fff'; }
-        else { icon = '○'; }
+    projectPhases.forEach((phase, phaseIndex) => {
+        let phaseIsActive = false;
+        const stepsHtml = phase.steps.map(step => {
+            let style = 'color: var(--text-muted);'; let icon = '○';
+            if (globalStepIndex < currentGlobalStatusIndex) { style = 'color: #fff; text-decoration: line-through; opacity: 0.4;'; icon = '✓'; }
+            else if (globalStepIndex === currentGlobalStatusIndex) { style = 'color: var(--accent-cyan); font-weight: bold;'; icon = '●'; phaseIsActive = true; }
+            globalStepIndex++;
+            return `<div style="display: flex; justify-content: space-between; margin-bottom: 12px; padding-left: 15px; border-left: 2px solid ${style.includes('--accent-cyan') ? 'var(--accent-cyan)' : 'var(--glass-border)'}; margin-left: 10px;">
+                        <span style="${style}"><span style="display:inline-block; width:22px;">${icon}</span> ${step.id}</span>
+                        <span style="color: var(--text-muted); font-size: 0.75rem; font-family: monospace;">${step.time}</span>
+                    </div>`;
+        }).join('');
 
+        const isExpanded = phaseIsActive || (phaseIndex === 0 && currentGlobalStatusIndex === 0);
         tContainer.innerHTML += `
-            <div class="timeline-step ${stateClass}">
-                <div class="timeline-track"></div>
-                <div class="timeline-node" style="font-size: 0.8rem; font-weight: bold;">${icon}</div>
-                <div style="padding-top: 5px;">
-                    <p style="margin: 0; color: ${textColor}; font-weight: ${idx === currentIndex ? '600' : '400'}; font-size: 1.05rem;">${step}</p>
+            <div style="background: rgba(0,0,0,0.2); border: 1px solid ${isExpanded ? 'var(--accent-cyan)' : 'var(--glass-border)'}; border-radius: 12px; padding: 20px; transition: all 0.3s; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ${isExpanded ? '15px' : '0'};">
+                    <h4 style="margin: 0; font-size: 1.05rem; color: ${isExpanded ? '#fff' : 'var(--text-muted)'};">${phase.name}</h4>
+                    <span style="background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; color: var(--text-muted);">Est. ${phase.totalTime}</span>
                 </div>
+                <div style="display: ${isExpanded ? 'block' : 'none'};">${stepsHtml}</div>
             </div>`;
     });
 
-    // Auto-Mount PDF Logic
     initDocumentCenter(window.activeVaultSurveyId);
     initVaultChat(window.activeVaultSurveyId);
 }
 
-// --- SMART PDF MOUNTER ---
+// --- CINEMATIC PDF MOUNTER ---
 function initDocumentCenter(surveyId) {
-    onSnapshot(query(collection(db, `surveys/${surveyId}/documents`), orderBy('uploadedAt', 'desc')), (snapshot) => {
+    if(window.activeDocsUnsubscribe) window.activeDocsUnsubscribe();
+    window.activeDocsUnsubscribe = onSnapshot(query(collection(db, `surveys/${surveyId}/documents`), orderBy('uploadedAt', 'desc')), (snapshot) => {
         const viewer = document.getElementById('vault-pdf-viewer');
         const placeholder = document.getElementById('pdf-placeholder');
         
-        // Find the first PDF document uploaded
         let latestPdfUrl = null;
         snapshot.forEach(docSnap => {
             const data = docSnap.data();
@@ -211,15 +297,11 @@ function initDocumentCenter(surveyId) {
             }
         });
 
-        // Mount the PDF into the Cinematic Frame
         if (latestPdfUrl) {
-            // Append #toolbar=0 to disable downloading/printing on standard browsers if desired
             viewer.src = latestPdfUrl + "#view=FitH&toolbar=0"; 
-            viewer.classList.remove('hidden-view');
-            placeholder.classList.add('hidden-view');
+            viewer.classList.remove('hidden-view'); placeholder.classList.add('hidden-view');
         } else {
-            viewer.classList.add('hidden-view');
-            placeholder.classList.remove('hidden-view');
+            viewer.classList.add('hidden-view'); placeholder.classList.remove('hidden-view');
         }
     });
 }
@@ -227,8 +309,10 @@ function initDocumentCenter(surveyId) {
 // --- CONCIERGE CHAT ---
 function initVaultChat(surveyId) {
     const chatWindow = document.getElementById('chat-window');
-    onSnapshot(query(collection(db, `surveys/${surveyId}/messages`), orderBy('timestamp', 'asc')), (snapshot) => {
-        chatWindow.innerHTML = snapshot.empty ? '<p style="text-align:center; color:var(--text-muted); font-size:0.9rem; margin-top:20px;">Connection encrypted and secure.</p>' : '';
+    if(window.activeChatUnsubscribe) window.activeChatUnsubscribe();
+    
+    window.activeChatUnsubscribe = onSnapshot(query(collection(db, `surveys/${surveyId}/messages`), orderBy('timestamp', 'asc')), (snapshot) => {
+        chatWindow.innerHTML = snapshot.empty ? '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; margin-top:20px;">Connection encrypted and secure.</p>' : '';
         snapshot.forEach(doc => {
             const msg = doc.data(); const isMe = msg.sender === (window.currentActiveRole==='designer'?'Designer':'Customer');
             chatWindow.innerHTML += `<div class="chat-bubble ${isMe ? 'chat-me' : 'chat-them'}">${msg.text}</div>`;
