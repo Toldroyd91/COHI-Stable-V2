@@ -203,6 +203,7 @@ window.openVaultPreview = async function(surveyId) {
 };
 document.getElementById('btn-return-designer').addEventListener('click', () => { 
     if(window.activeChatUnsubscribe) window.activeChatUnsubscribe(); if(window.activeDocsUnsubscribe) window.activeDocsUnsubscribe();
+    if(window.activeNotesUnsubscribe) window.activeNotesUnsubscribe();
     switchView('designer', 'OPERATIONS HUB'); fetchAndRenderPipeline(); 
 });
 
@@ -223,7 +224,7 @@ document.getElementById('btn-save-note').addEventListener('click', async () => {
     }
 
     await addDoc(collection(db, `surveys/${window.activeActionSurveyId}/internalNotes`), { 
-        content: `[${isExternal ? 'Client Facing' : 'Internal Audit'}] ${val}`, 
+        content: val, 
         visibility: isExternal ? 'external' : 'internal',
         timestamp: serverTimestamp() 
     });
@@ -243,15 +244,12 @@ document.getElementById('btn-save-status').addEventListener('click', async () =>
     document.getElementById('modal-status').classList.add('hidden-view'); showToast(`Roadmap advanced to: ${newStatus}`); fetchAndRenderPipeline();
 });
 
-// === CLOUDINARY UPLOAD OVERDRIVE (/RAW FIX) ===
+// === CLOUDINARY UPLOAD (The Ultimate PDF Fix: Back to /auto/upload) ===
+// Cloudinary blocks unsigned /raw/ uploads by default. We revert to /auto/upload to ensure PDFs pass.
 async function uploadToCloudinary(file) {
     const formData = new FormData(); formData.append('file', file); formData.append('upload_preset', cloudinaryConfig.uploadPreset);
-    
-    // Explicitly force 'raw' for PDFs to bypass image processing rejection
-    const resourceType = file.type === 'application/pdf' ? 'raw' : 'image';
-    
     try {
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/${resourceType}/upload`, { method: 'POST', body: formData });
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/auto/upload`, { method: 'POST', body: formData });
         const data = await res.json();
         if (data.secure_url) return data.secure_url; throw new Error(data.error?.message || "API Rejection");
     } catch (err) { throw err; }
@@ -267,16 +265,22 @@ document.getElementById('designer-quick-upload-input').addEventListener('change'
     } catch (err) { showToast(`Uplink failed: ${err.message}`, "error"); }
 });
 
-// === CUSTOMER VAULT (Fog of War & Hero Mapping) ===
-window.activeChatUnsubscribe = null; window.activeDocsUnsubscribe = null;
+// === CUSTOMER VAULT (Fog of War, Hero Mapping, & Notes Vault) ===
+window.activeChatUnsubscribe = null; window.activeDocsUnsubscribe = null; window.activeNotesUnsubscribe = null;
 
 window.initCustomerVault = function(docSnap) {
     const data = docSnap.data(); const inputs = data.data?.inputs || {};
     window.activeVaultSurveyId = docSnap.id; 
     const currentStatus = inputs._pipelineStatus || "1. Consultation & Survey";
     
-    if (window.currentActiveRole === 'designer' || window.currentActiveRole === 'admin') document.getElementById('designer-vault-controls').classList.remove('hidden-view');
-    else document.getElementById('designer-vault-controls').classList.add('hidden-view');
+    if (window.currentActiveRole === 'designer' || window.currentActiveRole === 'admin') {
+        document.getElementById('designer-vault-controls').classList.remove('hidden-view');
+        document.getElementById('designer-notes-panel').classList.remove('hidden-view');
+        initVaultNotesHistory(window.activeVaultSurveyId);
+    } else {
+        document.getElementById('designer-vault-controls').classList.add('hidden-view');
+        document.getElementById('designer-notes-panel').classList.add('hidden-view');
+    }
 
     const brand = inputs._brand || 'COHI';
     document.getElementById('vault-brand-logo').src = brandLogoMap[brand] || '../co-logo.png';
@@ -285,11 +289,9 @@ window.initCustomerVault = function(docSnap) {
     document.getElementById('vault-greeting').innerText = getTemporalGreeting();
     document.getElementById('vault-client-name').innerText = data.clientName || "Valued Client";
     
-    // Automated Hero Stat Mapping
     document.getElementById('spec-uvalue').innerText = inputs.uValue ? `${inputs.uValue} W/m²K` : "Analyzing";
     document.getElementById('spec-footprint').innerText = inputs.floorArea ? `${inputs.floorArea} m²` : "Pending";
 
-    // Bulletproof Timeline Matcher
     const tContainer = document.getElementById('vault-timeline-container'); tContainer.innerHTML = '';
     let globalStepIndex = 0; let currentGlobalStatusIndex = 0;
     projectPhases.forEach(phase => { phase.steps.forEach(step => { if(step.id === currentStatus || step.id.includes(currentStatus) || currentStatus.includes(step.id)) { currentGlobalStatusIndex = globalStepIndex; } globalStepIndex++; }); });
@@ -322,6 +324,31 @@ window.initCustomerVault = function(docSnap) {
     });
 
     initDocumentCenter(window.activeVaultSurveyId); initVaultChat(window.activeVaultSurveyId);
+}
+
+// === AUDIT & NOTES HISTORY MODULE ===
+function initVaultNotesHistory(surveyId) {
+    if(window.activeNotesUnsubscribe) window.activeNotesUnsubscribe();
+    window.activeNotesUnsubscribe = onSnapshot(query(collection(db, `surveys/${surveyId}/internalNotes`), orderBy('timestamp', 'desc')), (snapshot) => {
+        const list = document.getElementById('vault-notes-list'); list.innerHTML = '';
+        if(snapshot.empty) { list.innerHTML = '<p style="color:var(--text-dim); font-size:0.85rem;">No internal notes recorded.</p>'; return; }
+        
+        snapshot.forEach(doc => {
+            const note = doc.data();
+            const dateStr = note.timestamp ? new Date(note.timestamp.toDate()).toLocaleDateString() : 'Just now';
+            const isExt = note.visibility === 'external';
+            const borderColor = isExt ? '#ef4444' : '#10b981';
+            
+            list.innerHTML += `
+                <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:12px; border-left: 4px solid ${borderColor};">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; font-weight:bold;">
+                        <span style="color:${borderColor}">${isExt ? 'Client Facing Note' : 'Internal Audit'}</span>
+                        <span>${dateStr}</span>
+                    </div>
+                    <div style="color:#fff; font-size:0.9rem; line-height:1.4;">${note.content}</div>
+                </div>`;
+        });
+    });
 }
 
 // === VAULT SECURE UPLINK ===
@@ -390,7 +417,8 @@ function initVaultChat(surveyId) {
 
         snapshot.forEach(doc => {
             const msg = doc.data(); const isMe = msg.sender === (window.currentActiveRole==='designer'?'Designer':'Customer');
-            const identityLabel = isMe ? (window.currentActiveRole === 'designer' ? 'Tom (Director)' : 'You') : (window.currentActiveRole === 'designer' ? 'Client' : 'Tom (Director)');
+            // Replaced generic 'Director' title with clean, tailored identities
+            const identityLabel = isMe ? (window.currentActiveRole === 'designer' ? 'Tom' : 'You') : (window.currentActiveRole === 'designer' ? 'Client' : 'Tom');
             
             chatWindow.innerHTML += `
                 <div class="chat-row" style="justify-content: ${isMe ? 'flex-end' : 'flex-start'};">
