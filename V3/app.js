@@ -9,11 +9,10 @@ const appConfig = {
 const app = initializeApp(appConfig);
 const db = getFirestore(app);
 
-// --- CLOUDINARY SECURE CONFIG ---
+// --- CLOUDINARY CONFIG ---
 const cloudinaryConfig = { cloudName: "dqk1hz0f8", uploadPreset: "crm_document_uploads" };
 const views = { login: document.getElementById('view-login'), customer: document.getElementById('view-customer'), designer: document.getElementById('view-designer'), nav: document.getElementById('global-nav') };
 
-// --- 13-STEP BULLETPROOF ROADMAP ---
 const projectPhases = [
     { category: "Sales & Planning", name: "Sales & Planning", totalTime: "2-4 Wks", steps: [{ id: "1. Consultation & Survey", time: "1 wk" }, { id: "2. Design & Proposal", time: "1-2 wks" }, { id: "3. Order Placed", time: "Immediate" }] },
     { category: "Pre-Commencement", name: "Planning & Survey", totalTime: "2-4 Wks (Base)", steps: [{ id: "4. Survey Appointment", time: "2 wks" }, { id: "5. Planning Permission", time: "8-16 wks (If Reqd)" }, { id: "6. Survey Report", time: "1 wk" }, { id: "7. Test Dig Conducted", time: "1 wk" }, { id: "8. Building Regulations", time: "1 wk" }, { id: "9. Customer Sign-Off", time: "1 wk" }] },
@@ -21,7 +20,6 @@ const projectPhases = [
 ];
 const journeySteps = projectPhases.flatMap(p => p.steps.map(s => s.id));
 
-// --- GITHUB ASSET LOGO MAPPING ---
 const brandLogoMap = {
     'Yorkshire Windows': '../yorkshire.png',
     'Clearview': '../clearview.png',
@@ -30,6 +28,8 @@ const brandLogoMap = {
     'COHI': '../co-logo.png',
     'CO Home Improvements': '../co-logo2.png'
 };
+
+let sessionHeartbeat = null; // Used to track exact minutes spent
 
 function switchView(targetView, roleLabel = "") {
     Object.values(views).forEach(v => v.classList.add('hidden-view'));
@@ -57,7 +57,6 @@ if ("Notification" in window && Notification.permission !== "granted" && Notific
 async function triggerBrandTransition(brandName) {
     const overlay = document.getElementById('brand-growth-overlay');
     const logoElement = document.getElementById('active-brand-logo');
-    
     logoElement.src = brandLogoMap[brandName] || '../co-logo.png';
     overlay.classList.remove('hidden-view');
     
@@ -67,13 +66,25 @@ async function triggerBrandTransition(brandName) {
             logoElement.style.opacity = "0";
         }, 100);
     });
-
     return new Promise(resolve => setTimeout(() => {
         overlay.classList.add('hidden-view');
         logoElement.style.transform = "scale(1)";
         logoElement.style.opacity = "1";
         resolve();
     }, 1000));
+}
+
+// === TELEMETRY HEARTBEAT (The Time Tracker) ===
+function startSessionHeartbeat(surveyId) {
+    if (sessionHeartbeat) clearInterval(sessionHeartbeat);
+    sessionHeartbeat = setInterval(async () => {
+        try {
+            await updateDoc(doc(db, "surveys", surveyId), { 
+                "analytics.totalTimeMinutes": increment(1), 
+                "analytics.lastActive": Date.now() 
+            });
+        } catch (e) { console.error("Heartbeat error", e); }
+    }, 60000); // 60,000ms = 1 minute pulse
 }
 
 // === PERSISTENT AUTHENTICATION ===
@@ -86,7 +97,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         } else if (auth.role === 'customer' && auth.surveyId) {
             try {
                 const docSnap = await getDoc(doc(db, "surveys", auth.surveyId));
-                if(docSnap.exists()) { switchView('customer'); initCustomerVault(docSnap); } else { sessionStorage.removeItem('powerhouse_auth'); }
+                if(docSnap.exists()) { switchView('customer'); initCustomerVault(docSnap); startSessionHeartbeat(auth.surveyId); } 
+                else { sessionStorage.removeItem('powerhouse_auth'); }
             } catch(e) { sessionStorage.removeItem('powerhouse_auth'); }
         }
     }
@@ -107,16 +119,16 @@ document.getElementById('btn-login').addEventListener('click', async () => {
             const surveyDoc = snap.docs[0];
             const brandName = surveyDoc.data().data?.inputs?._brand || 'COHI';
             
-            // ANALYTICS TRIGGER
+            // ANALYTICS LOGIN TRIGGER
             await updateDoc(doc(db, "surveys", surveyDoc.id), { "analytics.loginCount": increment(1), "analytics.lastActive": Date.now() });
 
             sessionStorage.setItem('powerhouse_auth', JSON.stringify({ role: 'customer', surveyId: surveyDoc.id }));
             
-            // EXECUTE CINEMATIC TRANSITION
             await triggerBrandTransition(brandName);
-            
             document.getElementById('btn-return-designer').classList.add('hidden-view');
-            switchView('customer'); initCustomerVault(surveyDoc);
+            switchView('customer'); 
+            initCustomerVault(surveyDoc);
+            startSessionHeartbeat(surveyDoc.id); // Start the minute-by-minute tracker
         } else {
             document.getElementById('login-error').innerText = "Credentials not recognized."; document.getElementById('login-error').classList.remove('hidden-view');
         }
@@ -124,9 +136,12 @@ document.getElementById('btn-login').addEventListener('click', async () => {
     btn.innerText = "Authenticate";
 });
 
-document.getElementById('btn-logout').addEventListener('click', () => { sessionStorage.removeItem('powerhouse_auth'); window.location.reload(); });
+document.getElementById('btn-logout').addEventListener('click', () => { 
+    if(sessionHeartbeat) clearInterval(sessionHeartbeat);
+    sessionStorage.removeItem('powerhouse_auth'); window.location.reload(); 
+});
 
-// === COMMAND CENTER & SEMANTIC SEARCH ===
+// === COMMAND CENTER & HEATMAP ===
 window.activeDesignerStageFilter = 'ALL'; window.allPipelineData = []; 
 window.setDesignerFilter = function(stage, btnElement) {
     window.activeDesignerStageFilter = stage;
@@ -149,9 +164,12 @@ function renderPipelineCards(searchQuery = "") {
     const container = document.getElementById('designer-pipeline-container'); container.innerHTML = ''; let renderCount = 0;
 
     window.allPipelineData.forEach(data => {
-        const inputs = data.data?.inputs || {}; const analytics = data.analytics || { loginCount: 0, lastActive: 0 };
+        const inputs = data.data?.inputs || {}; const analytics = data.analytics || {};
         const status = inputs._pipelineStatus || '1. Consultation & Survey';
         const clientName = data.clientName || 'Unnamed Entity'; const postCode = inputs.postCode || 'N/A';
+        const logins = analytics.loginCount || 0;
+        const totalMinutes = analytics.totalTimeMinutes || 0;
+        const lastActive = analytics.lastActive ? new Date(analytics.lastActive).toLocaleDateString() : 'Never';
         
         let currentCategory = "Sales & Planning";
         projectPhases.forEach(p => { if(p.steps.map(s=>s.id).includes(status)) currentCategory = p.category; });
@@ -160,26 +178,34 @@ function renderPipelineCards(searchQuery = "") {
         if (searchQuery) { const matchName = clientName.toLowerCase().includes(searchQuery); const matchId = postCode.toLowerCase().includes(searchQuery); if (!matchName && !matchId) return; }
         renderCount++;
 
-        const daysSinceClientActive = analytics.lastActive ? (Date.now() - analytics.lastActive) / (1000 * 60 * 60 * 24) : 999;
-        let heatHtml = ''; let cardBorder = 'var(--glass-border)';
-        
-        if (analytics.loginCount > 2 && daysSinceClientActive < 3) {
-            heatHtml = `<div style="background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); padding: 6px 12px; border-radius: 12px; font-size: 0.75rem; display: flex; align-items: center; gap: 8px; color: #ef4444; font-weight:bold;">
-                            <span class="rag-dot status-hot"></span> 🔥 HOT LEAD (${analytics.loginCount} Logins)
-                        </div>`;
+        // TRUE HEATMAP LOGIC
+        let heatIndicator = ''; let cardBorder = 'var(--glass-border)';
+        if (logins === 0) {
+            heatIndicator = `<span style="color:#94a3b8; display:flex; align-items:center; gap:6px;"><span class="rag-dot" style="color:#94a3b8; box-shadow:none;"></span> Not Opened</span>`;
+            cardBorder = 'rgba(255,255,255,0.1)';
+        } else if (logins >= 3 || totalMinutes > 15) {
+            heatIndicator = `<span style="color:#ef4444; font-weight:bold; display:flex; align-items:center; gap:6px;"><span class="rag-dot status-hot"></span> 🔥 READY TO BUY</span>`;
             cardBorder = 'rgba(239, 68, 68, 0.4)';
         } else {
-            heatHtml = `<div style="background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); padding: 6px 12px; border-radius: 12px; font-size: 0.75rem; display: flex; align-items: center; gap: 8px;">
-                            <span class="rag-dot status-active"></span> Pulse: Stable
-                        </div>`;
+            heatIndicator = `<span style="color:#f59e0b; display:flex; align-items:center; gap:6px;"><span class="rag-dot" style="color:#f59e0b;"></span> Active Browsing</span>`;
+            cardBorder = 'rgba(245, 158, 11, 0.4)';
         }
         
         container.innerHTML += `
             <div class="glass-panel" style="padding: 30px; border-color: ${cardBorder}; transition: all 0.3s;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
                     <div><h3 style="margin: 0; font-size: 1.3rem; color: #fff;">${clientName}</h3><p style="margin: 6px 0 0 0; color: var(--text-dim); font-size: 0.85rem; letter-spacing: 1px;">ID: ${postCode}</p></div>
-                    ${heatHtml}
+                    <div style="background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); padding: 8px 14px; border-radius: 12px; font-size: 0.75rem;">
+                        ${heatIndicator}
+                    </div>
                 </div>
+
+                <div style="display:flex; justify-content: space-between; margin-bottom: 25px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; font-size: 0.8rem; color: var(--text-bright);">
+                    <span>👁️ ${logins} Views</span>
+                    <span style="color:var(--accent-primary);">⏱️ ${totalMinutes} Mins Spent</span>
+                    <span style="color:var(--text-dim);">⏳ Last: ${lastActive}</span>
+                </div>
+                
                 <div style="margin-bottom: 25px; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; border: 1px solid var(--glass-border);">
                     <p style="margin: 0; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;">Active Phase</p><p style="margin: 6px 0 0 0; color: var(--accent-primary); font-weight: 600; font-size: 1.05rem;">${status}</p>
                 </div>
@@ -203,7 +229,8 @@ window.openVaultPreview = async function(surveyId) {
 };
 document.getElementById('btn-return-designer').addEventListener('click', () => { 
     if(window.activeChatUnsubscribe) window.activeChatUnsubscribe(); if(window.activeDocsUnsubscribe) window.activeDocsUnsubscribe();
-    if(window.activeNotesUnsubscribe) window.activeNotesUnsubscribe();
+    if(window.activeNotesUnsubscribe) window.activeNotesUnsubscribe(); if(window.activeCustomerNotesUnsub) window.activeCustomerNotesUnsub();
+    if(sessionHeartbeat) clearInterval(sessionHeartbeat); // Stop timing if designer closes preview
     switchView('designer', 'OPERATIONS HUB'); fetchAndRenderPipeline(); 
 });
 
@@ -220,7 +247,7 @@ document.getElementById('btn-save-note').addEventListener('click', async () => {
     const isExternal = document.getElementById('input-note-visibility').checked;
     
     if (isExternal) {
-        if (!confirm("WARNING: This note will be visible to the client in their secure vault. Proceed?")) return;
+        if (!confirm("WARNING: This note will be visible to the client in their secure vault under 'Project Updates'. Proceed?")) return;
     }
 
     await addDoc(collection(db, `surveys/${window.activeActionSurveyId}/internalNotes`), { 
@@ -244,8 +271,7 @@ document.getElementById('btn-save-status').addEventListener('click', async () =>
     document.getElementById('modal-status').classList.add('hidden-view'); showToast(`Roadmap advanced to: ${newStatus}`); fetchAndRenderPipeline();
 });
 
-// === CLOUDINARY UPLOAD (The Ultimate PDF Fix: Back to /auto/upload) ===
-// Cloudinary blocks unsigned /raw/ uploads by default. We revert to /auto/upload to ensure PDFs pass.
+// === CLOUDINARY UPLOAD OVERDRIVE ===
 async function uploadToCloudinary(file) {
     const formData = new FormData(); formData.append('file', file); formData.append('upload_preset', cloudinaryConfig.uploadPreset);
     try {
@@ -265,22 +291,26 @@ document.getElementById('designer-quick-upload-input').addEventListener('change'
     } catch (err) { showToast(`Uplink failed: ${err.message}`, "error"); }
 });
 
-// === CUSTOMER VAULT (Fog of War, Hero Mapping, & Notes Vault) ===
-window.activeChatUnsubscribe = null; window.activeDocsUnsubscribe = null; window.activeNotesUnsubscribe = null;
+// === CUSTOMER VAULT BUILDER ===
+window.activeChatUnsubscribe = null; window.activeDocsUnsubscribe = null; window.activeNotesUnsubscribe = null; window.activeCustomerNotesUnsub = null;
 
 window.initCustomerVault = function(docSnap) {
     const data = docSnap.data(); const inputs = data.data?.inputs || {};
     window.activeVaultSurveyId = docSnap.id; 
     const currentStatus = inputs._pipelineStatus || "1. Consultation & Survey";
     
+    // UI Panel Logic based on Role
     if (window.currentActiveRole === 'designer' || window.currentActiveRole === 'admin') {
         document.getElementById('designer-vault-controls').classList.remove('hidden-view');
         document.getElementById('designer-notes-panel').classList.remove('hidden-view');
-        initVaultNotesHistory(window.activeVaultSurveyId);
+        initVaultNotesHistory(window.activeVaultSurveyId); // Full audit log
     } else {
         document.getElementById('designer-vault-controls').classList.add('hidden-view');
         document.getElementById('designer-notes-panel').classList.add('hidden-view');
     }
+
+    // Always init the Customer Facing notes
+    initCustomerFacingNotes(window.activeVaultSurveyId);
 
     const brand = inputs._brand || 'COHI';
     document.getElementById('vault-brand-logo').src = brandLogoMap[brand] || '../co-logo.png';
@@ -288,7 +318,6 @@ window.initCustomerVault = function(docSnap) {
     
     document.getElementById('vault-greeting').innerText = getTemporalGreeting();
     document.getElementById('vault-client-name').innerText = data.clientName || "Valued Client";
-    
     document.getElementById('spec-uvalue').innerText = inputs.uValue ? `${inputs.uValue} W/m²K` : "Analyzing";
     document.getElementById('spec-footprint').innerText = inputs.floorArea ? `${inputs.floorArea} m²` : "Pending";
 
@@ -326,7 +355,41 @@ window.initCustomerVault = function(docSnap) {
     initDocumentCenter(window.activeVaultSurveyId); initVaultChat(window.activeVaultSurveyId);
 }
 
-// === AUDIT & NOTES HISTORY MODULE ===
+// === THE MISSING COMPONENT: CUSTOMER FACING NOTES ===
+function initCustomerFacingNotes(surveyId) {
+    const panel = document.getElementById('customer-notes-panel');
+    const list = document.getElementById('customer-notes-list');
+    
+    if(window.activeCustomerNotesUnsub) window.activeCustomerNotesUnsub();
+    
+    // Query ONLY external notes
+    const q = query(collection(db, `surveys/${surveyId}/internalNotes`), where("visibility", "==", "external"), orderBy('timestamp', 'desc'));
+    
+    window.activeCustomerNotesUnsub = onSnapshot(q, (snapshot) => {
+        list.innerHTML = '';
+        if(snapshot.empty) { 
+            panel.classList.add('hidden-view'); // Hide completely if no updates
+            return; 
+        }
+        
+        panel.classList.remove('hidden-view'); // Reveal the panel
+        
+        snapshot.forEach(doc => {
+            const note = doc.data();
+            const dateStr = note.timestamp ? new Date(note.timestamp.toDate()).toLocaleDateString() : 'Just now';
+            
+            list.innerHTML += `
+                <div style="background:rgba(13,202,240,0.05); padding:18px; border-radius:12px; border: 1px solid rgba(13,202,240,0.2);">
+                    <div style="color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; font-weight:bold; margin-bottom: 8px;">
+                        Update • ${dateStr}
+                    </div>
+                    <div style="color:#fff; font-size:0.95rem; line-height:1.5;">${note.content}</div>
+                </div>`;
+        });
+    });
+}
+
+// === DESIGNER AUDIT HISTORY (Internal + External) ===
 function initVaultNotesHistory(surveyId) {
     if(window.activeNotesUnsubscribe) window.activeNotesUnsubscribe();
     window.activeNotesUnsubscribe = onSnapshot(query(collection(db, `surveys/${surveyId}/internalNotes`), orderBy('timestamp', 'desc')), (snapshot) => {
@@ -337,12 +400,12 @@ function initVaultNotesHistory(surveyId) {
             const note = doc.data();
             const dateStr = note.timestamp ? new Date(note.timestamp.toDate()).toLocaleDateString() : 'Just now';
             const isExt = note.visibility === 'external';
-            const borderColor = isExt ? '#ef4444' : '#10b981';
+            const borderColor = isExt ? '#0dcaf0' : '#10b981'; // Cyan for client facing, Green for internal
             
             list.innerHTML += `
                 <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:12px; border-left: 4px solid ${borderColor};">
                     <div style="display:flex; justify-content:space-between; margin-bottom:8px; color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; font-weight:bold;">
-                        <span style="color:${borderColor}">${isExt ? 'Client Facing Note' : 'Internal Audit'}</span>
+                        <span style="color:${borderColor}">${isExt ? '👁️ Client Facing' : '🔒 Internal Audit'}</span>
                         <span>${dateStr}</span>
                     </div>
                     <div style="color:#fff; font-size:0.9rem; line-height:1.4;">${note.content}</div>
@@ -417,7 +480,6 @@ function initVaultChat(surveyId) {
 
         snapshot.forEach(doc => {
             const msg = doc.data(); const isMe = msg.sender === (window.currentActiveRole==='designer'?'Designer':'Customer');
-            // Replaced generic 'Director' title with clean, tailored identities
             const identityLabel = isMe ? (window.currentActiveRole === 'designer' ? 'Tom' : 'You') : (window.currentActiveRole === 'designer' ? 'Client' : 'Tom');
             
             chatWindow.innerHTML += `
