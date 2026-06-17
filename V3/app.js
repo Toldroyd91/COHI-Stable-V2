@@ -9,7 +9,7 @@ const appConfig = {
 const app = initializeApp(appConfig);
 const db = getFirestore(app);
 
-// CLOUDINARY CONFIG 
+// --- CLOUDINARY SECURE CONFIG ---
 const cloudinaryConfig = { cloudName: "dqk1hz0f8", uploadPreset: "crm_document_uploads" };
 const views = { login: document.getElementById('view-login'), customer: document.getElementById('view-customer'), designer: document.getElementById('view-designer'), nav: document.getElementById('global-nav') };
 
@@ -20,6 +20,16 @@ const projectPhases = [
     { category: "Build & Finish", name: "Execution", totalTime: "5-8 Wks", steps: [{ id: "10. Procurement", time: "2 wks" }, { id: "11. Commencement of Building Works", time: "1-2 wks" }, { id: "12. Installation Commences", time: "1 wk" }, { id: "13. Finishing Trades & Completion", time: "2-4 wks" }] }
 ];
 const journeySteps = projectPhases.flatMap(p => p.steps.map(s => s.id));
+
+// --- GITHUB ASSET LOGO MAPPING ---
+const brandLogoMap = {
+    'Yorkshire Windows': '../yorkshire.png',
+    'Clearview': '../clearview.png',
+    'Trent Valley': '../trentvalley.png',
+    'West Yorkshire': '../westyorkshire.png',
+    'COHI': '../co-logo.png',
+    'CO Home Improvements': '../co-logo2.png'
+};
 
 function switchView(targetView, roleLabel = "") {
     Object.values(views).forEach(v => v.classList.add('hidden-view'));
@@ -41,14 +51,34 @@ function getTemporalGreeting() {
     if (hour < 12) return "Good Morning"; if (hour < 18) return "Good Afternoon"; return "Good Evening";
 }
 
-// Push Notifications Setup
-if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-    Notification.requestPermission();
+if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") { Notification.requestPermission(); }
+
+// --- NETFLIX BRAND TRANSITION ENGINE ---
+async function triggerBrandTransition(brandName) {
+    const overlay = document.getElementById('brand-growth-overlay');
+    const logoElement = document.getElementById('active-brand-logo');
+    
+    logoElement.src = brandLogoMap[brandName] || '../co-logo.png';
+    overlay.classList.remove('hidden-view');
+    
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            logoElement.style.transform = "scale(3)";
+            logoElement.style.opacity = "0";
+        }, 100);
+    });
+
+    return new Promise(resolve => setTimeout(() => {
+        overlay.classList.add('hidden-view');
+        logoElement.style.transform = "scale(1)";
+        logoElement.style.opacity = "1";
+        resolve();
+    }, 1000));
 }
 
-// === PERSISTENT AUTO-LOGIN ===
+// === PERSISTENT AUTHENTICATION ===
 window.addEventListener('DOMContentLoaded', async () => {
-    const auth = JSON.parse(localStorage.getItem('powerhouse_auth'));
+    const auth = JSON.parse(sessionStorage.getItem('powerhouse_auth'));
     if(auth) {
         window.currentActiveRole = auth.role;
         if(auth.role === 'admin' || auth.role === 'designer') {
@@ -56,30 +86,35 @@ window.addEventListener('DOMContentLoaded', async () => {
         } else if (auth.role === 'customer' && auth.surveyId) {
             try {
                 const docSnap = await getDoc(doc(db, "surveys", auth.surveyId));
-                if(docSnap.exists()) { switchView('customer'); initCustomerVault(docSnap); } else { localStorage.removeItem('powerhouse_auth'); }
-            } catch(e) { localStorage.removeItem('powerhouse_auth'); }
+                if(docSnap.exists()) { switchView('customer'); initCustomerVault(docSnap); } else { sessionStorage.removeItem('powerhouse_auth'); }
+            } catch(e) { sessionStorage.removeItem('powerhouse_auth'); }
         }
     }
 });
 
-// === AUTHENTICATION & WEAPONIZED ANALYTICS ===
+// === AUTHENTICATION & ANALYTICS ===
 document.getElementById('btn-login').addEventListener('click', async () => {
     const id = document.getElementById('loginId').value.trim().toUpperCase(); const pin = document.getElementById('loginPin').value.trim();
     const btn = document.getElementById('btn-login'); btn.innerText = "Authenticating...";
     
-    if (id === 'ADMIN' && pin === 'master123') { localStorage.setItem('powerhouse_auth', JSON.stringify({ role: 'admin' })); switchView('designer', 'GLOBAL ADMIN'); initDesignerDashboard(); btn.innerText="Authenticate"; return; }
-    if (id === 'DESIGNER' && pin === 'survey123') { window.currentActiveRole='designer'; localStorage.setItem('powerhouse_auth', JSON.stringify({ role: 'designer' })); switchView('designer', 'OPERATIONS HUB'); initDesignerDashboard(); btn.innerText="Authenticate"; return; }
+    if (id === 'ADMIN' && pin === 'master123') { sessionStorage.setItem('powerhouse_auth', JSON.stringify({ role: 'admin' })); switchView('designer', 'GLOBAL ADMIN'); initDesignerDashboard(); btn.innerText="Authenticate"; return; }
+    if (id === 'DESIGNER' && pin === 'survey123') { window.currentActiveRole='designer'; sessionStorage.setItem('powerhouse_auth', JSON.stringify({ role: 'designer' })); switchView('designer', 'OPERATIONS HUB'); initDesignerDashboard(); btn.innerText="Authenticate"; return; }
 
     try {
         const q = query(collection(db, "surveys"), where("data.inputs.postCode", "==", id), where("data.inputs.clientNum", "==", pin));
         const snap = await getDocs(q);
         if (!snap.empty) {
             const surveyDoc = snap.docs[0];
+            const brandName = surveyDoc.data().data?.inputs?._brand || 'COHI';
             
-            // ANALYTICS TRACKING TRIGGER
+            // ANALYTICS TRIGGER
             await updateDoc(doc(db, "surveys", surveyDoc.id), { "analytics.loginCount": increment(1), "analytics.lastActive": Date.now() });
 
-            localStorage.setItem('powerhouse_auth', JSON.stringify({ role: 'customer', surveyId: surveyDoc.id }));
+            sessionStorage.setItem('powerhouse_auth', JSON.stringify({ role: 'customer', surveyId: surveyDoc.id }));
+            
+            // EXECUTE CINEMATIC TRANSITION
+            await triggerBrandTransition(brandName);
+            
             document.getElementById('btn-return-designer').classList.add('hidden-view');
             switchView('customer'); initCustomerVault(surveyDoc);
         } else {
@@ -89,9 +124,9 @@ document.getElementById('btn-login').addEventListener('click', async () => {
     btn.innerText = "Authenticate";
 });
 
-document.getElementById('btn-logout').addEventListener('click', () => { localStorage.removeItem('powerhouse_auth'); window.location.reload(); });
+document.getElementById('btn-logout').addEventListener('click', () => { sessionStorage.removeItem('powerhouse_auth'); window.location.reload(); });
 
-// === COMMAND CENTER LOGIC & HOT LEAD TRACKING ===
+// === COMMAND CENTER & SEMANTIC SEARCH ===
 window.activeDesignerStageFilter = 'ALL'; window.allPipelineData = []; 
 window.setDesignerFilter = function(stage, btnElement) {
     window.activeDesignerStageFilter = stage;
@@ -125,13 +160,12 @@ function renderPipelineCards(searchQuery = "") {
         if (searchQuery) { const matchName = clientName.toLowerCase().includes(searchQuery); const matchId = postCode.toLowerCase().includes(searchQuery); if (!matchName && !matchId) return; }
         renderCount++;
 
-        // HOT LEAD LOGIC
         const daysSinceClientActive = analytics.lastActive ? (Date.now() - analytics.lastActive) / (1000 * 60 * 60 * 24) : 999;
         let heatHtml = ''; let cardBorder = 'var(--glass-border)';
         
         if (analytics.loginCount > 2 && daysSinceClientActive < 3) {
             heatHtml = `<div style="background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); padding: 6px 12px; border-radius: 12px; font-size: 0.75rem; display: flex; align-items: center; gap: 8px; color: #ef4444; font-weight:bold;">
-                            <span class="rag-dot status-hot"></span> 🔥 HOT LEAD (${analytics.loginCount} Views)
+                            <span class="rag-dot status-hot"></span> 🔥 HOT LEAD (${analytics.loginCount} Logins)
                         </div>`;
             cardBorder = 'rgba(239, 68, 68, 0.4)';
         } else {
@@ -172,23 +206,33 @@ document.getElementById('btn-return-designer').addEventListener('click', () => {
     switchView('designer', 'OPERATIONS HUB'); fetchAndRenderPipeline(); 
 });
 
-// === MODALS ===
+// === MODALS & VISIBILITY TOGGLE ===
 window.openActionModal = function(type, surveyId, currentStatus = "") {
     window.activeActionSurveyId = surveyId;
-    if (type === 'notes') document.getElementById('modal-notes').classList.remove('hidden-view');
+    if (type === 'notes') { document.getElementById('input-note-visibility').checked = false; document.getElementById('modal-notes').classList.remove('hidden-view'); }
     if (type === 'contact') document.getElementById('modal-contact').classList.remove('hidden-view');
     if (type === 'status') { document.getElementById('input-status-select').innerHTML = journeySteps.concat(['Stalled', 'Dead Lead']).map(s => `<option value="${s}" ${s===currentStatus?'selected':''}>${s}</option>`).join(''); document.getElementById('modal-status').classList.remove('hidden-view'); }
 }
 
 document.getElementById('btn-save-note').addEventListener('click', async () => {
     const val = document.getElementById('input-note-text').value; if(!val) return;
-    await addDoc(collection(db, `surveys/${window.activeActionSurveyId}/internalNotes`), { content: `[Audit] ${val}`, timestamp: serverTimestamp() });
-    document.getElementById('modal-notes').classList.add('hidden-view'); document.getElementById('input-note-text').value=''; showToast("Audit record appended.");
+    const isExternal = document.getElementById('input-note-visibility').checked;
+    
+    if (isExternal) {
+        if (!confirm("WARNING: This note will be visible to the client in their secure vault. Proceed?")) return;
+    }
+
+    await addDoc(collection(db, `surveys/${window.activeActionSurveyId}/internalNotes`), { 
+        content: `[${isExternal ? 'Client Facing' : 'Internal Audit'}] ${val}`, 
+        visibility: isExternal ? 'external' : 'internal',
+        timestamp: serverTimestamp() 
+    });
+    document.getElementById('modal-notes').classList.add('hidden-view'); document.getElementById('input-note-text').value=''; showToast("Record securely appended.");
 });
 
 document.getElementById('btn-save-contact').addEventListener('click', async () => {
     const type = document.getElementById('input-contact-type').value; const val = document.getElementById('input-contact-note').value;
-    await addDoc(collection(db, `surveys/${window.activeActionSurveyId}/internalNotes`), { content: `[Dispatch: ${type}] ${val}`, timestamp: serverTimestamp() });
+    await addDoc(collection(db, `surveys/${window.activeActionSurveyId}/internalNotes`), { content: `[Dispatch: ${type}] ${val}`, visibility: 'internal', timestamp: serverTimestamp() });
     await updateDoc(doc(db, "surveys", window.activeActionSurveyId), { "data.inputs._lastContacted": Date.now() });
     document.getElementById('modal-contact').classList.add('hidden-view'); document.getElementById('input-contact-note').value=''; showToast(`Dispatch via ${type} logged.`); fetchAndRenderPipeline();
 });
@@ -199,27 +243,31 @@ document.getElementById('btn-save-status').addEventListener('click', async () =>
     document.getElementById('modal-status').classList.add('hidden-view'); showToast(`Roadmap advanced to: ${newStatus}`); fetchAndRenderPipeline();
 });
 
-// === CLOUDINARY API (/auto/upload) ===
+// === CLOUDINARY UPLOAD OVERDRIVE (/RAW FIX) ===
 async function uploadToCloudinary(file) {
     const formData = new FormData(); formData.append('file', file); formData.append('upload_preset', cloudinaryConfig.uploadPreset);
+    
+    // Explicitly force 'raw' for PDFs to bypass image processing rejection
+    const resourceType = file.type === 'application/pdf' ? 'raw' : 'image';
+    
     try {
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/auto/upload`, { method: 'POST', body: formData });
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/${resourceType}/upload`, { method: 'POST', body: formData });
         const data = await res.json();
-        if (data.secure_url) return data.secure_url; throw new Error("API Rejection");
+        if (data.secure_url) return data.secure_url; throw new Error(data.error?.message || "API Rejection");
     } catch (err) { throw err; }
 }
 
 window.triggerQuickUpload = function(surveyId) { window.activeVaultSurveyId = surveyId; document.getElementById('designer-quick-upload-input').click(); };
 document.getElementById('designer-quick-upload-input').addEventListener('change', async (e) => {
-    const file = e.target.files[0]; if(!file) return; showToast("Establishing uplink for Official Quote...");
+    const file = e.target.files[0]; if(!file) return; showToast("Establishing secure uplink for Blueprint...");
     try {
         const url = await uploadToCloudinary(file);
         await addDoc(collection(db, `surveys/${window.activeVaultSurveyId}/documents`), { name: file.name, url: url, category: "Official Quote", uploadedAt: serverTimestamp() });
         showToast("Blueprint successfully secured.");
-    } catch (err) { showToast("Uplink failed. Verify protocol.", "error"); }
+    } catch (err) { showToast(`Uplink failed: ${err.message}`, "error"); }
 });
 
-// === CUSTOMER VAULT (Hero-Stat Mapping & Fog of War) ===
+// === CUSTOMER VAULT (Fog of War & Hero Mapping) ===
 window.activeChatUnsubscribe = null; window.activeDocsUnsubscribe = null;
 
 window.initCustomerVault = function(docSnap) {
@@ -230,15 +278,14 @@ window.initCustomerVault = function(docSnap) {
     if (window.currentActiveRole === 'designer' || window.currentActiveRole === 'admin') document.getElementById('designer-vault-controls').classList.remove('hidden-view');
     else document.getElementById('designer-vault-controls').classList.add('hidden-view');
 
-    const brand = inputs._brand || 'CO Home Improvements';
-    if(brand === 'Yorkshire Windows') { document.getElementById('vault-brand-logo').src = '../yorkshire.png'; document.getElementById('vault-brand-logo').classList.remove('hidden-view'); }
-    else if (brand === 'Clearview') { document.getElementById('vault-brand-logo').src = '../clearview.png'; document.getElementById('vault-brand-logo').classList.remove('hidden-view'); }
-    else { document.getElementById('vault-brand-logo').src = '../co-logo.png'; document.getElementById('vault-brand-logo').classList.remove('hidden-view'); }
+    const brand = inputs._brand || 'COHI';
+    document.getElementById('vault-brand-logo').src = brandLogoMap[brand] || '../co-logo.png';
+    document.getElementById('vault-brand-logo').classList.remove('hidden-view');
     
     document.getElementById('vault-greeting').innerText = getTemporalGreeting();
     document.getElementById('vault-client-name').innerText = data.clientName || "Valued Client";
     
-    // AUTOMATED HERO STAT MAPPING (Zero Designer Friction)
+    // Automated Hero Stat Mapping
     document.getElementById('spec-uvalue').innerText = inputs.uValue ? `${inputs.uValue} W/m²K` : "Analyzing";
     document.getElementById('spec-footprint').innerText = inputs.floorArea ? `${inputs.floorArea} m²` : "Pending";
 
@@ -287,7 +334,7 @@ document.getElementById('btn-vault-upload').addEventListener('click', async () =
         const url = await uploadToCloudinary(file);
         await addDoc(collection(db, `surveys/${window.activeVaultSurveyId}/documents`), { name: file.name, url: url, category: category, uploadedAt: serverTimestamp() });
         showToast(`${category} secured in Vault.`); fileInput.value = "";
-    } catch (err) { showToast("Transmission failed.", "error"); }
+    } catch (err) { showToast(`Transmission failed: ${err.message}`, "error"); }
     btn.innerText = "Execute Upload"; btn.style.opacity = "1";
 });
 
@@ -324,7 +371,7 @@ function initDocumentCenter(surveyId) {
     });
 }
 
-// === SECURE COMMS & NATIVE PUSH ALERTS ===
+// === SECURE IDENTITY COMMS & PUSH ALERTS ===
 let initialChatLoad = true;
 function initVaultChat(surveyId) {
     const chatWindow = document.getElementById('chat-window'); initialChatLoad = true;
@@ -335,8 +382,6 @@ function initVaultChat(surveyId) {
         
         snapshot.docChanges().forEach((change) => {
             const msg = change.doc.data(); const isMe = msg.sender === (window.currentActiveRole==='designer'?'Designer':'Customer');
-            
-            // Native Push Alert trigger (Only fires for NEW incoming messages after initial load)
             if (change.type === "added" && !initialChatLoad && !isMe && window.currentActiveRole === 'designer') {
                 if (Notification.permission === 'granted') { new Notification("New Client Message", { body: msg.text, icon: "../co-logo.png" }); }
                 showToast("New direct message received.", "success");
@@ -345,7 +390,15 @@ function initVaultChat(surveyId) {
 
         snapshot.forEach(doc => {
             const msg = doc.data(); const isMe = msg.sender === (window.currentActiveRole==='designer'?'Designer':'Customer');
-            chatWindow.innerHTML += `<div class="chat-bubble ${isMe ? 'chat-me' : 'chat-them'}">${msg.text}</div>`;
+            const identityLabel = isMe ? (window.currentActiveRole === 'designer' ? 'Tom (Director)' : 'You') : (window.currentActiveRole === 'designer' ? 'Client' : 'Tom (Director)');
+            
+            chatWindow.innerHTML += `
+                <div class="chat-row" style="justify-content: ${isMe ? 'flex-end' : 'flex-start'};">
+                    <div class="chat-bubble ${isMe ? 'chat-me' : 'chat-them'}">
+                        <div class="chat-identity">${identityLabel}</div>
+                        ${msg.text}
+                    </div>
+                </div>`;
         });
         
         setTimeout(() => chatWindow.scrollTop = chatWindow.scrollHeight, 100); 
