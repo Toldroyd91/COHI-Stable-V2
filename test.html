@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mobile Sniper Prototype</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #121212; color: white; font-family: sans-serif; touch-action: none; }
+        
+        /* The Viewport */
+        #viewport { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+        
+        /* The Moving Canvas */
+        #canvas-container { transform-origin: 0 0; position: absolute; }
+        
+        /* The Fixed Crosshair (Never moves) */
+        .crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 50; display: flex; align-items: center; justify-content: center; }
+        .crosshair::before { content: ''; position: absolute; width: 40px; height: 2px; background: #0dcaf0; box-shadow: 0 0 4px #000; }
+        .crosshair::after { content: ''; position: absolute; height: 40px; width: 2px; background: #0dcaf0; box-shadow: 0 0 4px #000; }
+        .dot { width: 4px; height: 4px; background: #fff; border-radius: 50%; z-index: 51; box-shadow: 0 0 4px #000; }
+
+        /* The UI Overlay */
+        .ui-layer { position: absolute; inset: 0; pointer-events: none; z-index: 100; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
+        
+        /* The Nudge D-Pad */
+        .d-pad { pointer-events: auto; display: grid; grid-template-columns: 50px 50px 50px; grid-template-rows: 50px 50px 50px; gap: 5px; align-self: flex-end; margin-bottom: 20px; }
+        .nudge-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; color: white; font-size: 20px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+        .nudge-btn:active { background: #0dcaf0; }
+        
+        #btn-up { grid-column: 2; grid-row: 1; }
+        #btn-left { grid-column: 1; grid-row: 2; }
+        #btn-right { grid-column: 3; grid-row: 2; }
+        #btn-down { grid-column: 2; grid-row: 3; }
+
+        /* Actions */
+        .action-bar { pointer-events: auto; display: flex; gap: 10px; justify-content: center; width: 100%; }
+        .btn { flex: 1; padding: 15px; border-radius: 12px; border: none; font-weight: bold; background: #1E1E1E; color: white; border: 1px solid #333; }
+        .btn-primary { background: #0dcaf0; color: black; border: none; }
+    </style>
+</head>
+<body>
+
+<div id="viewport">
+    <div id="canvas-container">
+        <img id="survey-img" src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" style="display: block;">
+        <canvas id="drawing-layer" style="position: absolute; top: 0; left: 0; pointer-events: none;"></canvas>
+    </div>
+
+    <div class="crosshair"><div class="dot"></div></div>
+
+    <div class="ui-layer">
+        <div style="pointer-events: auto; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 8px;">
+            <div>Zoom: <span id="readout-zoom">100%</span></div>
+        </div>
+
+        <div>
+            <div class="d-pad">
+                <div class="nudge-btn" id="btn-up">↑</div>
+                <div class="nudge-btn" id="btn-left">←</div>
+                <div class="nudge-btn" id="btn-right">→</div>
+                <div class="nudge-btn" id="btn-down">↓</div>
+            </div>
+
+            <div class="action-bar">
+                <button class="btn" id="btn-zoom-out">Zoom -</button>
+                <button class="btn" id="btn-zoom-in">Zoom +</button>
+                <button class="btn btn-primary" id="btn-anchor">🎯 Anchor</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const viewport = document.getElementById('viewport');
+    const container = document.getElementById('canvas-container');
+    const img = document.getElementById('survey-img');
+    const zoomReadout = document.getElementById('readout-zoom');
+
+    let state = {
+        scale: 1, offsetX: 0, offsetY: 0,
+        isDragging: false, startX: 0, startY: 0
+    };
+
+    // 1. Pan Engine (Drag the world, not the cursor)
+    viewport.addEventListener('pointerdown', (e) => {
+        if(e.target.closest('.d-pad') || e.target.closest('.action-bar')) return;
+        state.isDragging = true;
+        state.startX = e.clientX - state.offsetX;
+        state.startY = e.clientY - state.offsetY;
+    });
+
+    viewport.addEventListener('pointermove', (e) => {
+        if (!state.isDragging) return;
+        state.offsetX = e.clientX - state.startX;
+        state.offsetY = e.clientY - state.startY;
+        updateTransform();
+    });
+
+    viewport.addEventListener('pointerup', () => state.isDragging = false);
+
+    // 2. Zoom Engine (Zooms to the center crosshair)
+    function changeZoom(factor) {
+        const oldScale = state.scale;
+        state.scale *= factor;
+        if(state.scale < 0.2) state.scale = 0.2;
+        if(state.scale > 5) state.scale = 5;
+
+        // Keep the center pixel exactly in the center while zooming
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        
+        const imgX = (centerX - state.offsetX) / oldScale;
+        const imgY = (centerY - state.offsetY) / oldScale;
+
+        state.offsetX = centerX - (imgX * state.scale);
+        state.offsetY = centerY - (imgY * state.scale);
+        
+        updateTransform();
+    }
+
+    document.getElementById('btn-zoom-in').onclick = () => changeZoom(1.2);
+    document.getElementById('btn-zoom-out').onclick = () => changeZoom(0.8);
+
+    // 3. The Precision Nudge Engine (Moves exactly 1 pixel of the image)
+    function nudge(dx, dy) {
+        // We divide by scale so that 1 nudge = exactly 1 pixel of the actual photograph, regardless of zoom level.
+        state.offsetX -= dx * state.scale;
+        state.offsetY -= dy * state.scale;
+        updateTransform();
+    }
+
+    document.getElementById('btn-up').onclick = () => nudge(0, -1);
+    document.getElementById('btn-down').onclick = () => nudge(0, 1);
+    document.getElementById('btn-left').onclick = () => nudge(-1, 0);
+    document.getElementById('btn-right').onclick = () => nudge(1, 0);
+
+    function updateTransform() {
+        container.style.transform = `translate(${state.offsetX}px, ${state.offsetY}px) scale(${state.scale})`;
+        zoomReadout.innerText = Math.round(state.scale * 100) + "%";
+    }
+
+    // Initial center
+    img.onload = () => {
+        state.offsetX = (window.innerWidth - img.width) / 2;
+        state.offsetY = (window.innerHeight - img.height) / 2;
+        updateTransform();
+    };
+    if(img.complete) img.onload();
+
+</script>
+</body>
+</html>
