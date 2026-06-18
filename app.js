@@ -3,22 +3,74 @@ import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.g
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
 // COHI Firebase Init
-const appConfig = {
-    apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0",
-    authDomain: "cohi-survey-engine.firebaseapp.com",
-    projectId: "cohi-survey-engine"
-};
+const appConfig = { apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", authDomain: "cohi-survey-engine.firebaseapp.com", projectId: "cohi-survey-engine" };
 const app = initializeApp(appConfig);
 export const db = getFirestore(app);
 const functions = getFunctions(app);
 
-// Service Worker Registration
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-    .then((reg) => console.log('COHI SW Registered'))
-    .catch((err) => console.log('SW Registration failed', err));
-}
+// Tab Switching Logic
+const tabForm = document.getElementById('tab-form');
+const tabCanvas = document.getElementById('tab-canvas');
+const viewForm = document.getElementById('view-form');
+const viewCanvas = document.getElementById('view-canvas');
 
+function switchTab(target) {
+    viewForm.classList.remove('active'); viewCanvas.classList.remove('active');
+    tabForm.classList.replace('bg-slate-700', 'bg-transparent'); tabForm.classList.replace('text-white', 'text-slate-400'); tabForm.classList.remove('shadow');
+    tabCanvas.classList.replace('bg-slate-700', 'bg-transparent'); tabCanvas.classList.replace('text-white', 'text-slate-400'); tabCanvas.classList.remove('shadow');
+
+    if(target === 'form') {
+        viewForm.classList.add('active');
+        tabForm.classList.add('bg-slate-700', 'text-white', 'shadow'); tabForm.classList.remove('text-slate-400');
+    } else {
+        viewCanvas.classList.add('active');
+        tabCanvas.classList.add('bg-slate-700', 'text-white', 'shadow'); tabCanvas.classList.remove('text-slate-400');
+        if(photo.src) updateViewport(); // Refresh canvas render on load
+    }
+}
+tabForm.addEventListener('click', () => switchTab('form'));
+tabCanvas.addEventListener('click', () => switchTab('canvas'));
+
+// --- MULTI-IMAGE GALLERY LOGIC ---
+export const SurveyState = {
+    images: [], // Stores multiple base64 images
+    activeImageIndex: -1,
+    imageIntrinsicWidth: 0, imageIntrinsicHeight: 0,
+    vectors: {}, // Maps image index to an array of vectors
+    activeAnchor: null, 
+    scale: 1, offsetX: 0, offsetY: 0, isDragging: false, startX: 0, startY: 0
+};
+
+const photoGallery = document.getElementById('photo-gallery');
+
+document.getElementById('btn-add-photos').addEventListener('click', () => document.getElementById('hidden-multi-upload').click());
+
+document.getElementById('hidden-multi-upload').addEventListener('change', e => {
+    const files = Array.from(e.target.files);
+    if(files.length > 0 && SurveyState.images.length === 0) photoGallery.innerHTML = ''; // clear placeholder
+
+    files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const b64 = event.target.result;
+            const newIndex = SurveyState.images.length;
+            SurveyState.images.push(b64);
+            SurveyState.vectors[newIndex] = []; // initialize vector array for this photo
+            
+            // Add thumbnail to gallery
+            const thumb = document.createElement('div');
+            thumb.className = "aspect-square rounded-xl bg-cover bg-center cursor-pointer border-2 border-transparent hover:border-[#0dcaf0] transition overflow-hidden relative";
+            thumb.style.backgroundImage = `url(${b64})`;
+            thumb.innerHTML = `<div class="absolute bottom-0 inset-x-0 bg-black/60 text-[10px] text-center py-1">Draft</div>`;
+            
+            thumb.onclick = () => loadPhotoToCanvas(newIndex);
+            photoGallery.appendChild(thumb);
+        };
+        reader.readAsDataURL(file);
+    });
+});
+
+// --- CANVAS ENGINE (WITH ZOOM FIX) ---
 const stage = document.getElementById('drafting-stage');
 const imageLayer = document.getElementById('survey-image-layer');
 const vectorCanvas = document.getElementById('vector-drawing-layer');
@@ -26,54 +78,67 @@ const ctx = vectorCanvas.getContext('2d');
 const photo = document.getElementById('active-survey-photo');
 const hudDrawer = document.getElementById('hud-drawer');
 
-export const SurveyState = {
-    imageIntrinsicWidth: 0, imageIntrinsicHeight: 0,
-    vectors: [], activeAnchor: null, 
-    scale: 1, offsetX: 0, offsetY: 0, isDragging: false, startX: 0, startY: 0
-};
-
-// --- 1. SMART IMAGE UPLOAD ---
-document.getElementById('btn-upload-photo').addEventListener('click', () => document.getElementById('hidden-file-input').click());
-
-document.getElementById('hidden-file-input').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        photo.onload = () => {
-            SurveyState.imageIntrinsicWidth = photo.naturalWidth;
-            SurveyState.imageIntrinsicHeight = photo.naturalHeight;
-            vectorCanvas.width = photo.naturalWidth;
-            vectorCanvas.height = photo.naturalHeight;
-            
-            SurveyState.scale = Math.min(window.innerWidth / photo.naturalWidth, window.innerHeight / photo.naturalHeight);
-            SurveyState.offsetX = (window.innerWidth - photo.naturalWidth * SurveyState.scale) / 2;
-            SurveyState.offsetY = (window.innerHeight - photo.naturalHeight * SurveyState.scale) / 2;
-            
-            photo.style.display = 'block';
-            updateViewport();
-        };
-        photo.src = event.target.result;
+function loadPhotoToCanvas(index) {
+    SurveyState.activeImageIndex = index;
+    photo.onload = () => {
+        SurveyState.imageIntrinsicWidth = photo.naturalWidth;
+        SurveyState.imageIntrinsicHeight = photo.naturalHeight;
+        vectorCanvas.width = photo.naturalWidth;
+        vectorCanvas.height = photo.naturalHeight;
+        
+        // Initial fit-to-screen scale
+        SurveyState.scale = Math.min(window.innerWidth / photo.naturalWidth, window.innerHeight / photo.naturalHeight);
+        SurveyState.offsetX = (window.innerWidth - photo.naturalWidth * SurveyState.scale) / 2;
+        SurveyState.offsetY = (window.innerHeight - photo.naturalHeight * SurveyState.scale) / 2;
+        
+        photo.style.display = 'block';
+        updateViewport();
+        switchTab('canvas');
     };
-    reader.readAsDataURL(file);
-});
+    photo.src = SurveyState.images[index];
+}
 
-// --- 2. PAN-TO-ANCHOR ENGINE ---
+// Pan Engine
 stage.addEventListener('pointerdown', e => {
-    if(e.target.tagName === 'BUTTON' || e.target.closest('#hud-drawer') || e.target.closest('header')) return;
+    if(e.target.tagName === 'BUTTON' || e.target.closest('#hud-drawer')) return;
     SurveyState.isDragging = true;
     SurveyState.startX = e.clientX - SurveyState.offsetX;
     SurveyState.startY = e.clientY - SurveyState.offsetY;
 });
-
 stage.addEventListener('pointermove', e => {
     if (!SurveyState.isDragging) return;
     SurveyState.offsetX = e.clientX - SurveyState.startX;
     SurveyState.offsetY = e.clientY - SurveyState.startY;
     updateViewport();
 });
-
 stage.addEventListener('pointerup', () => SurveyState.isDragging = false);
+
+// --- THE ZOOM ENGINE ---
+function changeZoom(delta) {
+    if (!photo.src || SurveyState.activeImageIndex === -1) return;
+    
+    const oldScale = SurveyState.scale;
+    let newScale = oldScale * delta;
+    
+    // Limits
+    if(newScale < 0.05) newScale = 0.05; 
+    if(newScale > 5) newScale = 5;
+
+    // Mathematical center zoom calculation
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+
+    const imgX = (centerX - SurveyState.offsetX) / oldScale;
+    const imgY = (centerY - SurveyState.offsetY) / oldScale;
+
+    SurveyState.scale = newScale;
+    SurveyState.offsetX = centerX - (imgX * SurveyState.scale);
+    SurveyState.offsetY = centerY - (imgY * SurveyState.scale);
+    
+    updateViewport();
+}
+document.getElementById('btn-zoom-in').addEventListener('click', () => changeZoom(1.3));
+document.getElementById('btn-zoom-out').addEventListener('click', () => changeZoom(0.7));
 
 function updateViewport() {
     imageLayer.style.transform = `translate(${SurveyState.offsetX}px, ${SurveyState.offsetY}px) scale(${SurveyState.scale})`;
@@ -87,9 +152,9 @@ function getCrosshairRelativeCoordinate() {
     return { pctX: imgX / SurveyState.imageIntrinsicWidth, pctY: imgY / SurveyState.imageIntrinsicHeight };
 }
 
-// --- 3. HUD DRAWER LOGIC ---
+// HUD & Anchors
 document.getElementById('btn-anchor-point').addEventListener('click', () => {
-    if (!SurveyState.imageIntrinsicWidth) { alert("Load an image first."); return; }
+    if (SurveyState.activeImageIndex === -1) { alert("Select a photo from the Form Data gallery first."); return; }
     const coords = getCrosshairRelativeCoordinate();
     const btn = document.getElementById('btn-anchor-point');
 
@@ -108,7 +173,7 @@ document.getElementById('btn-save-measurement').addEventListener('click', () => 
     const val = document.getElementById('input-measurement').value;
     if(!val) return;
 
-    SurveyState.vectors.push({ id: Date.now(), value: val, type: document.getElementById('input-line-type').value, start: SurveyState.activeAnchor, end: SurveyState.tempEndpoint });
+    SurveyState.vectors[SurveyState.activeImageIndex].push({ id: Date.now(), value: val, type: document.getElementById('input-line-type').value, start: SurveyState.activeAnchor, end: SurveyState.tempEndpoint });
     SurveyState.activeAnchor = null; SurveyState.tempEndpoint = null;
     document.getElementById('input-measurement').value = '';
     hudDrawer.classList.remove('active');
@@ -121,7 +186,11 @@ document.getElementById('btn-save-measurement').addEventListener('click', () => 
 
 export function renderVectors() {
     ctx.clearRect(0, 0, vectorCanvas.width, vectorCanvas.height);
-    SurveyState.vectors.forEach(v => {
+    if(SurveyState.activeImageIndex === -1) return;
+
+    const currentVectors = SurveyState.vectors[SurveyState.activeImageIndex] || [];
+    
+    currentVectors.forEach(v => {
         const startX = v.start.pctX * SurveyState.imageIntrinsicWidth; const startY = v.start.pctY * SurveyState.imageIntrinsicHeight;
         const endX = v.end.pctX * SurveyState.imageIntrinsicWidth; const endY = v.end.pctY * SurveyState.imageIntrinsicHeight;
 
@@ -140,12 +209,11 @@ export function renderVectors() {
     });
 }
 
-// --- 4. CRM BRIDGE + V3 VAULT DATABASE SYNC ---
+// --- FULL FORM DATA AGGREGATION & EXPORT ---
 document.getElementById('btn-legacy-sync').addEventListener('click', () => {
     document.getElementById('crm-bridge-modal').classList.remove('hidden');
     document.getElementById('crm-bridge-modal').classList.add('flex');
 });
-
 document.getElementById('btn-cancel-sync').addEventListener('click', () => {
     document.getElementById('crm-bridge-modal').classList.add('hidden');
     document.getElementById('crm-bridge-modal').classList.remove('flex');
@@ -153,83 +221,71 @@ document.getElementById('btn-cancel-sync').addEventListener('click', () => {
 
 document.getElementById('btn-execute-sync').addEventListener('click', async () => {
     const btn = document.getElementById('btn-execute-sync');
-    const originalText = btn.innerText;
-    btn.innerText = "Syncing to V3 & CRM...";
+    btn.innerText = "Syncing...";
     
-    const clientName = document.getElementById('crm-client-name').value || "Valued Client"; 
-    const postCode = document.getElementById('crm-postcode').value || "N/A";
-    const roughNotes = document.getElementById('crm-rough-notes').value;
-    const roofType = document.getElementById('survey-roof-type').value;
+    // Gather ALL Form Data
+    const clientName = document.getElementById('input-client-name').value || "Mr. Dall"; 
+    const postCode = document.getElementById('input-postcode').value || "N/A";
+    const roofType = document.getElementById('input-roof-type').value;
+    const uValue = document.getElementById('input-uvalue').value || "N/A";
+    const roughNotes = document.getElementById('input-notes').value;
+    
     let finalNotes = roughNotes;
-
-    // 1. AI Polish
     if (roughNotes.trim().length > 5) {
         try {
             const rewriteNotes = httpsCallable(functions, 'rewriteNotes');
             const result = await rewriteNotes({ rawText: roughNotes });
             finalNotes = result.data.polishedText;
-        } catch (error) { console.warn("AI Polish offline. Using raw input."); }
+        } catch (error) { console.warn("AI Polish offline."); }
     }
 
-    // 2. LIVE DATABASE INJECTION (Creates the V3 Vault Profile)
+    // Aggregate ALL Vectors from ALL Photos
+    let allVectorsText = [];
+    Object.keys(SurveyState.vectors).forEach(imgIdx => {
+        SurveyState.vectors[imgIdx].forEach(v => allVectorsText.push(`• ${v.type.toUpperCase()}: ${v.value}`));
+    });
+
     try {
         const newSurveyRef = await addDoc(collection(db, "surveys"), {
             clientName: clientName,
             data: {
                 inputs: {
-                    postCode: postCode,
-                    clientNum: "survey123", // Default secure PIN for testing
-                    _brand: "COHI",
-                    _pipelineStatus: "1. Consultation & Survey",
-                    roofType: roofType
+                    postCode: postCode, clientNum: "survey123", _brand: "COHI", 
+                    _pipelineStatus: "1. Consultation & Survey", roofType: roofType, uValue: uValue
                 }
             },
-            vectors: SurveyState.vectors, // Pushes math to the cloud
             analytics: { loginCount: 0, totalTimeMinutes: 0 }
         });
         
-        // Push the polished notes to the external updates list
-        if(finalNotes) {
-            await addDoc(collection(db, `surveys/${newSurveyRef.id}/internalNotes`), {
-                content: finalNotes, visibility: 'external', timestamp: serverTimestamp()
-            });
-        }
-
-        // Store ID globally so the PDF generator knows where to upload the file
+        if(finalNotes) { await addDoc(collection(db, `surveys/${newSurveyRef.id}/internalNotes`), { content: finalNotes, visibility: 'external', timestamp: serverTimestamp() }); }
         window.activeVaultSurveyId = newSurveyRef.id;
+    } catch (err) { console.error(err); }
 
-    } catch (err) {
-        console.error("V3 Database Sync Failed:", err);
-    }
-
-    // 3. Legacy Clipboard Copy
-    const vectorList = SurveyState.vectors.map(v => `• ${v.type.toUpperCase()}: ${v.value}`).join('\n');
     const clipboardText = `
-=== CO HOME IMPROVEMENTS SURVEY ===
-DATE: ${new Date().toLocaleDateString()}
-CLIENT: ${clientName} | POSTCODE: ${postCode}
-ROOF TYPE: ${roofType}
+=== COHI SURVEY DATA ===
+CLIENT: ${clientName} | POST: ${postCode}
+ROOF: ${roofType} | U-VAL: ${uValue}
+PHOTOS ATTACHED: ${SurveyState.images.length}
 
---- STRUCTURAL VECTORS ---
-${vectorList || 'No structural vectors recorded.'}
+--- MEASUREMENTS ---
+${allVectorsText.join('\\n') || 'None recorded.'}
 
---- ARCHITECTURAL OBSERVATIONS ---
-${finalNotes || 'No specific observations recorded.'}
-===================================`.trim();
+--- OBSERVATIONS ---
+${finalNotes || 'None recorded.'}
+========================`.trim();
 
-    try { await navigator.clipboard.writeText(clipboardText); } catch (err) { }
+    try { await navigator.clipboard.writeText(clipboardText); } catch (err) {}
     
-    btn.innerText = "Vault Created & Synced!";
+    btn.innerText = "Vault Synced & Copied!";
     btn.classList.replace('bg-[#10b981]', 'bg-[#0dcaf0]');
-    
     setTimeout(() => { 
-        btn.innerText = originalText; btn.classList.replace('bg-[#0dcaf0]', 'bg-[#10b981]');
         document.getElementById('crm-bridge-modal').classList.add('hidden'); document.getElementById('crm-bridge-modal').classList.remove('flex');
-    }, 2500);
+        btn.innerText = "Sync to V3 & CRM"; btn.classList.replace('bg-[#0dcaf0]', 'bg-[#10b981]');
+    }, 2000);
 });
 
-// Hook PDF Generation
+// PDF Gen Hook
 document.getElementById('btn-generate-pdf').addEventListener('click', () => {
-    const roofType = document.getElementById('survey-roof-type').value;
+    const roofType = document.getElementById('input-roof-type').value;
     window.PDFEngine.generate(SurveyState, roofType);
 });
