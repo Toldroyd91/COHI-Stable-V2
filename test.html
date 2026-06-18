@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Mobile Sniper v2</title>
+    <title>Mobile Sniper v3 (Pure Touch)</title>
     <style>
         :root { --accent: #0dcaf0; --bg: #121212; --panel: rgba(20, 20, 20, 0.85); }
         
-        /* Uses dvh to prevent mobile browser bars from hiding the bottom UI */
-        body { margin: 0; height: 100dvh; overflow: hidden; background: var(--bg); color: white; font-family: system-ui, sans-serif; touch-action: none; overscroll-behavior: none; }
+        body { margin: 0; height: 100dvh; width: 100vw; overflow: hidden; background: var(--bg); color: white; font-family: system-ui, sans-serif; touch-action: none; overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
         
-        #viewport { position: relative; width: 100vw; height: 100dvh; overflow: hidden; }
-        #canvas-container { transform-origin: 0 0; position: absolute; }
+        #viewport { position: absolute; inset: 0; overflow: hidden; touch-action: none; }
+        #canvas-container { transform-origin: 0 0; position: absolute; will-change: transform; }
         
         /* Fixed Crosshair */
         .crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 50; display: flex; align-items: center; justify-content: center; }
@@ -20,11 +19,11 @@
         .dot { width: 4px; height: 4px; background: #fff; border-radius: 50%; z-index: 51; box-shadow: 0 0 4px #000; }
 
         /* UI Layer */
-        .ui-layer { position: absolute; inset: 0; pointer-events: none; z-index: 100; display: flex; flex-direction: column; justify-content: space-between; padding: 15px; padding-bottom: env(safe-area-inset-bottom, 15px); }
+        .ui-layer { position: absolute; inset: 0; pointer-events: none; z-index: 100; display: flex; flex-direction: column; justify-content: space-between; padding: 15px; padding-bottom: env(safe-area-inset-bottom, 25px); }
         
         /* Top Toolbar */
-        .toolbar { pointer-events: auto; display: flex; justify-content: center; gap: 8px; background: var(--panel); padding: 8px; border-radius: 12px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .tool-btn { background: transparent; color: #aaa; border: none; padding: 10px 15px; font-weight: bold; border-radius: 8px; font-size: 14px; transition: 0.2s; }
+        .toolbar { pointer-events: auto; display: flex; justify-content: center; gap: 8px; background: var(--panel); padding: 8px; border-radius: 12px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); margin-top: env(safe-area-inset-top, 10px); }
+        .tool-btn { background: transparent; color: #aaa; border: none; padding: 10px 15px; font-weight: bold; border-radius: 8px; font-size: 14px; transition: 0.2s; touch-action: manipulation; }
         .tool-btn.active { background: var(--accent); color: #000; }
 
         /* Bottom Controls */
@@ -33,7 +32,7 @@
         /* Nudge D-Pad */
         .d-pad-container { display: flex; justify-content: flex-end; width: 100%; }
         .d-pad { display: grid; grid-template-columns: 45px 45px 45px; grid-template-rows: 45px 45px 45px; gap: 6px; }
-        .nudge-btn { background: var(--panel); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; color: white; font-size: 18px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+        .nudge-btn { background: var(--panel); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; color: white; font-size: 18px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px); touch-action: manipulation; }
         .nudge-btn:active { background: var(--accent); color: black; }
         
         #btn-up { grid-column: 2; grid-row: 1; }
@@ -42,7 +41,7 @@
         #btn-down { grid-column: 2; grid-row: 3; }
 
         /* Action Button */
-        #btn-action { width: 100%; padding: 18px; border-radius: 14px; border: none; font-weight: 900; font-size: 16px; background: var(--accent); color: #000; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(13,202,240,0.3); transition: 0.2s; }
+        #btn-action { width: 100%; padding: 18px; border-radius: 14px; border: none; font-weight: 900; font-size: 16px; background: var(--accent); color: #000; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(13,202,240,0.3); transition: 0.2s; touch-action: manipulation; }
         #btn-action.confirm-mode { background: #10b981; box-shadow: 0 4px 15px rgba(16,185,129,0.3); color: white; }
     </style>
 </head>
@@ -50,7 +49,7 @@
 
 <div id="viewport">
     <div id="canvas-container">
-        <img id="survey-img" src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" style="display: block;">
+        <img id="survey-img" src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" style="display: block; min-width: 800px; min-height: 600px;">
         <canvas id="drawing-layer" style="position: absolute; top: 0; left: 0; pointer-events: none;"></canvas>
         <canvas id="ghost-layer" style="position: absolute; top: 0; left: 0; pointer-events: none;"></canvas>
     </div>
@@ -90,33 +89,41 @@
 
     let state = {
         scale: 1, offsetX: 0, offsetY: 0,
-        isDragging: false, startX: 0, startY: 0
+        isDragging: false
     };
 
     let activeTool = 'line';
     let anchorPoint = null; 
+    let lastTouch = { x: 0, y: 0 };
+    let initialPinchDist = null;
 
-    // Initialize Canvases
-    img.onload = () => {
-        drawingCanvas.width = img.width; drawingCanvas.height = img.height;
-        ghostCanvas.width = img.width; ghostCanvas.height = img.height;
-        state.offsetX = (window.innerWidth - img.width) / 2;
-        state.offsetY = (window.innerHeight - img.height) / 2;
+    // --- INITIALIZATION ---
+    function initCanvas() {
+        // Fallback dimensions if image fails to load properly
+        const w = img.naturalWidth || 1200;
+        const h = img.naturalHeight || 800;
+        drawingCanvas.width = w; drawingCanvas.height = h;
+        ghostCanvas.width = w; ghostCanvas.height = h;
+        
+        state.offsetX = (window.innerWidth - w) / 2;
+        state.offsetY = (window.innerHeight - h) / 2;
         updateTransform();
-    };
-    if(img.complete) img.onload();
+    }
+    
+    if(img.complete) { initCanvas(); } else { img.onload = initCanvas; }
 
     // --- TOOL SELECTION ---
+    // Using touchstart for zero delay
     document.querySelectorAll('.tool-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Stop click emulation
             document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             activeTool = e.target.dataset.tool;
-            cancelDrafting(); // Reset if changing tools mid-draw
+            cancelDrafting(); 
         });
     });
 
-    // --- MATH: Get precise image coordinate under the crosshair ---
     function getCrosshairImgPos() {
         return {
             x: (window.innerWidth / 2 - state.offsetX) / state.scale,
@@ -124,39 +131,45 @@
         };
     }
 
-    // --- PAN ENGINE (1 Finger) ---
-    viewport.addEventListener('pointerdown', (e) => {
-        if(e.target.closest('.ui-layer')) return;
-        state.isDragging = true;
-        state.startX = e.clientX - state.offsetX;
-        state.startY = e.clientY - state.offsetY;
-    });
+    // --- THE PURE TOUCH ENGINE (Pan & Pinch) ---
+    viewport.addEventListener('touchstart', (e) => {
+        // Ignore if touching UI buttons
+        if(e.target.closest('.ui-layer')) return; 
+        e.preventDefault(); 
 
-    viewport.addEventListener('pointermove', (e) => {
-        if (!state.isDragging) return;
-        state.offsetX = e.clientX - state.startX;
-        state.offsetY = e.clientY - state.startY;
-        updateTransform();
-    });
-
-    viewport.addEventListener('pointerup', () => state.isDragging = false);
-
-    // --- PINCH-TO-ZOOM ENGINE (2 Fingers) ---
-    let initialPinchDist = null;
-    viewport.addEventListener('touchmove', (e) => {
-        if(e.touches.length === 2) {
-            e.preventDefault(); // Prevent native zoom
-            const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-            if(initialPinchDist) {
-                const delta = dist / initialPinchDist;
-                changeZoomBy(delta);
-            }
-            initialPinchDist = dist;
+        if (e.touches.length === 1) {
+            state.isDragging = true;
+            lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        } else if (e.touches.length === 2) {
+            state.isDragging = false;
+            initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
         }
     }, {passive: false});
-    
+
+    viewport.addEventListener('touchmove', (e) => {
+        if(e.target.closest('.ui-layer')) return;
+        e.preventDefault();
+
+        if (e.touches.length === 1 && state.isDragging) {
+            // Panning
+            const dx = e.touches[0].clientX - lastTouch.x;
+            const dy = e.touches[0].clientY - lastTouch.y;
+            state.offsetX += dx;
+            state.offsetY += dy;
+            lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            updateTransform();
+        } else if (e.touches.length === 2 && initialPinchDist) {
+            // Pinching
+            const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            const factor = dist / initialPinchDist;
+            changeZoomBy(factor);
+            initialPinchDist = dist; // continuous zoom
+        }
+    }, {passive: false});
+
     viewport.addEventListener('touchend', (e) => {
-        if(e.touches.length < 2) initialPinchDist = null;
+        if (e.touches.length < 2) initialPinchDist = null;
+        if (e.touches.length === 0) state.isDragging = false;
     });
 
     function changeZoomBy(factor) {
@@ -175,22 +188,26 @@
         updateTransform();
     }
 
-    // --- NUDGE ENGINE ---
+    // --- INSTANT NUDGE ENGINE ---
     function nudge(dx, dy) {
         state.offsetX -= dx * state.scale;
         state.offsetY -= dy * state.scale;
         updateTransform();
     }
-    document.getElementById('btn-up').onclick = () => nudge(0, -1);
-    document.getElementById('btn-down').onclick = () => nudge(0, 1);
-    document.getElementById('btn-left').onclick = () => nudge(-1, 0);
-    document.getElementById('btn-right').onclick = () => nudge(1, 0);
+    
+    // Bind Nudge buttons to touchstart for instant firing
+    const bindNudge = (id, dx, dy) => {
+        document.getElementById(id).addEventListener('touchstart', (e) => { e.preventDefault(); nudge(dx, dy); });
+    };
+    bindNudge('btn-up', 0, -2);
+    bindNudge('btn-down', 0, 2);
+    bindNudge('btn-left', -2, 0);
+    bindNudge('btn-right', 2, 0);
 
-    // --- THE GHOST RENDERER ---
+    // --- GHOST RENDERER ---
     function updateTransform() {
         container.style.transform = `translate(${state.offsetX}px, ${state.offsetY}px) scale(${state.scale})`;
         
-        // Draw the live line if we are anchored
         ghostCtx.clearRect(0, 0, ghostCanvas.width, ghostCanvas.height);
         if (anchorPoint && (activeTool === 'line' || activeTool === 'highlight')) {
             const currentPos = getCrosshairImgPos();
@@ -198,21 +215,16 @@
             ghostCtx.moveTo(anchorPoint.x, anchorPoint.y);
             ghostCtx.lineTo(currentPos.x, currentPos.y);
             
-            // Dynamic Thickness: Scales down as you zoom in so lines stay thin!
             ghostCtx.lineWidth = activeTool === 'highlight' ? (24 / state.scale) : (4 / state.scale);
             ghostCtx.strokeStyle = activeTool === 'highlight' ? 'rgba(255, 255, 0, 0.6)' : '#0dcaf0';
             
-            if(activeTool === 'line') {
-                ghostCtx.setLineDash([10 / state.scale, 10 / state.scale]); // Dashed while ghosting
-            } else {
-                ghostCtx.setLineDash([]);
-            }
+            if(activeTool === 'line') ghostCtx.setLineDash([10 / state.scale, 10 / state.scale]);
             ghostCtx.stroke();
             ghostCtx.setLineDash([]);
         }
     }
 
-    // --- ACTION BUTTON LOGIC (Anchor / Draw / Text) ---
+    // --- ACTION BUTTON ---
     function cancelDrafting() {
         anchorPoint = null;
         ghostCtx.clearRect(0, 0, ghostCanvas.width, ghostCanvas.height);
@@ -220,13 +232,14 @@
         actionBtn.classList.remove('confirm-mode');
     }
 
-    actionBtn.addEventListener('click', () => {
+    actionBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
         const currentPos = getCrosshairImgPos();
 
         if (activeTool === 'text') {
             const label = prompt("Enter Annotation Text:");
             if (label) {
-                const fontSize = 24 / state.scale; // Dynamic text size
+                const fontSize = 24 / state.scale;
                 drawCtx.fillStyle = '#fff';
                 drawCtx.font = `bold ${fontSize}px sans-serif`;
                 drawCtx.shadowColor = 'black';
@@ -237,15 +250,39 @@
         }
 
         if (!anchorPoint) {
-            // STEP 1: Drop the first point
             anchorPoint = currentPos;
             actionBtn.innerText = "✅ Confirm Endpoint";
             actionBtn.classList.add('confirm-mode');
+            // Force an initial ghost draw just in case
+            updateTransform(); 
         } else {
-            // STEP 2: Commit the line
             drawCtx.beginPath();
             drawCtx.moveTo(anchorPoint.x, anchorPoint.y);
             drawCtx.lineTo(currentPos.x, currentPos.y);
             drawCtx.lineWidth = activeTool === 'highlight' ? (24 / state.scale) : (4 / state.scale);
             drawCtx.strokeStyle = activeTool === 'highlight' ? 'rgba(255, 255, 0, 0.6)' : '#0dcaf0';
             drawCtx.stroke();
+
+            if(activeTool === 'line') {
+                const measurement = prompt("Measurement/Label (leave blank for none):");
+                if(measurement) {
+                    const midX = (anchorPoint.x + currentPos.x) / 2;
+                    const midY = (anchorPoint.y + currentPos.y) / 2;
+                    const fontSize = 18 / state.scale;
+                    drawCtx.fillStyle = '#1A1A1A';
+                    const padding = 6 / state.scale;
+                    const textWidth = drawCtx.measureText(measurement).width;
+                    drawCtx.fillRect(midX - textWidth/2 - padding, midY - fontSize, textWidth + padding*2, fontSize + padding*2);
+                    drawCtx.fillStyle = '#0dcaf0';
+                    drawCtx.font = `bold ${fontSize}px sans-serif`;
+                    drawCtx.textAlign = 'center';
+                    drawCtx.textBaseline = 'middle';
+                    drawCtx.fillText(measurement, midX, midY);
+                }
+            }
+            cancelDrafting();
+        }
+    });
+</script>
+</body>
+</html>
