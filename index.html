@@ -14,44 +14,188 @@
     </script>
     
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#15202b">
+    <meta name="theme-color" content="#121212">
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Survey Pro">
     <link rel="apple-touch-icon" href="icon-192.png">
 
-    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
-        /* FANCY SPLASH SCREEN CSS */
+        :root {
+            --base-bg: #121212;
+            --card-bg: #1E1E1E;
+            --input-bg: #1A1A1A; 
+            --primary-text: #F7F7F7;
+            --secondary-text: #A0A0A0;
+            --accent: #0D6EFD;
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        html, body {
+            height: 100%;
+            background: var(--base-bg);
+            color: var(--primary-text);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        *, *::before, *::after {
+            box-sizing: inherit;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* --- SPLASH SCREEN --- */
         #splashScreen {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: #0b1118; z-index: 99999; display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; transition: opacity 0.6s ease-in-out;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #0b1118; z-index: 99999;
+            display: flex; flex-direction: column; 
+            justify-content: center; align-items: center;
+            transition: opacity 0.6s ease-in-out;
         }
         
-        body { background-color: #121212; color: #F7F7F7; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
-        .luxury-input { background: #1A1A1A; border: 1px solid #333; color: #fff; padding: 14px; border-radius: 8px; width: 100%; outline: none; margin-bottom: 12px; transition: border-color 0.3s; }
-        .luxury-input:focus { border-color: #0dcaf0; }
-        .section-card { background: #1E1E1E; padding: 24px; border-radius: 12px; border: 1px solid #333; margin-bottom: 32px; }
-        .section-header { font-size: 1.25rem; font-weight: 700; color: #0dcaf0; border-bottom: 1px solid #333; padding-bottom: 12px; margin-bottom: 24px; }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid var(--accent);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* --- NAVIGATION --- */
+        .navbar {
+            position: sticky;
+            top: 0;
+            background: var(--card-bg);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            z-index: 100;
+            padding: 15px 20px;
+            border-bottom: 1px solid #333;
+        }
+
+        .navbar__container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* --- INPUTS & FORMS --- */
+        .luxury-input {
+            background: var(--input-bg);
+            border: 1px solid #333;
+            color: var(--primary-text);
+            padding: 14px 16px;
+            border-radius: 8px;
+            width: 100%;
+            outline: none;
+            margin-bottom: 15px;
+            font-size: 16px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .luxury-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+        }
+
+        select.luxury-input {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23A0A0A0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px top 50%;
+            background-size: 12px auto;
+        }
+
+        .section-card {
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            margin-bottom: 30px;
+        }
+
+        .section-header {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent);
+            border-bottom: 1px solid #333;
+            padding-bottom: 12px;
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--secondary-text);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        /* --- NEW: PRECISION DRAFTING STAGE CSS --- */
+        #drafting-stage {
+            position: relative;
+            width: 100%;
+            height: 65vh;
+            min-height: 500px;
+            overflow: hidden;
+            touch-action: none;
+            background: #000;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
         
-        /* THE PRECISION DRAFTING STAGE */
-        #drafting-stage { position: relative; width: 100%; height: 60vh; min-height: 500px; overflow: hidden; touch-action: none; background: #000; border-radius: 8px; border: 1px solid #444; }
         #survey-image-layer { transform-origin: 0 0; will-change: transform; position: absolute; }
         #vector-drawing-layer { position: absolute; inset: 0; pointer-events: none; }
         
-        .precision-crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; pointer-events: none; z-index: 50; display: flex; align-items: center; justify-content: center; }
+        .precision-crosshair {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 44px; height: 44px; pointer-events: none;
+            z-index: 50; display: flex; align-items: center; justify-content: center;
+        }
+        
         .precision-crosshair::before { content: ''; position: absolute; width: 100%; height: 2px; background: rgba(13,202,240,0.9); box-shadow: 0 0 10px rgba(13,202,240,0.6); }
         .precision-crosshair::after { content: ''; position: absolute; height: 100%; width: 2px; background: rgba(13,202,240,0.9); box-shadow: 0 0 10px rgba(13,202,240,0.6); }
         .crosshair-dot { width: 4px; height: 4px; background: #fff; border-radius: 50%; z-index: 51; box-shadow: 0 0 5px #000; }
 
-        /* MEASUREMENT HUD */
-        #hud-drawer { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(20px); border-top: 1px solid #444; padding: 25px 20px 40px 20px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 100; border-top-left-radius: 20px; border-top-right-radius: 20px; }
+        /* --- MEASUREMENT HUD --- */
+        #hud-drawer {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: rgba(20, 20, 20, 0.98);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid #444;
+            padding: 25px 20px 40px 20px;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 100;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
+        }
         #hud-drawer.active { transform: translateY(0); }
+
+        /* --- BUTTONS --- */
+        .btn-glow {
+            background: linear-gradient(135deg, #0dcaf0, #0284c7);
+            color: #fff; font-weight: bold; border: none;
+            padding: 14px 24px; border-radius: 8px; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(13,202,240,0.3); transition: all 0.2s;
+        }
+        .btn-glow:active { transform: scale(0.98); }
         
         /* ADMIN PANEL */
         .admin-lead-card { display: flex; flex-direction: column; background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
@@ -60,16 +204,16 @@
 <body>
 
     <div id="splashScreen">
-        <h1 class="text-4xl font-black text-white mb-6 tracking-widest">COHI <span class="text-[#0dcaf0]">SURVEY PRO</span></h1>
-        <div class="w-10 h-10 border-4 border-[#0dcaf0] border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-gray-500 mt-6 text-sm font-medium tracking-widest">INITIALIZING ENGINE</p>
+        <h1 class="text-4xl font-black text-white mb-6 tracking-widest">COHI <span style="color: var(--accent);">SURVEY PRO</span></h1>
+        <div class="spinner"></div>
+        <p class="text-gray-500 mt-6 text-sm font-medium tracking-widest">INITIALIZING ENTERPRISE ENGINE</p>
     </div>
 
-    <nav class="sticky top-0 bg-[#1E1E1E] shadow-xl z-50 p-4 border-b border-gray-800">
-        <div class="flex justify-between items-center max-w-6xl mx-auto">
-            <h2 class="text-xl font-bold tracking-tight">Survey<span class="text-[#0dcaf0]">Engine</span> V2</h2>
+    <nav class="navbar">
+        <div class="navbar__container">
+            <h2 class="text-xl font-bold tracking-tight text-white">Survey<span style="color: var(--accent);">Engine</span> V2</h2>
             <div class="flex gap-3">
-                <button id="btn-admin-panel" class="text-gray-400 hover:text-white text-sm font-bold px-2">Admin</button>
+                <button id="btn-admin-panel" class="text-gray-400 hover:text-white text-sm font-bold px-2 transition">Admin</button>
                 <button id="btn-legacy-sync" class="bg-[#1A1A1A] text-[#0dcaf0] text-xs font-bold py-2 px-4 rounded-lg border border-gray-700 hover:border-[#0dcaf0] transition">Copy to CRM</button>
                 <button id="btn-export-v3" class="bg-[#10b981] text-white text-xs font-bold py-2 px-5 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.4)] transition hover:bg-green-500">Sync to V3 Vault</button>
                 <button id="generateCustomerPdfBtn" class="bg-blue-600 text-white text-xs font-bold py-2 px-5 rounded-lg transition hover:bg-blue-500">Export PDF</button>
@@ -81,17 +225,17 @@
         
         <section class="section-card">
             <h3 class="section-header">1. System Identity</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Select Surveyor / Designer</label>
+                    <label class="form-label">Select Surveyor / Designer</label>
                     <select id="input-designer" class="luxury-input">
-                        <option value="Tom">Tom</option>
+                        <option value="Tom" selected>Tom</option>
                         <option value="Sobaan">Sobaan</option>
                         <option value="James">James</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Brand Identity</label>
+                    <label class="form-label">Brand Identity</label>
                     <select id="input-brand" class="luxury-input">
                         <option value="Yorkshire Windows">Yorkshire Windows</option>
                         <option value="CO Home Improvements">CO Home Improvements</option>
@@ -107,31 +251,32 @@
 
         <section class="section-card">
             <h3 class="section-header">2. Client & Property Specifications</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-2">
                 <div class="md:col-span-2">
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Lead Name</label>
-                    <input type="text" id="input-client-name" class="luxury-input" placeholder="e.g. Mr. & Mrs. Smith">
+                    <label class="form-label">Lead Name</label>
+                    <input type="text" id="input-client-name" class="luxury-input" placeholder="e.g. Mr. Dall">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Customer Number (PIN)</label>
+                    <label class="form-label">Customer Number (PIN)</label>
                     <input type="text" id="input-customer-num" class="luxury-input" placeholder="CRM ID or Custom PIN">
                 </div>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-2">
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Property Address (Line 1)</label>
+                    <label class="form-label">Property Address (Line 1)</label>
                     <input type="text" id="input-address1" class="luxury-input" placeholder="House Number & Street">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Postcode</label>
+                    <label class="form-label">Postcode</label>
                     <input type="text" id="input-postcode" class="luxury-input" placeholder="e.g. S70 1AA">
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-2">
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Build Category</label>
+                    <label class="form-label">Build Category</label>
                     <select id="input-build-type" class="luxury-input">
                         <option value="Extension">Home Extension</option>
                         <option value="Conservatory">Conservatory</option>
@@ -141,11 +286,11 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Roof System Spec</label>
+                    <label class="form-label">Roof System Spec</label>
                     <select id="input-roof-type" class="luxury-input">
                         <option value="Ultra380">Ultra380</option>
                         <option value="LivinRoof">LivinRoof</option>
-                        <option value="Edwardian roof">Edwardian roof</option>
+                        <option value="Edwardian roof" selected>Edwardian roof</option>
                         <option value="Victorian">Victorian</option>
                         <option value="Lean-To">Lean-To</option>
                         <option value="Gable">Gable</option>
@@ -153,17 +298,19 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Proposed Footprint (SQM)</label>
+                    <label class="form-label">Proposed Footprint (SQM)</label>
                     <input type="number" id="input-proposed-size" class="luxury-input" placeholder="e.g. 15">
                 </div>
             </div>
         </section>
 
+        ```
+
         <section class="section-card">
             <h3 class="section-header">3. Technical Sub-Structure & Data</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Existing Foundations</label>
+                    <label class="form-label">Existing Foundations</label>
                     <select id="input-foundations" class="luxury-input">
                         <option value="New Required">New Required</option>
                         <option value="Existing (Retain)">Existing (Retain)</option>
@@ -171,7 +318,7 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Drainage Alterations</label>
+                    <label class="form-label">Drainage Alterations</label>
                     <select id="input-drainage" class="luxury-input">
                         <option value="None">None Expected</option>
                         <option value="Move Manhole">Move Manhole</option>
@@ -179,13 +326,13 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Brick Match Required</label>
+                    <label class="form-label">Brick Match Required</label>
                     <input type="text" id="input-brick-match" class="luxury-input" placeholder="e.g. Ibstock Red">
                 </div>
             </div>
 
             <div>
-                <label class="block text-xs text-[#0dcaf0] mb-2 uppercase tracking-widest font-bold">Designer Site Observations</label>
+                <label class="form-label" style="color: var(--accent);">Designer Site Observations</label>
                 <p class="text-xs text-gray-500 mb-3">These rough notes will be pushed to the AI Engine for professional rewriting before being synced to the customer's V3 Vault.</p>
                 <textarea id="input-notes" class="luxury-input" rows="6" placeholder="Enter rough site observations, specific customer requests, potential access issues, etc..."></textarea>
             </div>
@@ -198,8 +345,8 @@
                     <p class="text-xs text-gray-500 mt-1">Target-Drag Vector Interface.</p>
                 </div>
                 <div class="flex gap-2 mt-4 md:mt-0">
-                    <button id="btn-upload-photo" class="bg-gray-800 px-6 py-3 rounded-lg text-sm font-bold border border-gray-600 hover:border-[#0dcaf0] transition flex items-center gap-2">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> Load Blueprint
+                    <button id="btn-upload-photo" class="bg-[#1A1A1A] px-6 py-3 rounded-lg text-sm font-bold border border-[#333] hover:border-[#0dcaf0] transition flex items-center gap-2">
+                        📷 Load Blueprint
                     </button>
                     <input type="file" id="hidden-file-input" accept="image/*" class="hidden">
                 </div>
@@ -255,10 +402,10 @@
     <div id="adminPanel" class="fixed inset-0 bg-black/95 z-[150] hidden flex-col p-6 overflow-y-auto">
         <div class="max-w-6xl mx-auto w-full">
             <div class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4 mt-6">
-                <h2 class="text-3xl font-black text-white">Data <span class="text-blue-500">Command Center</span></h2>
+                <h2 class="text-3xl font-black text-white">Data <span style="color: var(--accent);">Command Center</span></h2>
                 <div class="flex gap-4">
                     <button id="adminExportBtn" class="bg-green-600 px-6 py-2 rounded-lg font-bold shadow-lg hover:bg-green-500">⬇ CSV Export</button>
-                    <button id="closeAdminBtn" class="bg-gray-800 px-6 py-2 rounded-lg font-bold border border-gray-600">Close</button>
+                    <button id="closeAdminBtn" class="bg-[#1A1A1A] px-6 py-2 rounded-lg font-bold border border-[#333] text-white">Close</button>
                 </div>
             </div>
             
@@ -277,8 +424,6 @@
         document.getElementById('btn-admin-panel').addEventListener('click', () => {
             document.getElementById('adminPanel').classList.remove('hidden');
             document.getElementById('adminPanel').classList.add('flex');
-            // Trigger load function in app.js if needed
-            if(window.loadAdminData) window.loadAdminData();
         });
         
         document.getElementById('closeAdminBtn').addEventListener('click', () => {
