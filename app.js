@@ -1,8 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
-// --- ORIGINAL FIREBASE INIT ---
 const appConfig = {
     apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0",
     authDomain: "cohi-survey-engine.firebaseapp.com",
@@ -12,7 +11,7 @@ const app = initializeApp(appConfig);
 export const db = getFirestore(app);
 const functions = getFunctions(app);
 
-// --- ORIGINAL TOAST NOTIFICATIONS & SPLASH ---
+// --- TOAST NOTIFICATION UI & SPLASH SCREEN ---
 window.showToast = function(msg, isSuccess = true) {
     let toast = document.getElementById('engineToast');
     if (!toast) {
@@ -33,15 +32,26 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         const splash = document.getElementById('splashScreen');
         splash.style.opacity = '0';
-        setTimeout(() => { splash.style.display = 'none'; document.getElementById('mainApp').style.display = 'block'; }, 500);
-    }, 1000);
+        setTimeout(() => { splash.style.display = 'none'; document.getElementById('mainApp').style.display = 'block'; }, 600);
+    }, 1200);
 });
 
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-    .then((reg) => console.log('COHI SW Registered', reg.scope))
-    .catch((err) => console.log('SW Registration failed', err));
-}
+// --- ADMIN CSV LOGIC ---
+document.getElementById('adminExportBtn')?.addEventListener('click', async () => {
+    if(window.showToast) window.showToast("Compiling Report...", false);
+    try {
+        const snapshot = await getDocs(collection(db, "surveys"));
+        let csv = "Date Saved,Designer ID,Client Name,Postcode,Build Type,Proposed Size\n";
+        snapshot.forEach(doc => {
+            const data = doc.data(), inputs = data.data?.inputs || {};
+            const date = data.updatedAt ? new Date(data.updatedAt.toDate()).toLocaleDateString() : 'N/A';
+            csv += `"${date}","${data.userId || ''}","${data.clientName || ''}","${inputs.postCode || ''}","${inputs.buildType || ''}","${inputs.proposedSize || ''}"\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Survey_Leads_Report.csv`; a.click();
+        if(window.showToast) window.showToast("CSV Downloaded!", true);
+    } catch (err) { console.error(err); if(window.showToast) window.showToast("Export Failed", false); }
+});
 
 // --- THE NEW PRECISION CANVAS ENGINE ---
 const stage = document.getElementById('drafting-stage');
@@ -76,14 +86,14 @@ document.getElementById('hidden-file-input').addEventListener('change', e => {
             
             photo.style.display = 'block';
             updateViewport();
-            window.showToast("Image Loaded into Drafting Canvas", true);
+            window.showToast("Blueprint Loaded into Canvas", true);
         };
         photo.src = event.target.result;
     };
     reader.readAsDataURL(file);
 });
 
-// Target-Drag Pan Engine
+// Pan Engine
 stage.addEventListener('pointerdown', e => {
     if(e.target.tagName === 'BUTTON' || e.target.closest('#hud-drawer')) return;
     SurveyState.isDragging = true;
@@ -130,17 +140,16 @@ function getCrosshairRelativeCoordinate() {
     const imgY = (centerY - SurveyState.offsetY) / SurveyState.scale;
     return { pctX: imgX / SurveyState.imageIntrinsicWidth, pctY: imgY / SurveyState.imageIntrinsicHeight };
 }
-
 // HUD Controls
 document.getElementById('btn-anchor-point').addEventListener('click', () => {
-    if (!SurveyState.imageIntrinsicWidth) { window.showToast("Load an image first.", false); return; }
+    if (!SurveyState.imageIntrinsicWidth) { window.showToast("Load a blueprint first.", false); return; }
     const coords = getCrosshairRelativeCoordinate();
     const btn = document.getElementById('btn-anchor-point');
 
     if (!SurveyState.activeAnchor) {
         SurveyState.activeAnchor = coords;
         btn.innerHTML = "📏 Lock Endpoint";
-        btn.classList.replace('bg-blue-600', 'bg-green-600');
+        btn.classList.replace('bg-[#0dcaf0]', 'bg-[#10b981]');
     } else {
         SurveyState.tempEndpoint = coords;
         hudDrawer.classList.add('active');
@@ -158,7 +167,7 @@ document.getElementById('btn-save-measurement').addEventListener('click', () => 
     
     const btn = document.getElementById('btn-anchor-point');
     btn.innerHTML = "🎯 Anchor Start";
-    btn.classList.replace('bg-green-600', 'bg-blue-600');
+    btn.classList.replace('bg-[#10b981]', 'bg-[#0dcaf0]');
     renderVectors();
 });
 
@@ -183,16 +192,14 @@ export function renderVectors() {
     });
 }
 
-// --- NEW FEATURES: CRM EXPORT & V3 VAULT SYNC ---
-
-// 1. Text Export Adding (Legacy CRM Clipboard)
+// --- SYNC ENGINE: CRM CLIPBOARD & V3 VAULT ---
 document.getElementById('btn-legacy-sync').addEventListener('click', () => {
-    const clientName = document.getElementById('input-client-name').value || "Not Specified"; 
+    const clientName = document.getElementById('input-client-name').value || "Client"; 
     const postCode = document.getElementById('input-postcode').value || "N/A";
-    const roofType = document.getElementById('input-roof-type').value;
+    const roofType = document.getElementById('input-roof-type').value || "Edwardian roof";
     const buildType = document.getElementById('input-build-type').value || "N/A";
     const size = document.getElementById('input-proposed-size').value || "N/A";
-    const notes = document.getElementById('input-notes').value || "None";
+    const rawNotes = document.getElementById('input-notes').value || "None";
     
     const vectorList = SurveyState.vectors.map(v => `• ${v.type.toUpperCase()}: ${v.value}`).join('\n');
     
@@ -207,7 +214,7 @@ BUILD: ${buildType} | ROOF: ${roofType} | SIZE: ${size}
 ${vectorList || 'No vectors drawn.'}
 
 --- SITE NOTES ---
-${notes}
+${rawNotes}
 ===============================`.trim();
 
     navigator.clipboard.writeText(clipboardText)
@@ -215,22 +222,20 @@ ${notes}
         .catch(() => window.showToast("Clipboard Access Denied.", false));
 });
 
-// 2. Auto-Export to V3 (Firebase Sync)
 document.getElementById('btn-export-v3').addEventListener('click', async () => {
     const modal = document.getElementById('crm-bridge-modal');
     modal.classList.remove('hidden'); modal.classList.add('flex');
     
-    const clientName = document.getElementById('input-client-name').value || "Unnamed Client"; 
+    const clientName = document.getElementById('input-client-name').value || "Client"; 
     const postCode = document.getElementById('input-postcode').value || "N/A";
     const designer = document.getElementById('input-designer').value;
-    const roofType = document.getElementById('input-roof-type').value;
+    const roofType = document.getElementById('input-roof-type').value || "Edwardian roof";
     const buildType = document.getElementById('input-build-type').value;
     const size = document.getElementById('input-proposed-size').value;
     const rawNotes = document.getElementById('input-notes').value;
     
     let finalNotes = rawNotes;
 
-    // AI Polish using your original backend
     if (rawNotes.trim().length > 5) {
         document.getElementById('sync-status-text').innerText = "AI Polishing Site Notes...";
         try {
@@ -240,7 +245,6 @@ document.getElementById('btn-export-v3').addEventListener('click', async () => {
         } catch (error) { console.warn("AI Polish offline."); }
     }
 
-    // Auto-Export to V3 Firestore
     document.getElementById('sync-status-text').innerText = "Creating V3 Customer Vault...";
     try {
         const newSurveyRef = await addDoc(collection(db, "surveys"), {
@@ -250,8 +254,8 @@ document.getElementById('btn-export-v3').addEventListener('click', async () => {
             data: {
                 inputs: {
                     postCode: postCode,
-                    clientNum: "survey123", // Temporary default PIN
-                    _brand: "COHI",
+                    clientNum: document.getElementById('input-customer-num').value || "survey123",
+                    _brand: document.getElementById('input-brand').value || "COHI",
                     _pipelineStatus: "1. Consultation & Survey",
                     roofType: roofType,
                     buildType: buildType,
@@ -276,4 +280,10 @@ document.getElementById('btn-export-v3').addEventListener('click', async () => {
     }
     
     setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 1000);
+});
+
+// Hook PDF Generation to the button
+document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', () => {
+    const roofType = document.getElementById('input-roof-type').value;
+    window.PDFEngine.generate(SurveyState, roofType);
 });
