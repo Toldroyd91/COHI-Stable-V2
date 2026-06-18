@@ -12,92 +12,131 @@
         :root { --bg-deep: #15202b; --accent: #0dcaf0; --glass: rgba(21, 32, 43, 0.85); }
         body { background-color: var(--bg-deep); color: white; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; overflow: hidden; overscroll-behavior: none; margin: 0; padding: 0; }
         
-        #drafting-stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; background: #000; }
+        .luxury-input { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 16px; border-radius: 12px; width: 100%; outline: none; transition: border-color 0.3s; font-size: 16px; }
+        .luxury-input:focus { border-color: var(--accent); }
+        .btn-glow { background: linear-gradient(135deg, #0dcaf0, #0284c7); color: #fff; font-weight: 600; padding: 16px; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(13,202,240,0.3); }
+        
+        /* Tab Views */
+        .view-section { display: none; height: calc(100vh - 70px); overflow-y: auto; padding-bottom: 100px; }
+        .view-section.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Drafting Canvas Specifics */
+        #drafting-stage { position: relative; height: 100%; width: 100%; overflow: hidden; touch-action: none; background: #000; }
         #survey-image-layer { transform-origin: 0 0; will-change: transform; position: absolute; }
         #vector-drawing-layer { position: absolute; inset: 0; pointer-events: none; }
         
-        /* Fixed Precision Crosshair */
+        /* Precision Crosshair */
         .precision-crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 44px; height: 44px; pointer-events: none; z-index: 50; display: flex; align-items: center; justify-content: center; }
         .precision-crosshair::before { content: ''; position: absolute; width: 100%; height: 2px; background: rgba(13,202,240,0.9); box-shadow: 0 0 10px rgba(13,202,240,0.6); }
         .precision-crosshair::after { content: ''; position: absolute; height: 100%; width: 2px; background: rgba(13,202,240,0.9); box-shadow: 0 0 10px rgba(13,202,240,0.6); }
         .crosshair-dot { width: 4px; height: 4px; background: #fff; border-radius: 50%; z-index: 51; box-shadow: 0 0 5px #000; }
 
-        /* Measurement HUD Drawer */
-        #hud-drawer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--glass); backdrop-filter: blur(24px); border-top: 1px solid rgba(255,255,255,0.1); padding: 25px 20px 40px 20px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 100; border-top-left-radius: 28px; border-top-right-radius: 28px; box-shadow: 0 -10px 40px rgba(0,0,0,0.5); }
+        #hud-drawer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--glass); backdrop-filter: blur(24px); border-top: 1px solid rgba(255,255,255,0.1); padding: 25px 20px 40px 20px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 100; border-top-left-radius: 28px; border-top-right-radius: 28px; }
         #hud-drawer.active { transform: translateY(0); }
-
-        .btn-glow { background: linear-gradient(135deg, #0dcaf0, #0284c7); color: #fff; font-weight: 600; padding: 18px; border-radius: 14px; border: none; width: 100%; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 10px 25px -5px rgba(13,202,240,0.4); transition: transform 0.2s; }
-        .btn-glow:active { transform: scale(0.98); }
-        .luxury-input { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 16px; border-radius: 12px; width: 100%; outline: none; margin-bottom: 15px; font-size: 16px; transition: border-color 0.3s; }
-        .luxury-input:focus { border-color: var(--accent); }
     </style>
 </head>
 <body>
 
-    <header class="absolute top-0 left-0 right-0 p-4 flex justify-between items-start z-50 bg-gradient-to-b from-black/90 to-transparent pointer-events-none">
-        <div class="pointer-events-auto">
-            <h1 class="text-xl font-bold tracking-tight mb-1">Survey<span class="text-[#0dcaf0]">Pro</span></h1>
-            <select id="survey-roof-type" class="bg-slate-800 text-xs text-white border border-slate-600 rounded p-1 outline-none">
-                <option value="Ultra380">Ultra380</option>
-                <option value="LivinRoof">LivinRoof</option>
-                <option value="Edwardian roof">Edwardian roof</option>
-            </select>
+    <header class="h-[70px] bg-slate-900 border-b border-slate-700 flex justify-between items-center px-4 z-50 relative">
+        <div class="flex gap-2 bg-slate-800 p-1 rounded-xl">
+            <button id="tab-form" class="px-4 py-2 rounded-lg text-sm font-bold bg-slate-700 text-white shadow">📝 Form Data</button>
+            <button id="tab-canvas" class="px-4 py-2 rounded-lg text-sm font-bold text-slate-400 hover:text-white">📐 Canvas</button>
         </div>
-        <div class="flex flex-col gap-2 pointer-events-auto items-end">
-            <button id="btn-legacy-sync" class="bg-slate-800 text-xs font-bold py-2 px-4 rounded-lg border border-slate-600 hover:border-[#0dcaf0] transition flex items-center gap-2">
-                 Copy to CRM
-            </button>
-            <button id="btn-generate-pdf" class="bg-[#10b981] text-xs font-bold py-2 px-4 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.4)] flex items-center gap-2">
-                 Export PDF
-            </button>
+        <div class="flex gap-2">
+            <button id="btn-legacy-sync" class="bg-slate-800 text-xs font-bold py-2 px-3 rounded-lg border border-slate-600 hover:border-[#0dcaf0]">Copy to CRM</button>
+            <button id="btn-generate-pdf" class="bg-[#10b981] text-xs font-bold py-2 px-3 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.3)]">Export</button>
         </div>
     </header>
 
-    <main id="drafting-stage">
-        <div id="survey-image-layer">
-            <img id="active-survey-photo" src="" style="display:none;" crossorigin="anonymous">
-            <canvas id="vector-drawing-layer"></canvas>
-        </div>
+    <main id="view-form" class="view-section active p-4 md:p-6 max-w-3xl mx-auto">
+        <h2 class="text-2xl font-bold mb-6 text-[#0dcaf0]">Survey Details</h2>
         
-        <div class="precision-crosshair" id="ui-crosshair">
-            <div class="crosshair-dot"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wide">Client Name</label>
+                <input type="text" id="input-client-name" class="luxury-input" placeholder="e.g. Mr. Dall">
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wide">Postcode</label>
+                <input type="text" id="input-postcode" class="luxury-input" placeholder="e.g. S70 1AA">
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wide">Roof Specification</label>
+                <select id="input-roof-type" class="luxury-input">
+                    <option value="Ultra380">Ultra380</option>
+                    <option value="LivinRoof">LivinRoof</option>
+                    <option value="Edwardian roof">Edwardian roof</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wide">Target U-Value</label>
+                <input type="text" id="input-uvalue" class="luxury-input" placeholder="e.g. 0.16 W/m²K">
+            </div>
         </div>
 
-        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3 z-40 bg-slate-900/90 backdrop-blur-md p-2.5 rounded-2xl border border-white/10 shadow-2xl pointer-events-auto">
-            <button id="btn-upload-photo" class="p-3 text-white rounded-xl bg-slate-800 hover:bg-slate-700 transition">
-                📷 Load Image
-            </button>
-            <button id="btn-anchor-point" class="p-3 px-8 text-white rounded-xl bg-[#0dcaf0] font-bold shadow-[0_0_20px_rgba(13,202,240,0.5)] transition whitespace-nowrap">🎯 Anchor Start</button>
+        <div class="mb-8">
+            <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wide">Architectural Observations (AI Polished)</label>
+            <textarea id="input-notes" class="luxury-input" rows="4" placeholder="Rough site notes..."></textarea>
+        </div>
+
+        <div class="border-t border-slate-700 pt-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">Site Images</h3>
+                <button id="btn-add-photos" class="text-sm bg-slate-800 border border-slate-600 px-4 py-2 rounded-lg hover:border-[#0dcaf0]">➕ Add Photos</button>
+                <input type="file" id="hidden-multi-upload" accept="image/*" multiple class="hidden">
+            </div>
+            <div id="photo-gallery" class="grid grid-cols-3 md:grid-cols-4 gap-3">
+                <div class="col-span-full text-slate-500 text-sm text-center py-8 border border-dashed border-slate-700 rounded-xl">No photos uploaded yet.</div>
+            </div>
+        </div>
+    </main>
+
+    <main id="view-canvas" class="view-section">
+        <div id="drafting-stage">
+            <div id="survey-image-layer">
+                <img id="active-survey-photo" src="" style="display:none;" crossorigin="anonymous">
+                <canvas id="vector-drawing-layer"></canvas>
+            </div>
+            
+            <div class="precision-crosshair" id="ui-crosshair">
+                <div class="crosshair-dot"></div>
+            </div>
+
+            <div class="absolute top-4 right-4 flex flex-col gap-2 z-40 bg-slate-900/80 p-2 rounded-xl border border-white/10 backdrop-blur-md">
+                <button id="btn-zoom-in" class="w-10 h-10 bg-slate-800 text-white rounded-lg font-bold text-xl hover:bg-[#0dcaf0]">+</button>
+                <div class="w-full h-px bg-slate-700"></div>
+                <button id="btn-zoom-out" class="w-10 h-10 bg-slate-800 text-white rounded-lg font-bold text-xl hover:bg-[#0dcaf0]">-</button>
+            </div>
+
+            <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex z-40 bg-slate-900/90 backdrop-blur-md p-2.5 rounded-2xl border border-white/10 shadow-2xl">
+                <button id="btn-anchor-point" class="p-3 px-8 text-white rounded-xl bg-[#0dcaf0] font-bold shadow-[0_0_20px_rgba(13,202,240,0.5)] whitespace-nowrap">🎯 Anchor Start</button>
+            </div>
         </div>
     </main>
 
     <div id="hud-drawer">
         <div class="w-12 h-1.5 bg-slate-600 rounded-full mx-auto mb-6"></div>
-        <h3 class="text-lg mb-4 font-semibold text-[#0dcaf0] flex items-center gap-2">Log Measurement</h3>
-        <input type="text" id="input-measurement" class="luxury-input" placeholder="e.g., 2400mm" inputmode="numeric" autocomplete="off">
+        <h3 class="text-lg mb-4 font-semibold text-[#0dcaf0]">Log Measurement</h3>
+        <input type="text" id="input-measurement" class="luxury-input" placeholder="e.g., 2400mm" inputmode="numeric">
         <select id="input-line-type" class="luxury-input">
             <option value="wall">Wall Dimension</option>
             <option value="window">Window Width</option>
             <option value="height">Ceiling Height</option>
-            <option value="custom">Custom Annotation</option>
         </select>
-        <button id="btn-save-measurement" class="btn-glow">Commit Vector</button>
+        <button id="btn-save-measurement" class="btn-glow w-full">Commit Vector</button>
     </div>
 
     <div id="crm-bridge-modal" class="fixed inset-0 bg-black/90 z-[200] hidden flex-col items-center justify-center p-6">
-        <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-md">
-            <h3 class="text-xl font-bold mb-4 text-[#10b981]">Client Details (CRM Sync)</h3>
-            <input type="text" id="crm-client-name" class="luxury-input mb-3" placeholder="Client Name">
-            <input type="text" id="crm-postcode" class="luxury-input mb-3" placeholder="Postcode">
-            <textarea id="crm-rough-notes" class="luxury-input mb-4" rows="4" placeholder="Rough site observations for AI polish..."></textarea>
+        <div class="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-md text-center">
+            <h3 class="text-xl font-bold mb-2 text-[#10b981]">Data Compiled</h3>
+            <p class="text-slate-400 mb-6 text-sm">Reviewing form data and AI polishing notes...</p>
             <div class="flex gap-3">
                 <button id="btn-cancel-sync" class="p-4 bg-slate-800 rounded-xl text-white flex-1 font-bold">Cancel</button>
-                <button id="btn-execute-sync" class="p-4 bg-[#10b981] rounded-xl text-white flex-1 font-bold shadow-[0_0_15px_rgba(16,185,129,0.3)]">Sync & Copy</button>
+                <button id="btn-execute-sync" class="p-4 bg-[#10b981] rounded-xl text-white flex-1 font-bold shadow-[0_0_15px_rgba(16,185,129,0.3)]">Sync to V3 & CRM</button>
             </div>
         </div>
     </div>
-
-    <input type="file" id="hidden-file-input" accept="image/*" class="hidden">
 
     <script type="module" src="app.js"></script>
     <script src="pdfGenerator.js"></script>
