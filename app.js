@@ -2,75 +2,48 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
-// COHI Firebase Init
-const appConfig = { apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", authDomain: "cohi-survey-engine.firebaseapp.com", projectId: "cohi-survey-engine" };
+// --- ORIGINAL FIREBASE INIT ---
+const appConfig = {
+    apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0",
+    authDomain: "cohi-survey-engine.firebaseapp.com",
+    projectId: "cohi-survey-engine"
+};
 const app = initializeApp(appConfig);
 export const db = getFirestore(app);
 const functions = getFunctions(app);
 
-// Tab Switching Logic
-const tabForm = document.getElementById('tab-form');
-const tabCanvas = document.getElementById('tab-canvas');
-const viewForm = document.getElementById('view-form');
-const viewCanvas = document.getElementById('view-canvas');
-
-function switchTab(target) {
-    viewForm.classList.remove('active'); viewCanvas.classList.remove('active');
-    tabForm.classList.replace('bg-slate-700', 'bg-transparent'); tabForm.classList.replace('text-white', 'text-slate-400'); tabForm.classList.remove('shadow');
-    tabCanvas.classList.replace('bg-slate-700', 'bg-transparent'); tabCanvas.classList.replace('text-white', 'text-slate-400'); tabCanvas.classList.remove('shadow');
-
-    if(target === 'form') {
-        viewForm.classList.add('active');
-        tabForm.classList.add('bg-slate-700', 'text-white', 'shadow'); tabForm.classList.remove('text-slate-400');
-    } else {
-        viewCanvas.classList.add('active');
-        tabCanvas.classList.add('bg-slate-700', 'text-white', 'shadow'); tabCanvas.classList.remove('text-slate-400');
-        if(photo.src) updateViewport(); // Refresh canvas render on load
+// --- ORIGINAL TOAST NOTIFICATIONS & SPLASH ---
+window.showToast = function(msg, isSuccess = true) {
+    let toast = document.getElementById('engineToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'engineToast';
+        toast.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; color: #fff; border-radius: 8px; z-index: 99999; display: none; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.4); transition: opacity 0.3s; pointer-events: none;';
+        document.body.appendChild(toast);
     }
-}
-tabForm.addEventListener('click', () => switchTab('form'));
-tabCanvas.addEventListener('click', () => switchTab('canvas'));
-
-// --- MULTI-IMAGE GALLERY LOGIC ---
-export const SurveyState = {
-    images: [], // Stores multiple base64 images
-    activeImageIndex: -1,
-    imageIntrinsicWidth: 0, imageIntrinsicHeight: 0,
-    vectors: {}, // Maps image index to an array of vectors
-    activeAnchor: null, 
-    scale: 1, offsetX: 0, offsetY: 0, isDragging: false, startX: 0, startY: 0
+    toast.style.background = isSuccess ? '#28a745' : '#ff9800';
+    toast.innerText = msg;
+    toast.style.display = 'block';
+    setTimeout(() => toast.style.opacity = '1', 10);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.style.display = 'none', 300); }, 3000);
 };
 
-const photoGallery = document.getElementById('photo-gallery');
-
-document.getElementById('btn-add-photos').addEventListener('click', () => document.getElementById('hidden-multi-upload').click());
-
-document.getElementById('hidden-multi-upload').addEventListener('change', e => {
-    const files = Array.from(e.target.files);
-    if(files.length > 0 && SurveyState.images.length === 0) photoGallery.innerHTML = ''; // clear placeholder
-
-    files.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const b64 = event.target.result;
-            const newIndex = SurveyState.images.length;
-            SurveyState.images.push(b64);
-            SurveyState.vectors[newIndex] = []; // initialize vector array for this photo
-            
-            // Add thumbnail to gallery
-            const thumb = document.createElement('div');
-            thumb.className = "aspect-square rounded-xl bg-cover bg-center cursor-pointer border-2 border-transparent hover:border-[#0dcaf0] transition overflow-hidden relative";
-            thumb.style.backgroundImage = `url(${b64})`;
-            thumb.innerHTML = `<div class="absolute bottom-0 inset-x-0 bg-black/60 text-[10px] text-center py-1">Draft</div>`;
-            
-            thumb.onclick = () => loadPhotoToCanvas(newIndex);
-            photoGallery.appendChild(thumb);
-        };
-        reader.readAsDataURL(file);
-    });
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("[Diagnostics] Blueprint Enterprise Engine Initialized (V2 Hybrid).");
+    setTimeout(() => {
+        const splash = document.getElementById('splashScreen');
+        splash.style.opacity = '0';
+        setTimeout(() => { splash.style.display = 'none'; document.getElementById('mainApp').style.display = 'block'; }, 500);
+    }, 1000);
 });
 
-// --- CANVAS ENGINE (WITH ZOOM FIX) ---
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+    .then((reg) => console.log('COHI SW Registered', reg.scope))
+    .catch((err) => console.log('SW Registration failed', err));
+}
+
+// --- THE NEW PRECISION CANVAS ENGINE ---
 const stage = document.getElementById('drafting-stage');
 const imageLayer = document.getElementById('survey-image-layer');
 const vectorCanvas = document.getElementById('vector-drawing-layer');
@@ -78,27 +51,39 @@ const ctx = vectorCanvas.getContext('2d');
 const photo = document.getElementById('active-survey-photo');
 const hudDrawer = document.getElementById('hud-drawer');
 
-function loadPhotoToCanvas(index) {
-    SurveyState.activeImageIndex = index;
-    photo.onload = () => {
-        SurveyState.imageIntrinsicWidth = photo.naturalWidth;
-        SurveyState.imageIntrinsicHeight = photo.naturalHeight;
-        vectorCanvas.width = photo.naturalWidth;
-        vectorCanvas.height = photo.naturalHeight;
-        
-        // Initial fit-to-screen scale
-        SurveyState.scale = Math.min(window.innerWidth / photo.naturalWidth, window.innerHeight / photo.naturalHeight);
-        SurveyState.offsetX = (window.innerWidth - photo.naturalWidth * SurveyState.scale) / 2;
-        SurveyState.offsetY = (window.innerHeight - photo.naturalHeight * SurveyState.scale) / 2;
-        
-        photo.style.display = 'block';
-        updateViewport();
-        switchTab('canvas');
-    };
-    photo.src = SurveyState.images[index];
-}
+export const SurveyState = {
+    imageIntrinsicWidth: 0, imageIntrinsicHeight: 0,
+    vectors: [], activeAnchor: null, 
+    scale: 1, offsetX: 0, offsetY: 0, isDragging: false, startX: 0, startY: 0
+};
 
-// Pan Engine
+document.getElementById('btn-upload-photo').addEventListener('click', () => document.getElementById('hidden-file-input').click());
+
+document.getElementById('hidden-file-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        photo.onload = () => {
+            SurveyState.imageIntrinsicWidth = photo.naturalWidth;
+            SurveyState.imageIntrinsicHeight = photo.naturalHeight;
+            vectorCanvas.width = photo.naturalWidth;
+            vectorCanvas.height = photo.naturalHeight;
+            
+            SurveyState.scale = Math.min(stage.clientWidth / photo.naturalWidth, stage.clientHeight / photo.naturalHeight);
+            SurveyState.offsetX = (stage.clientWidth - photo.naturalWidth * SurveyState.scale) / 2;
+            SurveyState.offsetY = (stage.clientHeight - photo.naturalHeight * SurveyState.scale) / 2;
+            
+            photo.style.display = 'block';
+            updateViewport();
+            window.showToast("Image Loaded into Drafting Canvas", true);
+        };
+        photo.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+// Target-Drag Pan Engine
 stage.addEventListener('pointerdown', e => {
     if(e.target.tagName === 'BUTTON' || e.target.closest('#hud-drawer')) return;
     SurveyState.isDragging = true;
@@ -113,28 +98,22 @@ stage.addEventListener('pointermove', e => {
 });
 stage.addEventListener('pointerup', () => SurveyState.isDragging = false);
 
-// --- THE ZOOM ENGINE ---
+// Zoom Engine
 function changeZoom(delta) {
-    if (!photo.src || SurveyState.activeImageIndex === -1) return;
-    
+    if (!photo.src) return;
     const oldScale = SurveyState.scale;
     let newScale = oldScale * delta;
-    
-    // Limits
-    if(newScale < 0.05) newScale = 0.05; 
-    if(newScale > 5) newScale = 5;
+    if(newScale < 0.1) newScale = 0.1; 
+    if(newScale > 10) newScale = 10;
 
-    // Mathematical center zoom calculation
-    const centerX = window.innerWidth / 2;
-    const centerY = window.innerHeight / 2;
-
+    const centerX = stage.clientWidth / 2;
+    const centerY = stage.clientHeight / 2;
     const imgX = (centerX - SurveyState.offsetX) / oldScale;
     const imgY = (centerY - SurveyState.offsetY) / oldScale;
 
     SurveyState.scale = newScale;
     SurveyState.offsetX = centerX - (imgX * SurveyState.scale);
     SurveyState.offsetY = centerY - (imgY * SurveyState.scale);
-    
     updateViewport();
 }
 document.getElementById('btn-zoom-in').addEventListener('click', () => changeZoom(1.3));
@@ -146,22 +125,22 @@ function updateViewport() {
 }
 
 function getCrosshairRelativeCoordinate() {
-    const centerX = window.innerWidth / 2; const centerY = window.innerHeight / 2;
+    const centerX = stage.clientWidth / 2; const centerY = stage.clientHeight / 2;
     const imgX = (centerX - SurveyState.offsetX) / SurveyState.scale;
     const imgY = (centerY - SurveyState.offsetY) / SurveyState.scale;
     return { pctX: imgX / SurveyState.imageIntrinsicWidth, pctY: imgY / SurveyState.imageIntrinsicHeight };
 }
 
-// HUD & Anchors
+// HUD Controls
 document.getElementById('btn-anchor-point').addEventListener('click', () => {
-    if (SurveyState.activeImageIndex === -1) { alert("Select a photo from the Form Data gallery first."); return; }
+    if (!SurveyState.imageIntrinsicWidth) { window.showToast("Load an image first.", false); return; }
     const coords = getCrosshairRelativeCoordinate();
     const btn = document.getElementById('btn-anchor-point');
 
     if (!SurveyState.activeAnchor) {
         SurveyState.activeAnchor = coords;
         btn.innerHTML = "📏 Lock Endpoint";
-        btn.classList.replace('bg-[#0dcaf0]', 'bg-[#10b981]');
+        btn.classList.replace('bg-blue-600', 'bg-green-600');
     } else {
         SurveyState.tempEndpoint = coords;
         hudDrawer.classList.add('active');
@@ -172,25 +151,20 @@ document.getElementById('btn-anchor-point').addEventListener('click', () => {
 document.getElementById('btn-save-measurement').addEventListener('click', () => {
     const val = document.getElementById('input-measurement').value;
     if(!val) return;
-
-    SurveyState.vectors[SurveyState.activeImageIndex].push({ id: Date.now(), value: val, type: document.getElementById('input-line-type').value, start: SurveyState.activeAnchor, end: SurveyState.tempEndpoint });
+    SurveyState.vectors.push({ id: Date.now(), value: val, type: document.getElementById('input-line-type').value, start: SurveyState.activeAnchor, end: SurveyState.tempEndpoint });
     SurveyState.activeAnchor = null; SurveyState.tempEndpoint = null;
     document.getElementById('input-measurement').value = '';
     hudDrawer.classList.remove('active');
     
     const btn = document.getElementById('btn-anchor-point');
     btn.innerHTML = "🎯 Anchor Start";
-    btn.classList.replace('bg-[#10b981]', 'bg-[#0dcaf0]');
+    btn.classList.replace('bg-green-600', 'bg-blue-600');
     renderVectors();
 });
 
 export function renderVectors() {
     ctx.clearRect(0, 0, vectorCanvas.width, vectorCanvas.height);
-    if(SurveyState.activeImageIndex === -1) return;
-
-    const currentVectors = SurveyState.vectors[SurveyState.activeImageIndex] || [];
-    
-    currentVectors.forEach(v => {
+    SurveyState.vectors.forEach(v => {
         const startX = v.start.pctX * SurveyState.imageIntrinsicWidth; const startY = v.start.pctY * SurveyState.imageIntrinsicHeight;
         const endX = v.end.pctX * SurveyState.imageIntrinsicWidth; const endY = v.end.pctY * SurveyState.imageIntrinsicHeight;
 
@@ -209,83 +183,97 @@ export function renderVectors() {
     });
 }
 
-// --- FULL FORM DATA AGGREGATION & EXPORT ---
-document.getElementById('btn-legacy-sync').addEventListener('click', () => {
-    document.getElementById('crm-bridge-modal').classList.remove('hidden');
-    document.getElementById('crm-bridge-modal').classList.add('flex');
-});
-document.getElementById('btn-cancel-sync').addEventListener('click', () => {
-    document.getElementById('crm-bridge-modal').classList.add('hidden');
-    document.getElementById('crm-bridge-modal').classList.remove('flex');
-});
+// --- NEW FEATURES: CRM EXPORT & V3 VAULT SYNC ---
 
-document.getElementById('btn-execute-sync').addEventListener('click', async () => {
-    const btn = document.getElementById('btn-execute-sync');
-    btn.innerText = "Syncing...";
-    
-    // Gather ALL Form Data
-    const clientName = document.getElementById('input-client-name').value || "Mr. Dall"; 
+// 1. Text Export Adding (Legacy CRM Clipboard)
+document.getElementById('btn-legacy-sync').addEventListener('click', () => {
+    const clientName = document.getElementById('input-client-name').value || "Not Specified"; 
     const postCode = document.getElementById('input-postcode').value || "N/A";
     const roofType = document.getElementById('input-roof-type').value;
-    const uValue = document.getElementById('input-uvalue').value || "N/A";
-    const roughNotes = document.getElementById('input-notes').value;
+    const buildType = document.getElementById('input-build-type').value || "N/A";
+    const size = document.getElementById('input-proposed-size').value || "N/A";
+    const notes = document.getElementById('input-notes').value || "None";
     
-    let finalNotes = roughNotes;
-    if (roughNotes.trim().length > 5) {
+    const vectorList = SurveyState.vectors.map(v => `• ${v.type.toUpperCase()}: ${v.value}`).join('\n');
+    
+    const clipboardText = `
+=== COHI CRM SURVEY EXPORT ===
+DATE: ${new Date().toLocaleDateString()}
+CLIENT: ${clientName}
+POSTCODE: ${postCode}
+BUILD: ${buildType} | ROOF: ${roofType} | SIZE: ${size}
+
+--- STRUCTURAL VECTORS ---
+${vectorList || 'No vectors drawn.'}
+
+--- SITE NOTES ---
+${notes}
+===============================`.trim();
+
+    navigator.clipboard.writeText(clipboardText)
+        .then(() => window.showToast("Text Exported to Clipboard!", true))
+        .catch(() => window.showToast("Clipboard Access Denied.", false));
+});
+
+// 2. Auto-Export to V3 (Firebase Sync)
+document.getElementById('btn-export-v3').addEventListener('click', async () => {
+    const modal = document.getElementById('crm-bridge-modal');
+    modal.classList.remove('hidden'); modal.classList.add('flex');
+    
+    const clientName = document.getElementById('input-client-name').value || "Unnamed Client"; 
+    const postCode = document.getElementById('input-postcode').value || "N/A";
+    const designer = document.getElementById('input-designer').value;
+    const roofType = document.getElementById('input-roof-type').value;
+    const buildType = document.getElementById('input-build-type').value;
+    const size = document.getElementById('input-proposed-size').value;
+    const rawNotes = document.getElementById('input-notes').value;
+    
+    let finalNotes = rawNotes;
+
+    // AI Polish using your original backend
+    if (rawNotes.trim().length > 5) {
+        document.getElementById('sync-status-text').innerText = "AI Polishing Site Notes...";
         try {
             const rewriteNotes = httpsCallable(functions, 'rewriteNotes');
-            const result = await rewriteNotes({ rawText: roughNotes });
+            const result = await rewriteNotes({ rawText: rawNotes });
             finalNotes = result.data.polishedText;
         } catch (error) { console.warn("AI Polish offline."); }
     }
 
-    // Aggregate ALL Vectors from ALL Photos
-    let allVectorsText = [];
-    Object.keys(SurveyState.vectors).forEach(imgIdx => {
-        SurveyState.vectors[imgIdx].forEach(v => allVectorsText.push(`• ${v.type.toUpperCase()}: ${v.value}`));
-    });
-
+    // Auto-Export to V3 Firestore
+    document.getElementById('sync-status-text').innerText = "Creating V3 Customer Vault...";
     try {
         const newSurveyRef = await addDoc(collection(db, "surveys"), {
             clientName: clientName,
+            userId: designer,
+            updatedAt: serverTimestamp(),
             data: {
                 inputs: {
-                    postCode: postCode, clientNum: "survey123", _brand: "COHI", 
-                    _pipelineStatus: "1. Consultation & Survey", roofType: roofType, uValue: uValue
+                    postCode: postCode,
+                    clientNum: "survey123", // Temporary default PIN
+                    _brand: "COHI",
+                    _pipelineStatus: "1. Consultation & Survey",
+                    roofType: roofType,
+                    buildType: buildType,
+                    proposedSize: size
                 }
             },
             analytics: { loginCount: 0, totalTimeMinutes: 0 }
         });
         
-        if(finalNotes) { await addDoc(collection(db, `surveys/${newSurveyRef.id}/internalNotes`), { content: finalNotes, visibility: 'external', timestamp: serverTimestamp() }); }
+        if(finalNotes) {
+            await addDoc(collection(db, `surveys/${newSurveyRef.id}/internalNotes`), {
+                content: finalNotes, visibility: 'external', timestamp: serverTimestamp()
+            });
+        }
+
         window.activeVaultSurveyId = newSurveyRef.id;
-    } catch (err) { console.error(err); }
+        window.showToast("Successfully Auto-Exported to V3!", true);
 
-    const clipboardText = `
-=== COHI SURVEY DATA ===
-CLIENT: ${clientName} | POST: ${postCode}
-ROOF: ${roofType} | U-VAL: ${uValue}
-PHOTOS ATTACHED: ${SurveyState.images.length}
-
---- MEASUREMENTS ---
-${allVectorsText.join('\\n') || 'None recorded.'}
-
---- OBSERVATIONS ---
-${finalNotes || 'None recorded.'}
-========================`.trim();
-
-    try { await navigator.clipboard.writeText(clipboardText); } catch (err) {}
+    } catch (err) {
+        console.error(err);
+        window.showToast("V3 Sync Failed", false);
+    }
     
-    btn.innerText = "Vault Synced & Copied!";
-    btn.classList.replace('bg-[#10b981]', 'bg-[#0dcaf0]');
-    setTimeout(() => { 
-        document.getElementById('crm-bridge-modal').classList.add('hidden'); document.getElementById('crm-bridge-modal').classList.remove('flex');
-        btn.innerText = "Sync to V3 & CRM"; btn.classList.replace('bg-[#0dcaf0]', 'bg-[#10b981]');
-    }, 2000);
-});
-
-// PDF Gen Hook
-document.getElementById('btn-generate-pdf').addEventListener('click', () => {
-    const roofType = document.getElementById('input-roof-type').value;
-    window.PDFEngine.generate(SurveyState, roofType);
+    setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 1000);
 });
