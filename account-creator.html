@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COHI Admin | Designer Provisioning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --bg: #0b1118; --card: #1E1E1E; --accent: #0dcaf0; }
+        body { 
+            background: var(--bg); 
+            color: white; 
+            font-family: system-ui, -apple-system, sans-serif; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0; 
+        }
+        .glass-panel { 
+            background: var(--card); 
+            padding: 40px; 
+            border-radius: 16px; 
+            border: 1px solid #333; 
+            width: 100%; 
+            max-width: 450px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8); 
+        }
+        .luxury-input { 
+            background: #1A1A1A; 
+            border: 1px solid #333; 
+            color: white; 
+            padding: 16px; 
+            border-radius: 8px; 
+            width: 100%; 
+            outline: none; 
+            margin-bottom: 16px; 
+            font-size: 15px;
+            transition: 0.3s; 
+        }
+        .luxury-input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+        .btn { 
+            background: var(--accent); 
+            color: black; 
+            font-weight: 900; 
+            padding: 18px; 
+            border-radius: 8px; 
+            width: 100%; 
+            border: none; 
+            cursor: pointer; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+            transition: 0.2s; 
+        }
+        .btn:hover { background: #0ba8c6; transform: scale(0.98); }
+        .btn:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; }
+        
+        #statusBox { 
+            display: none; 
+            padding: 16px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            font-weight: bold; 
+            text-align: center; 
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glass-panel">
+        <h1 class="text-3xl font-black mb-2 text-center tracking-wide">COHI <span style="color: var(--accent);">ADMIN</span></h1>
+        <p class="text-gray-400 text-sm text-center mb-8">Secure Enterprise Provisioning</p>
+
+        <div id="statusBox"></div>
+
+        <label class="block text-xs text-gray-500 mb-1 uppercase tracking-wide font-bold">Designer First Name</label>
+        <input type="text" id="regName" class="luxury-input" autocomplete="off" placeholder="e.g., Tom">
+        
+        <label class="block text-xs text-gray-500 mb-1 uppercase tracking-wide font-bold">Work Email Address</label>
+        <input type="email" id="regEmail" class="luxury-input" autocomplete="off" placeholder="designer@cohi.co.uk">
+        
+        <label class="block text-xs text-gray-500 mb-1 uppercase tracking-wide font-bold">Temporary Password</label>
+        <input type="password" id="regPassword" class="luxury-input" autocomplete="new-password" placeholder="Minimum 6 characters">
+        
+        <label class="block text-xs text-gray-500 mb-1 uppercase tracking-wide font-bold">Default Brand Assignment</label>
+        <select id="regBrand" class="luxury-input">
+            <option value="Yorkshire Windows">Yorkshire Windows</option>
+            <option value="CO Home Improvements">CO Home Improvements</option>
+            <option value="Clearview">Clearview</option>
+            <option value="Orion Windows">Orion Windows</option>
+            <option value="Planet">Planet</option>
+            <option value="Trent Valley Windows">Trent Valley Windows</option>
+            <option value="West Yorkshire Windows">West Yorkshire Windows</option>
+        </select>
+
+        <button id="btnCreate" class="btn mt-4">Deploy Designer Account</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // Core App Configuration
+        const appConfig = {
+            apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0",
+            authDomain: "cohi-survey-engine.firebaseapp.com",
+            projectId: "cohi-survey-engine"
+        };
+
+        // Initialize a SECONDARY Firebase App specifically for provisioning.
+        // This prevents the admin from being automatically logged out of their main V2/V3 dashboard.
+        const adminApp = initializeApp(appConfig, "AdminCreatorApp");
+        const auth = getAuth(adminApp);
+        const db = getFirestore(adminApp);
+
+        const btn = document.getElementById('btnCreate');
+        const statusBox = document.getElementById('statusBox');
+
+        function showStatus(msg, isError = false) {
+            statusBox.style.display = 'block';
+            statusBox.style.backgroundColor = isError ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)';
+            statusBox.style.color = isError ? '#ef4444' : '#10b981';
+            statusBox.style.border = `1px solid ${isError ? '#ef4444' : '#10b981'}`;
+            statusBox.innerText = msg;
+        }
+
+        btn.addEventListener('click', async () => {
+            const name = document.getElementById('regName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const brand = document.getElementById('regBrand').value;
+
+            if(!name || !email || !password) {
+                showStatus("Error: Please complete all provisioning fields.", true);
+                return;
+            }
+
+            if(password.length < 6) {
+                showStatus("Error: Security policy requires a minimum 6-character password.", true);
+                return;
+            }
+
+            btn.innerText = "PROVISIONING SERVER...";
+            btn.disabled = true;
+
+            try {
+                // 1. Create the secure Auth profile
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // 2. Log the designer's internal metadata to Firestore
+                await setDoc(doc(db, "designers", user.uid), {
+                    name: name,
+                    email: email,
+                    defaultBrand: brand,
+                    accessLevel: "Designer",
+                    createdAt: serverTimestamp()
+                });
+
+                // 3. Purge the secondary session to secure the environment
+                await signOut(auth);
+
+                showStatus(`Success: Credentials deployed for ${name}.`);
+                
+                // Clear the interface for the next deployment
+                document.getElementById('regName').value = '';
+                document.getElementById('regEmail').value = '';
+                document.getElementById('regPassword').value = '';
+
+            } catch (error) {
+                console.error("Provisioning Error:", error);
+                // Clean up Firebase error messages for human readability
+                let friendlyError = error.message;
+                if (error.code === 'auth/email-already-in-use') friendlyError = "A designer with this email already exists.";
+                if (error.code === 'auth/invalid-email') friendlyError = "The provided email address is invalid.";
+                
+                showStatus(friendlyError, true);
+            } finally {
+                btn.innerText = "Deploy Designer Account";
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
