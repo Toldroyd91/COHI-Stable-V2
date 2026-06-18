@@ -23,16 +23,24 @@
 
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
-        /* Original Splash Screen & Base UI */
-        #splashScreen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0b1118; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease; }
-        body { background-color: #121212; color: #F7F7F7; font-family: system-ui, sans-serif; overflow-x: hidden; }
-        .luxury-input { background: #1A1A1A; border: 1px solid #333; color: #fff; padding: 14px; border-radius: 8px; width: 100%; outline: none; margin-bottom: 12px; }
-        .luxury-input:focus { border-color: #0D6EFD; }
+        /* FANCY SPLASH SCREEN CSS */
+        #splashScreen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #0b1118; z-index: 99999; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; transition: opacity 0.6s ease-in-out;
+        }
         
-        /* NEW: Precision Drafting Canvas Styles */
-        #drafting-stage { position: relative; width: 100%; height: 60vh; overflow: hidden; touch-action: none; background: #000; border-radius: 12px; border: 1px solid #333; margin-top: 20px; }
+        body { background-color: #121212; color: #F7F7F7; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
+        .luxury-input { background: #1A1A1A; border: 1px solid #333; color: #fff; padding: 14px; border-radius: 8px; width: 100%; outline: none; margin-bottom: 12px; transition: border-color 0.3s; }
+        .luxury-input:focus { border-color: #0dcaf0; }
+        .section-card { background: #1E1E1E; padding: 24px; border-radius: 12px; border: 1px solid #333; margin-bottom: 32px; }
+        .section-header { font-size: 1.25rem; font-weight: 700; color: #0dcaf0; border-bottom: 1px solid #333; padding-bottom: 12px; margin-bottom: 24px; }
+        
+        /* THE PRECISION DRAFTING STAGE */
+        #drafting-stage { position: relative; width: 100%; height: 60vh; min-height: 500px; overflow: hidden; touch-action: none; background: #000; border-radius: 8px; border: 1px solid #444; }
         #survey-image-layer { transform-origin: 0 0; will-change: transform; position: absolute; }
         #vector-drawing-layer { position: absolute; inset: 0; pointer-events: none; }
         
@@ -41,36 +49,41 @@
         .precision-crosshair::after { content: ''; position: absolute; height: 100%; width: 2px; background: rgba(13,202,240,0.9); box-shadow: 0 0 10px rgba(13,202,240,0.6); }
         .crosshair-dot { width: 4px; height: 4px; background: #fff; border-radius: 50%; z-index: 51; box-shadow: 0 0 5px #000; }
 
-        /* Measurement HUD */
-        #hud-drawer { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(30, 30, 30, 0.95); backdrop-filter: blur(20px); border-top: 1px solid #444; padding: 25px 20px 40px 20px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 100; border-top-left-radius: 20px; border-top-right-radius: 20px; }
+        /* MEASUREMENT HUD */
+        #hud-drawer { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(20px); border-top: 1px solid #444; padding: 25px 20px 40px 20px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); z-index: 100; border-top-left-radius: 20px; border-top-right-radius: 20px; }
         #hud-drawer.active { transform: translateY(0); }
+        
+        /* ADMIN PANEL */
+        .admin-lead-card { display: flex; flex-direction: column; background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
     </style>
 </head>
 <body>
 
     <div id="splashScreen">
-        <h1 class="text-3xl font-black text-white mb-4">COHI <span class="text-blue-500">SURVEY PRO</span></h1>
-        <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <h1 class="text-4xl font-black text-white mb-6 tracking-widest">COHI <span class="text-[#0dcaf0]">SURVEY PRO</span></h1>
+        <div class="w-10 h-10 border-4 border-[#0dcaf0] border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-gray-500 mt-6 text-sm font-medium tracking-widest">INITIALIZING ENGINE</p>
     </div>
 
-    <nav class="navbar sticky top-0 bg-[#1E1E1E] shadow-lg z-50 p-4 border-b border-gray-800">
-        <div class="navbar__container flex justify-between items-center max-w-5xl mx-auto">
-            <h2 class="text-xl font-bold tracking-tight">Survey<span class="text-blue-500">Engine</span> V2</h2>
-            <div class="flex gap-2">
-                <button id="btn-legacy-sync" class="bg-gray-800 text-xs font-bold py-2 px-4 rounded border border-gray-600 hover:border-blue-500 transition">Copy to CRM</button>
-                <button id="btn-export-v3" class="bg-green-600 text-xs font-bold py-2 px-4 rounded shadow-lg hover:bg-green-500 transition">Sync to V3 Vault</button>
+    <nav class="sticky top-0 bg-[#1E1E1E] shadow-xl z-50 p-4 border-b border-gray-800">
+        <div class="flex justify-between items-center max-w-6xl mx-auto">
+            <h2 class="text-xl font-bold tracking-tight">Survey<span class="text-[#0dcaf0]">Engine</span> V2</h2>
+            <div class="flex gap-3">
+                <button id="btn-admin-panel" class="text-gray-400 hover:text-white text-sm font-bold px-2">Admin</button>
+                <button id="btn-legacy-sync" class="bg-[#1A1A1A] text-[#0dcaf0] text-xs font-bold py-2 px-4 rounded-lg border border-gray-700 hover:border-[#0dcaf0] transition">Copy to CRM</button>
+                <button id="btn-export-v3" class="bg-[#10b981] text-white text-xs font-bold py-2 px-5 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.4)] transition hover:bg-green-500">Sync to V3 Vault</button>
+                <button id="generateCustomerPdfBtn" class="bg-blue-600 text-white text-xs font-bold py-2 px-5 rounded-lg transition hover:bg-blue-500">Export PDF</button>
             </div>
         </div>
     </nav>
 
-    <main class="p-4 md:p-8 max-w-5xl mx-auto" id="mainApp" style="display:none;">
+    <main class="p-4 md:p-8 max-w-6xl mx-auto" id="mainApp" style="display:none;">
         
-        <section class="bg-[#1E1E1E] p-6 rounded-xl border border-gray-800 mb-8">
-            <h3 class="text-xl font-bold mb-6 text-blue-400 border-b border-gray-800 pb-2">1. Client & Property Details</h3>
-            
+        <section class="section-card">
+            <h3 class="section-header">1. System Identity</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Designer ID</label>
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Select Surveyor / Designer</label>
                     <select id="input-designer" class="luxury-input">
                         <option value="Tom">Tom</option>
                         <option value="Sobaan">Sobaan</option>
@@ -78,42 +91,116 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Client Name</label>
-                    <input type="text" id="input-client-name" class="luxury-input" placeholder="e.g. Mr. Dall">
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Brand Identity</label>
+                    <select id="input-brand" class="luxury-input">
+                        <option value="Yorkshire Windows">Yorkshire Windows</option>
+                        <option value="CO Home Improvements">CO Home Improvements</option>
+                        <option value="Clearview">Clearview</option>
+                        <option value="Orion Windows">Orion Windows</option>
+                        <option value="Planet">Planet</option>
+                        <option value="Trent Valley Windows">Trent Valley Windows</option>
+                        <option value="West Yorkshire Windows">West Yorkshire Windows</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <section class="section-card">
+            <h3 class="section-header">2. Client & Property Specifications</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="md:col-span-2">
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Lead Name</label>
+                    <input type="text" id="input-client-name" class="luxury-input" placeholder="e.g. Mr. & Mrs. Smith">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Customer Number (PIN)</label>
+                    <input type="text" id="input-customer-num" class="luxury-input" placeholder="CRM ID or Custom PIN">
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Property Address (Line 1)</label>
+                    <input type="text" id="input-address1" class="luxury-input" placeholder="House Number & Street">
                 </div>
                 <div>
                     <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Postcode</label>
                     <input type="text" id="input-postcode" class="luxury-input" placeholder="e.g. S70 1AA">
                 </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Proposed Build Type</label>
-                    <input type="text" id="input-build-type" class="luxury-input" placeholder="e.g. Extension">
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Build Category</label>
+                    <select id="input-build-type" class="luxury-input">
+                        <option value="Extension">Home Extension</option>
+                        <option value="Conservatory">Conservatory</option>
+                        <option value="Orangery">Orangery</option>
+                        <option value="Replacement Roof">Replacement Roof</option>
+                        <option value="Windows/Doors">Windows & Doors Only</option>
+                    </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Roof Specification</label>
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Roof System Spec</label>
                     <select id="input-roof-type" class="luxury-input">
                         <option value="Ultra380">Ultra380</option>
                         <option value="LivinRoof">LivinRoof</option>
                         <option value="Edwardian roof">Edwardian roof</option>
+                        <option value="Victorian">Victorian</option>
+                        <option value="Lean-To">Lean-To</option>
+                        <option value="Gable">Gable</option>
+                        <option value="Flat Roof">Flat Roof System</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Proposed Size / Area</label>
-                    <input type="text" id="input-proposed-size" class="luxury-input" placeholder="e.g. 15 sqm">
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Proposed Footprint (SQM)</label>
+                    <input type="number" id="input-proposed-size" class="luxury-input" placeholder="e.g. 15">
                 </div>
-            </div>
-
-            <div class="mt-4">
-                <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Architectural Site Notes</label>
-                <textarea id="input-notes" class="luxury-input" rows="4" placeholder="Enter rough site notes here..."></textarea>
             </div>
         </section>
 
-        <section class="bg-[#1E1E1E] p-6 rounded-xl border border-gray-800 mb-8">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-blue-400">2. Precision Site Drafting</h3>
-                <div class="flex gap-2">
-                    <button id="btn-upload-photo" class="bg-gray-800 px-4 py-2 rounded text-sm hover:bg-gray-700">📷 Upload Image</button>
+        <section class="section-card">
+            <h3 class="section-header">3. Technical Sub-Structure & Data</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Existing Foundations</label>
+                    <select id="input-foundations" class="luxury-input">
+                        <option value="New Required">New Required</option>
+                        <option value="Existing (Retain)">Existing (Retain)</option>
+                        <option value="Piled Base Required">Piled Base Required</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Drainage Alterations</label>
+                    <select id="input-drainage" class="luxury-input">
+                        <option value="None">None Expected</option>
+                        <option value="Move Manhole">Move Manhole</option>
+                        <option value="Build Over Agreement">Build Over Agreement Required</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Brick Match Required</label>
+                    <input type="text" id="input-brick-match" class="luxury-input" placeholder="e.g. Ibstock Red">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs text-[#0dcaf0] mb-2 uppercase tracking-widest font-bold">Designer Site Observations</label>
+                <p class="text-xs text-gray-500 mb-3">These rough notes will be pushed to the AI Engine for professional rewriting before being synced to the customer's V3 Vault.</p>
+                <textarea id="input-notes" class="luxury-input" rows="6" placeholder="Enter rough site observations, specific customer requests, potential access issues, etc..."></textarea>
+            </div>
+        </section>
+
+        <section class="section-card">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                <div>
+                    <h3 class="section-header border-none mb-0 pb-0">4. Visual Survey Engine</h3>
+                    <p class="text-xs text-gray-500 mt-1">Target-Drag Vector Interface.</p>
+                </div>
+                <div class="flex gap-2 mt-4 md:mt-0">
+                    <button id="btn-upload-photo" class="bg-gray-800 px-6 py-3 rounded-lg text-sm font-bold border border-gray-600 hover:border-[#0dcaf0] transition flex items-center gap-2">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> Load Blueprint
+                    </button>
                     <input type="file" id="hidden-file-input" accept="image/*" class="hidden">
                 </div>
             </div>
@@ -129,13 +216,13 @@
                 </div>
 
                 <div class="absolute top-4 right-4 flex flex-col gap-2 z-40 bg-black/80 p-2 rounded-xl border border-white/10 backdrop-blur-md">
-                    <button id="btn-zoom-in" class="w-10 h-10 bg-gray-800 text-white rounded-lg font-bold text-xl">+</button>
+                    <button id="btn-zoom-in" class="w-10 h-10 bg-[#1A1A1A] text-white rounded-lg font-bold text-xl hover:bg-gray-700 transition">+</button>
                     <div class="w-full h-px bg-gray-700"></div>
-                    <button id="btn-zoom-out" class="w-10 h-10 bg-gray-800 text-white rounded-lg font-bold text-xl">-</button>
+                    <button id="btn-zoom-out" class="w-10 h-10 bg-[#1A1A1A] text-white rounded-lg font-bold text-xl hover:bg-gray-700 transition">-</button>
                 </div>
 
-                <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex z-40 bg-black/90 p-2 rounded-xl border border-white/10 shadow-2xl">
-                    <button id="btn-anchor-point" class="py-3 px-8 text-white rounded-lg bg-blue-600 font-bold shadow-lg">🎯 Anchor Start</button>
+                <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex z-40 bg-black/90 p-2 rounded-2xl border border-[#0dcaf0]/30 shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+                    <button id="btn-anchor-point" class="py-3 px-10 text-white rounded-xl bg-[#0dcaf0] font-bold tracking-wide uppercase transition hover:scale-105">🎯 Anchor Start</button>
                 </div>
             </div>
         </section>
@@ -143,26 +230,80 @@
     </main>
 
     <div id="hud-drawer">
-        <div class="w-12 h-1 bg-gray-600 rounded-full mx-auto mb-6"></div>
-        <h3 class="text-lg mb-4 font-semibold text-blue-400">Log Measurement</h3>
-        <input type="text" id="input-measurement" class="luxury-input" placeholder="e.g., 2400mm" inputmode="numeric">
-        <select id="input-line-type" class="luxury-input">
-            <option value="wall">Wall Dimension</option>
-            <option value="window">Window Width</option>
-            <option value="height">Ceiling Height</option>
+        <div class="w-16 h-1.5 bg-gray-600 rounded-full mx-auto mb-6"></div>
+        <h3 class="text-xl mb-4 font-bold text-[#0dcaf0] tracking-wide">Log Architecture Vector</h3>
+        <input type="text" id="input-measurement" class="luxury-input text-lg" placeholder="e.g. 2400mm / 45 degrees" autocomplete="off">
+        <select id="input-line-type" class="luxury-input text-lg">
+            <option value="wall">External Wall</option>
+            <option value="internal">Internal Partition</option>
+            <option value="window">Window Aperture</option>
+            <option value="door">Door Aperture</option>
+            <option value="height">Ceiling / Ridge Height</option>
+            <option value="custom">Custom Annotation</option>
         </select>
-        <button id="btn-save-measurement" class="bg-blue-600 text-white font-bold py-3 rounded-lg w-full mt-2">Commit Vector</button>
+        <button id="btn-save-measurement" class="bg-[#0dcaf0] text-black font-extrabold py-4 rounded-xl w-full mt-4 text-lg uppercase tracking-widest shadow-[0_0_20px_rgba(13,202,240,0.4)]">Commit Vector to Blueprint</button>
     </div>
 
-    <div id="crm-bridge-modal" class="fixed inset-0 bg-black/90 z-[200] hidden flex-col items-center justify-center p-6">
-        <div class="bg-[#1E1E1E] border border-gray-700 p-8 rounded-2xl w-full max-w-md text-center">
-            <h3 class="text-2xl font-bold mb-2 text-green-500">Executing Sync</h3>
-            <p class="text-gray-400 mb-6 text-sm" id="sync-status-text">Packaging survey data and pinging AI...</p>
-            <div class="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+    <div id="crm-bridge-modal" class="fixed inset-0 bg-black/95 z-[200] hidden flex-col items-center justify-center p-6 backdrop-blur-sm">
+        <div class="bg-[#1E1E1E] border border-gray-700 p-8 rounded-2xl w-full max-w-md text-center shadow-2xl">
+            <h3 class="text-2xl font-bold mb-3 text-[#10b981]">Compiling Payload</h3>
+            <p class="text-gray-400 mb-8 text-sm" id="sync-status-text">Packaging survey data, structuring vectors, and pinging Gemini AI for note polish...</p>
+            <div class="w-12 h-12 border-4 border-[#10b981] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        </div>
+    </div>
+
+    <div id="adminPanel" class="fixed inset-0 bg-black/95 z-[150] hidden flex-col p-6 overflow-y-auto">
+        <div class="max-w-6xl mx-auto w-full">
+            <div class="flex justify-between items-center mb-8 border-b border-gray-800 pb-4 mt-6">
+                <h2 class="text-3xl font-black text-white">Data <span class="text-blue-500">Command Center</span></h2>
+                <div class="flex gap-4">
+                    <button id="adminExportBtn" class="bg-green-600 px-6 py-2 rounded-lg font-bold shadow-lg hover:bg-green-500">⬇ CSV Export</button>
+                    <button id="closeAdminBtn" class="bg-gray-800 px-6 py-2 rounded-lg font-bold border border-gray-600">Close</button>
+                </div>
+            </div>
+            
+            <input type="text" id="adminSearch" class="luxury-input mb-8" placeholder="Search by Client Name, Postcode, or Designer ID...">
+            
+            <div id="adminLeadsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="text-gray-500 col-span-full text-center py-12">Loading Enterprise Data...</div>
+            </div>
         </div>
     </div>
 
     <script type="module" src="app.js"></script>
     <script src="pdfGenerator.js"></script>
+
+    <script>
+        document.getElementById('btn-admin-panel').addEventListener('click', () => {
+            document.getElementById('adminPanel').classList.remove('hidden');
+            document.getElementById('adminPanel').classList.add('flex');
+            // Trigger load function in app.js if needed
+            if(window.loadAdminData) window.loadAdminData();
+        });
+        
+        document.getElementById('closeAdminBtn').addEventListener('click', () => {
+            document.getElementById('adminPanel').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('flex');
+        });
+
+        document.getElementById('adminSearch').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            document.querySelectorAll('.admin-lead-card').forEach(card => { 
+                card.style.display = card.innerText.toLowerCase().includes(term) ? 'flex' : 'none'; 
+            });
+        });
+    </script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then(reg => {
+                    console.log('COHI ServiceWorker registered: ', reg.scope);
+                }).catch(err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>
