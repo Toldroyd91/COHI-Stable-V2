@@ -772,5 +772,283 @@
         });
     </script>
     <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("Pinnacle V5 Sniper Injector Running...");
+
+    // --- 0. SILENT WORKFLOW DEFAULTS ---
+    setTimeout(() => {
+        const nameInp = document.getElementById('customerName') || document.getElementById('input-client-name');
+        if(nameInp && !nameInp.value) nameInp.value = "Mr. Dall";
+        const roofInp = document.getElementById('roofType') || document.getElementById('input-roof-type');
+        if(roofInp) roofInp.value = "Edwardian roof";
+    }, 500);
+
+    // --- 1. INJECT SYNC BUTTONS ---
+    const pdfBtn = document.getElementById('generateCustomerPdfBtn') || document.getElementById('generateInternalPdfBtn');
+    if(pdfBtn) {
+        const container = document.createElement('div');
+        container.style.cssText = "display:flex; gap:10px; margin-top:15px; justify-content:center; flex-wrap:wrap; width:100%;";
+        container.innerHTML = `
+            <button id="btn-legacy-dash" style="background:#1A1A1A; color:#0dcaf0; border:1px solid #0dcaf0; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">📋 Copy to CRM</button>
+            <button id="btn-sync-v3" style="background:#10b981; color:white; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">☁️ Sync to V3 Vault</button>
+        `;
+        pdfBtn.parentNode.insertBefore(container, pdfBtn.nextSibling);
+    }
+
+    // --- 2. BUILD SNIPER MODAL UI ---
+    const modal = document.createElement('div');
+    modal.id = 'sniper-modal';
+    modal.style.cssText = "display:none; position:fixed; inset:0; z-index:999999; background:#0b1118; font-family:system-ui, sans-serif; touch-action:none;";
+    modal.innerHTML = `
+        <div id="sniper-viewport" style="position:absolute; inset:0; overflow:hidden;">
+            <div id="sniper-container" style="transform-origin:0 0; position:absolute; will-change:transform;">
+                <canvas id="sniper-base" style="display:block;"></canvas>
+                <canvas id="sniper-vectors" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+                <canvas id="sniper-ghost" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+            </div>
+            
+            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); pointer-events:none; z-index:50;">
+                <div style="position:absolute; width:44px; height:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+                <div style="position:absolute; height:44px; width:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+                <div style="position:absolute; width:4px; height:4px; background:#fff; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+            </div>
+
+            <div style="position:absolute; inset:0; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:20px; padding-bottom:env(safe-area-inset-bottom, 30px); padding-top:env(safe-area-inset-top, 20px);">
+                <div style="display:flex; justify-content:space-between; pointer-events:auto;">
+                    <button id="sniper-cancel" style="background:rgba(0,0,0,0.8); color:white; border:1px solid #444; padding:12px 24px; border-radius:8px; font-weight:bold;">Cancel</button>
+                    <button id="sniper-save" style="background:#10b981; color:white; border:none; padding:12px 24px; border-radius:8px; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.4);">Save Blueprint</button>
+                </div>
+                
+                <div style="pointer-events:auto; display:flex; flex-direction:column; gap:15px;">
+                    <div style="align-self:flex-end; display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:6px;">
+                        <div class="nudge" data-x="0" data-y="-2" style="grid-column:2; grid-row:1; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↑</div>
+                        <div class="nudge" data-x="-2" data-y="0" style="grid-column:1; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">←</div>
+                        <div class="nudge" data-x="2" data-y="0" style="grid-column:3; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">→</div>
+                        <div class="nudge" data-x="0" data-y="2" style="grid-column:2; grid-row:3; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↓</div>
+                    </div>
+                    <button id="sniper-action" style="width:100%; padding:20px; background:#0dcaf0; border:none; border-radius:12px; font-size:18px; font-weight:900; text-transform:uppercase; box-shadow:0 6px 20px rgba(13,202,240,0.3);">🎯 Place Anchor</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // --- 3. DYNAMIC RESOLUTION & THICKNESS MATH ---
+    const S = {
+        activeSuffix: null, scale: 1, offsetX: 0, offsetY: 0,
+        isDragging: false, lastTouch: {x:0, y:0}, initialPinch: null,
+        anchor: null, vectors: [], dashboardLogs: []
+    };
+
+    const vp = document.getElementById('sniper-viewport');
+    const container = document.getElementById('sniper-container');
+    const baseCanvas = document.getElementById('sniper-base');
+    const baseCtx = baseCanvas.getContext('2d');
+    const vecCanvas = document.getElementById('sniper-vectors');
+    const vecCtx = vecCanvas.getContext('2d');
+    const ghostCanvas = document.getElementById('sniper-ghost');
+    const ghostCtx = ghostCanvas.getContext('2d');
+    const actionBtn = document.getElementById('sniper-action');
+
+    // This guarantees the lines stay physically thin no matter how deep you zoom
+    function renderVectors() {
+        vecCtx.clearRect(0,0, vecCanvas.width, vecCanvas.height);
+        const lw = 4 / S.scale; 
+        const fs = 24 / S.scale;
+        const pad = 10 / S.scale;
+
+        S.vectors.forEach(v => {
+            vecCtx.beginPath(); vecCtx.moveTo(v.x1, v.y1); vecCtx.lineTo(v.x2, v.y2);
+            vecCtx.lineWidth = lw; vecCtx.strokeStyle = '#0dcaf0'; vecCtx.stroke();
+            if(v.text) {
+                const mx = (v.x1 + v.x2)/2; const my = (v.y1 + v.y2)/2;
+                vecCtx.fillStyle = '#1A1A1A';
+                vecCtx.font = `bold ${fs}px sans-serif`;
+                const tw = vecCtx.measureText(v.text).width;
+                vecCtx.fillRect(mx - tw/2 - pad, my - fs, tw + pad*2, fs + pad*2);
+                vecCtx.fillStyle = '#0dcaf0'; vecCtx.textAlign = 'center'; vecCtx.textBaseline = 'middle';
+                vecCtx.fillText(v.text, mx, my);
+            }
+        });
+    }
+
+    function updateTransform() {
+        container.style.transform = `translate(${S.offsetX}px, ${S.offsetY}px) scale(${S.scale})`;
+        renderVectors(); // Redraw instantly to adjust thickness during zoom
+        
+        ghostCtx.clearRect(0,0, ghostCanvas.width, ghostCanvas.height);
+        if(S.anchor) {
+            const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
+            ghostCtx.beginPath(); ghostCtx.moveTo(S.anchor.x, S.anchor.y); ghostCtx.lineTo(cur.x, cur.y);
+            ghostCtx.lineWidth = 4 / S.scale; ghostCtx.strokeStyle = '#0dcaf0'; 
+            ghostCtx.setLineDash([15/S.scale, 15/S.scale]); ghostCtx.stroke(); ghostCtx.setLineDash([]);
+        }
+    }
+
+    // Touch Engine (Pan & Pinch)
+    vp.addEventListener('touchstart', e => {
+        if(e.target.closest('button') || e.target.closest('.nudge')) return;
+        e.preventDefault();
+        if(e.touches.length === 1) { S.isDragging = true; S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; }
+        else if(e.touches.length === 2) { S.isDragging = false; S.initialPinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
+    }, {passive:false});
+
+    vp.addEventListener('touchmove', e => {
+        if(e.target.closest('button') || e.target.closest('.nudge')) return;
+        e.preventDefault();
+        if(e.touches.length === 1 && S.isDragging) {
+            S.offsetX += e.touches[0].clientX - S.lastTouch.x; S.offsetY += e.touches[0].clientY - S.lastTouch.y;
+            S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; updateTransform();
+        } else if(e.touches.length === 2 && S.initialPinch) {
+            const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            const oldScale = S.scale; S.scale *= (dist / S.initialPinch);
+            if(S.scale < 0.1) S.scale = 0.1; if(S.scale > 15) S.scale = 15;
+            const cx = window.innerWidth/2; const cy = window.innerHeight/2;
+            S.offsetX = cx - ((cx - S.offsetX) / oldScale * S.scale); S.offsetY = cy - ((cy - S.offsetY) / oldScale * S.scale);
+            S.initialPinch = dist; updateTransform();
+        }
+    }, {passive:false});
+
+    vp.addEventListener('touchend', e => { if(e.touches.length < 2) S.initialPinch = null; if(e.touches.length === 0) S.isDragging = false; });
+
+    // D-Pad Logic
+    document.querySelectorAll('.nudge').forEach(btn => {
+        btn.addEventListener('touchstart', e => {
+            e.preventDefault();
+            S.offsetX -= parseInt(btn.dataset.x) * S.scale; S.offsetY -= parseInt(btn.dataset.y) * S.scale; updateTransform();
+        });
+    });
+
+    // Anchor & Measurement Commit
+    actionBtn.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
+        if(!S.anchor) {
+            S.anchor = cur; actionBtn.innerText = "✅ Confirm Endpoint"; actionBtn.style.background = "#10b981"; updateTransform();
+        } else {
+            const measurement = prompt("Enter Measurement (e.g., 2400mm):");
+            if(measurement) {
+                S.vectors.push({ x1: S.anchor.x, y1: S.anchor.y, x2: cur.x, y2: cur.y, text: measurement });
+                S.dashboardLogs.push(`${S.activeSuffix} Elevation: ${measurement}`);
+            }
+            S.anchor = null; actionBtn.innerText = "🎯 Place Anchor"; actionBtn.style.background = "#0dcaf0"; updateTransform();
+        }
+    });
+
+    // --- 4. HOOK INTO EXISTING FILE UPLOADS ---
+    ['Front', 'Side', 'Rear', 'Drainage'].forEach(suffix => {
+        const input = document.getElementById(`photo-${suffix.toLowerCase()}`);
+        if(input) {
+            const editBtn = document.createElement('button');
+            editBtn.innerText = "🎯 Precision Edit Blueprint";
+            editBtn.style.cssText = "width:100%; padding:14px; border-radius:8px; background:#0dcaf0; color:black; font-weight:900; border:none; margin-top:10px; display:none; cursor:pointer;";
+            input.parentNode.appendChild(editBtn);
+
+            input.addEventListener('change', e => {
+                if(e.target.files.length > 0) editBtn.style.display = 'block';
+            });
+
+            editBtn.addEventListener('click', e => {
+                e.preventDefault();
+                S.activeSuffix = suffix;
+                const file = input.files[0];
+                if(!file) return;
+
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    // Pulling TRUE 4k natural width directly from the file to prevent tiny renders
+                    const w = img.naturalWidth; const h = img.naturalHeight;
+                    baseCanvas.width = w; baseCanvas.height = h;
+                    vecCanvas.width = w; vecCanvas.height = h;
+                    ghostCanvas.width = w; ghostCanvas.height = h;
+                    
+                    baseCtx.drawImage(img, 0, 0);
+                    S.vectors = []; S.anchor = null; S.dashboardLogs = [];
+                    
+                    S.offsetX = (window.innerWidth - w)/2; S.offsetY = (window.innerHeight - h)/2;
+                    S.scale = Math.min(window.innerWidth/w, window.innerHeight/h) * 0.9;
+                    updateTransform();
+                    modal.style.display = 'block';
+                };
+                img.src = url;
+            });
+        }
+    });
+
+    // Save Logic & PDF Intercept
+    document.getElementById('sniper-cancel').onclick = () => modal.style.display = 'none';
+
+    document.getElementById('sniper-save').onclick = () => {
+        const comp = document.createElement('canvas'); comp.width = baseCanvas.width; comp.height = baseCanvas.height;
+        const ctx = comp.getContext('2d');
+        ctx.drawImage(baseCanvas, 0,0); ctx.drawImage(vecCanvas, 0,0);
+        
+        const b64 = comp.toDataURL('image/jpeg', 0.9);
+        const oldCanvas = document.getElementById(`canvas${S.activeSuffix}`);
+        if(oldCanvas) {
+            oldCanvas.setAttribute('data-sniper', b64);
+            const wrapper = oldCanvas.closest('.canvas-container') || oldCanvas.parentNode;
+            wrapper.style.display = 'none'; // Hide clunky Fabric UI completely
+            
+            const preview = document.createElement('img');
+            preview.src = b64;
+            preview.style.cssText = "width:100%; border-radius:8px; margin-top:10px; border:2px solid #10b981;";
+            wrapper.parentNode.appendChild(preview);
+        }
+        modal.style.display = 'none';
+        if(window.showToast) window.showToast("Blueprint Saved in High Res!", true);
+    };
+
+    const oldDataURL = HTMLCanvasElement.prototype.toDataURL;
+    HTMLCanvasElement.prototype.toDataURL = function(t, e) {
+        if(this.hasAttribute('data-sniper')) return this.getAttribute('data-sniper');
+        return oldDataURL.call(this, t, e);
+    };
+
+    // --- 5. CRM DASHBOARD & V3 VAULT EXPORT ---
+    document.getElementById('btn-legacy-dash')?.addEventListener('click', () => {
+        const client = document.getElementById('customerName')?.value || document.getElementById('input-client-name')?.value || 'Client';
+        const pc = document.getElementById('postCode')?.value || document.getElementById('input-postcode')?.value || '';
+        const notes = document.getElementById('customerNotes')?.value || '';
+        const vLogs = S.dashboardLogs.length > 0 ? S.dashboardLogs.join('\\n') : "No structural vectors recorded.";
+        
+        const txt = `=== DASHBOARD EXPORT ===\\nClient: ${client}\\nPostcode: ${pc}\\n\\n-- STRUCTURAL VECTORS --\\n${vLogs}\\n\\n-- NOTES --\\n${notes}\\n======================`;
+        navigator.clipboard.writeText(txt).then(() => { if(window.showToast) window.showToast("Copied for Dashboard!", true); });
+    });
+
+    document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
+        if(!window.db) { alert("Firebase is not initialized in this file."); return; }
+        if(window.showToast) window.showToast("Pushing to V3 Vault...", true);
+        try {
+            const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+            const fCv = document.getElementById('canvasFront');
+            const fImg = fCv && fCv.hasAttribute('data-sniper') ? fCv.getAttribute('data-sniper') : null;
+            
+            const docRef = await addDoc(collection(window.db, "surveys"), {
+                clientName: document.getElementById('customerName')?.value || 'Unnamed Client',
+                userId: "Designer",
+                updatedAt: serverTimestamp(),
+                data: {
+                    inputs: {
+                        postCode: document.getElementById('postCode')?.value || 'N/A',
+                        clientNum: document.getElementById('customerNumber')?.value || 'survey123',
+                        roofType: document.getElementById('roofType')?.value || 'Edwardian roof',
+                        _pipelineStatus: "1. Consultation & Survey"
+                    }
+                },
+                images: { frontElevation: fImg || null }
+            });
+            
+            const notes = document.getElementById('customerNotes')?.value;
+            if(notes) await addDoc(collection(window.db, `surveys/${docRef.id}/internalNotes`), { content: notes, visibility: 'external', timestamp: serverTimestamp() });
+            
+            if(window.showToast) window.showToast("Successfully Synced to V3 Vault!", true);
+        } catch(e) { console.error(e); if(window.showToast) window.showToast("V3 Sync Failed", false); }
+    });
+
+});
+</script>
 </body>
 </html>
