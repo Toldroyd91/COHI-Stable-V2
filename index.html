@@ -121,6 +121,7 @@
                 </div>
             </div>
         </section>
+
         <section class="section-card">
             <h3 class="section-header">3. Technical Sub-Structure & Data</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -180,7 +181,6 @@
             </div>
         </section>
     </main>
-
     <script type="module" src="app.js"></script>
     <script src="pdfGenerator.js"></script>
     
@@ -192,329 +192,386 @@
         }
     </script>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("Pinnacle V7 Sniper Injector Running...");
+    <script type="module">
+        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    // Helper to grab values safely
-    const getVal = (id1, id2) => document.getElementById(id1)?.value || document.getElementById(id2)?.value || 'N/A';
+        // ⚠️ Check these match your Firebase Console
+        const appConfig = {
+            apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", 
+            authDomain: "cohi-survey-engine.firebaseapp.com",
+            projectId: "cohi-survey-engine"
+        };
 
-    // Apply defaults silently
-    setTimeout(() => {
-        const nameInp = document.getElementById('customerName') || document.getElementById('input-client-name');
-        if(nameInp && !nameInp.value) nameInp.value = "Mr. Dall";
-        const roofInp = document.getElementById('roofType') || document.getElementById('input-roof-type');
-        if(roofInp) roofInp.value = "Edwardian roof";
-    }, 500);
+        const app = !getApps().length ? initializeApp(appConfig) : getApp();
+        const auth = getAuth(app);
 
-    // --- 1. THE UI ASSASSIN ---
-    // This aggressively hunts down and hides your old Fabric.js buttons so they stop hijacking the screen.
-    setInterval(() => {
-        document.querySelectorAll('button').forEach(btn => {
-            const txt = btn.innerText.toLowerCase();
-            if (txt.includes('draw line') || txt.includes('add text') || txt.includes('undo') || txt.includes('clear')) {
-                btn.style.display = 'none';
+        const authGate = document.getElementById('authGate');
+        const mainNav = document.getElementById('mainNav');
+        const mainApp = document.getElementById('mainApp');
+        const loginBtn = document.getElementById('btnLogin');
+        const logoutBtn = document.getElementById('btnLogout');
+        const authError = document.getElementById('authError');
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                authGate.style.display = 'none';
+                if(mainNav) mainNav.style.display = 'flex';
+                if(mainApp) mainApp.style.display = 'block';
+                
+                const designerName = user.email.split('@')[0];
+                const nameInput = document.getElementById('input-designer');
+                if(nameInput) nameInput.value = designerName.charAt(0).toUpperCase() + designerName.slice(1);
+            } else {
+                authGate.style.display = 'flex';
+                if(mainNav) mainNav.style.display = 'none';
+                if(mainApp) mainApp.style.display = 'none';
             }
         });
-        // Also hide the fabric canvas wrapper to stop it from eating touch events
-        document.querySelectorAll('.canvas-container').forEach(c => {
-            if(!c.classList.contains('sniper-cleared')) {
-                c.style.display = 'none';
-                c.classList.add('sniper-cleared');
-            }
-        });
-    }, 500);
 
-    // --- 2. INJECT SYNC BUTTONS ---
-    const pdfBtn = document.getElementById('generateCustomerPdfBtn') || document.getElementById('generateInternalPdfBtn');
-    if(pdfBtn && !document.getElementById('btn-legacy-dash')) {
-        const container = document.createElement('div');
-        container.style.cssText = "display:flex; gap:10px; margin-top:15px; justify-content:center; flex-wrap:wrap; width:100%;";
-        container.innerHTML = `
-            <button id="btn-legacy-dash" style="background:#1A1A1A; color:#0dcaf0; border:1px solid #0dcaf0; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">📋 Copy to CRM</button>
-            <button id="btn-sync-v3" style="background:#10b981; color:white; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">☁️ Sync to V3 Vault</button>
-        `;
-        pdfBtn.parentNode.insertBefore(container, pdfBtn.nextSibling);
-    }
-
-    // --- 3. CRM EXPORT COMPILER ---
-    document.addEventListener('click', (e) => {
-        if(e.target.id === 'btn-legacy-dash') {
-            const client = getVal('customerName', 'input-client-name');
-            const pc = getVal('postCode', 'input-postcode');
-            const build = getVal('buildType', 'input-build-type');
-            const roof = getVal('roofType', 'input-roof-type');
-            const size = getVal('proposedSize', 'input-proposed-size');
-            const found = getVal('foundations', 'input-foundations');
-            const drain = getVal('drainage', 'input-drainage');
-            const brick = getVal('brickMatch', 'input-brick-match');
-            const notes = getVal('customerNotes', 'input-notes') || 'None';
-            
-            const vLogs = (window.sniperLogs && window.sniperLogs.length > 0) ? window.sniperLogs.join('\n') : "No structural vectors recorded.";
-            
-            const txt = `=== COHI CRM SURVEY EXPORT ===\nDate: ${new Date().toLocaleDateString()}\nClient: ${client}\nPostcode: ${pc}\n\n-- PROPERTY SPECIFICATIONS --\nBuild Category: ${build}\nRoof System: ${roof}\nFootprint: ${size} sqm\nFoundations: ${found}\nDrainage: ${drain}\nBrick Match: ${brick}\n\n-- STRUCTURAL VECTORS --\n${vLogs}\n\n-- SITE NOTES --\n${notes}\n==============================`;
-            
-            navigator.clipboard.writeText(txt).then(() => { if(window.showToast) window.showToast("Copied full payload to CRM!", true); });
-        }
-    });
-
-    // --- 4. FIREBASE V3 SYNC ---
-    document.addEventListener('click', async (e) => {
-        if(e.target.id === 'btn-sync-v3') {
-            if(window.showToast) window.showToast("Authenticating and Pushing to V3...", true);
-            try {
-                const { initializeApp, getApps, getApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-                const { getFirestore, collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+        if(loginBtn) {
+            loginBtn.addEventListener('click', () => {
+                const email = document.getElementById('authEmail').value.trim();
+                const pass = document.getElementById('authPassword').value;
                 
-                const appConfig = { apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", authDomain: "cohi-survey-engine.firebaseapp.com", projectId: "cohi-survey-engine" };
-                const app = !getApps().length ? initializeApp(appConfig) : getApp();
-                const db = getFirestore(app);
-
-                const fCv = document.getElementById('canvasFront');
-                const fImg = fCv && fCv.hasAttribute('data-sniper') ? fCv.getAttribute('data-sniper') : null;
-                
-                const docRef = await addDoc(collection(db, "surveys"), {
-                    clientName: getVal('customerName', 'input-client-name'),
-                    userId: getVal('input-designer', 'designerName') || 'Designer',
-                    updatedAt: serverTimestamp(),
-                    data: {
-                        inputs: {
-                            postCode: getVal('postCode', 'input-postcode'),
-                            clientNum: getVal('customerNumber', 'input-customer-num') || 'survey123',
-                            roofType: getVal('roofType', 'input-roof-type'),
-                            buildType: getVal('buildType', 'input-build-type'),
-                            proposedSize: getVal('proposedSize', 'input-proposed-size'),
-                            _pipelineStatus: "1. Consultation & Survey"
-                        }
-                    },
-                    images: { frontElevation: fImg || null }
-                });
-                
-                const notes = getVal('customerNotes', 'input-notes');
-                if(notes && notes !== 'N/A') {
-                    await addDoc(collection(db, `surveys/${docRef.id}/internalNotes`), { content: notes, visibility: 'external', timestamp: serverTimestamp() });
+                if(!email || !pass) {
+                    authError.innerText = "Please enter both email and password.";
+                    authError.style.display = 'block';
+                    return;
                 }
                 
-                if(window.showToast) window.showToast("Successfully Synced to V3 Vault!", true);
-            } catch(err) { console.error(err); if(window.showToast) window.showToast("V3 Sync Failed", false); }
+                loginBtn.innerText = "Authenticating...";
+                signInWithEmailAndPassword(auth, email, pass).catch(err => {
+                    console.error("Auth Failed:", err);
+                    authError.innerText = "Invalid Credentials. Access Denied.";
+                    authError.style.display = 'block';
+                    loginBtn.innerText = "Authenticate";
+                });
+            });
         }
-    });
 
-    // --- 5. BUILD SNIPER MODAL UI ---
-    const modal = document.createElement('div');
-    modal.id = 'sniper-modal';
-    modal.style.cssText = "display:none; position:fixed; inset:0; z-index:999999; background:#0b1118; font-family:system-ui, sans-serif; touch-action:none;";
-    modal.innerHTML = `
-        <div id="sniper-viewport" style="position:absolute; inset:0; overflow:hidden;">
-            <div id="sniper-container" style="transform-origin:0 0; position:absolute; will-change:transform;">
-                <canvas id="sniper-base" style="display:block;"></canvas>
-                <canvas id="sniper-vectors" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
-                <canvas id="sniper-ghost" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
-            </div>
-            
-            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); pointer-events:none; z-index:50;">
-                <div style="position:absolute; width:44px; height:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
-                <div style="position:absolute; height:44px; width:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
-                <div style="position:absolute; width:4px; height:4px; background:#fff; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
-            </div>
+        if(logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                signOut(auth);
+            });
+        }
+    </script>
 
-            <div style="position:absolute; inset:0; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:20px; padding-bottom:env(safe-area-inset-bottom, 30px); padding-top:env(safe-area-inset-top, 20px);">
-                <div style="display:flex; justify-content:space-between; pointer-events:auto;">
-                    <button id="sniper-cancel" style="background:rgba(0,0,0,0.8); color:white; border:1px solid #444; padding:12px 24px; border-radius:8px; font-weight:bold;">Cancel</button>
-                    <button id="sniper-save" style="background:#10b981; color:white; border:none; padding:12px 24px; border-radius:8px; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.4);">Save Blueprint</button>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log("Pinnacle V7 Sniper Injector Running...");
+
+        const getVal = (id1, id2) => document.getElementById(id1)?.value || document.getElementById(id2)?.value || 'N/A';
+
+        setTimeout(() => {
+            const nameInp = document.getElementById('customerName') || document.getElementById('input-client-name');
+            if(nameInp && !nameInp.value) nameInp.value = "Mr. Dall";
+            const roofInp = document.getElementById('roofType') || document.getElementById('input-roof-type');
+            if(roofInp) roofInp.value = "Edwardian roof";
+        }, 500);
+
+        // --- 1. THE UI ASSASSIN ---
+        setInterval(() => {
+            document.querySelectorAll('button').forEach(btn => {
+                const txt = btn.innerText.toLowerCase();
+                if (txt.includes('draw line') || txt.includes('add text') || txt.includes('undo') || txt.includes('clear')) {
+                    btn.style.display = 'none';
+                }
+            });
+            document.querySelectorAll('.canvas-container').forEach(c => {
+                if(!c.classList.contains('sniper-cleared')) {
+                    c.style.display = 'none';
+                    c.classList.add('sniper-cleared');
+                }
+            });
+        }, 500);
+
+        // --- 2. INJECT SYNC BUTTONS ---
+        const pdfBtn = document.getElementById('generateCustomerPdfBtn') || document.getElementById('generateInternalPdfBtn');
+        if(pdfBtn && !document.getElementById('btn-legacy-dash')) {
+            const container = document.createElement('div');
+            container.style.cssText = "display:flex; gap:10px; margin-top:15px; justify-content:center; flex-wrap:wrap; width:100%;";
+            container.innerHTML = `
+                <button id="btn-legacy-dash" style="background:#1A1A1A; color:#0dcaf0; border:1px solid #0dcaf0; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">📋 Copy to CRM</button>
+                <button id="btn-sync-v3" style="background:#10b981; color:white; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">☁️ Sync to V3 Vault</button>
+            `;
+            pdfBtn.parentNode.insertBefore(container, pdfBtn.nextSibling);
+        }
+
+        // --- 3. CRM EXPORT COMPILER ---
+        document.addEventListener('click', (e) => {
+            if(e.target.id === 'btn-legacy-dash') {
+                const client = getVal('customerName', 'input-client-name');
+                const pc = getVal('postCode', 'input-postcode');
+                const build = getVal('buildType', 'input-build-type');
+                const roof = getVal('roofType', 'input-roof-type');
+                const size = getVal('proposedSize', 'input-proposed-size');
+                const found = getVal('foundations', 'input-foundations');
+                const drain = getVal('drainage', 'input-drainage');
+                const brick = getVal('brickMatch', 'input-brick-match');
+                const notes = getVal('customerNotes', 'input-notes') || 'None';
+                
+                const vLogs = (window.sniperLogs && window.sniperLogs.length > 0) ? window.sniperLogs.join('\n') : "No structural vectors recorded.";
+                
+                const txt = `=== COHI CRM SURVEY EXPORT ===\nDate: ${new Date().toLocaleDateString()}\nClient: ${client}\nPostcode: ${pc}\n\n-- PROPERTY SPECIFICATIONS --\nBuild Category: ${build}\nRoof System: ${roof}\nFootprint: ${size} sqm\nFoundations: ${found}\nDrainage: ${drain}\nBrick Match: ${brick}\n\n-- STRUCTURAL VECTORS --\n${vLogs}\n\n-- SITE NOTES --\n${notes}\n==============================`;
+                
+                navigator.clipboard.writeText(txt).then(() => { if(window.showToast) window.showToast("Copied full payload to CRM!", true); });
+            }
+        });
+
+        // --- 4. FIREBASE V3 SYNC ---
+        document.addEventListener('click', async (e) => {
+            if(e.target.id === 'btn-sync-v3') {
+                if(window.showToast) window.showToast("Authenticating and Pushing to V3...", true);
+                try {
+                    const { initializeApp, getApps, getApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+                    const { getFirestore, collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+                    
+                    const appConfig = { apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", authDomain: "cohi-survey-engine.firebaseapp.com", projectId: "cohi-survey-engine" };
+                    const app = !getApps().length ? initializeApp(appConfig) : getApp();
+                    const db = getFirestore(app);
+
+                    const fCv = document.getElementById('canvasFront');
+                    const fImg = fCv && fCv.hasAttribute('data-sniper') ? fCv.getAttribute('data-sniper') : null;
+                    
+                    const docRef = await addDoc(collection(db, "surveys"), {
+                        clientName: getVal('customerName', 'input-client-name'),
+                        userId: getVal('input-designer', 'designerName') || 'Designer',
+                        updatedAt: serverTimestamp(),
+                        data: {
+                            inputs: {
+                                postCode: getVal('postCode', 'input-postcode'),
+                                clientNum: getVal('customerNumber', 'input-customer-num') || 'survey123',
+                                roofType: getVal('roofType', 'input-roof-type'),
+                                buildType: getVal('buildType', 'input-build-type'),
+                                proposedSize: getVal('proposedSize', 'input-proposed-size'),
+                                _pipelineStatus: "1. Consultation & Survey"
+                            }
+                        },
+                        images: { frontElevation: fImg || null }
+                    });
+                    
+                    const notes = getVal('customerNotes', 'input-notes');
+                    if(notes && notes !== 'N/A') {
+                        await addDoc(collection(db, `surveys/${docRef.id}/internalNotes`), { content: notes, visibility: 'external', timestamp: serverTimestamp() });
+                    }
+                    
+                    if(window.showToast) window.showToast("Successfully Synced to V3 Vault!", true);
+                } catch(err) { console.error(err); if(window.showToast) window.showToast("V3 Sync Failed", false); }
+            }
+        });
+
+        // --- 5. BUILD SNIPER MODAL UI ---
+        const modal = document.createElement('div');
+        modal.id = 'sniper-modal';
+        modal.style.cssText = "display:none; position:fixed; inset:0; z-index:999999; background:#0b1118; font-family:system-ui, sans-serif; touch-action:none;";
+        modal.innerHTML = `
+            <div id="sniper-viewport" style="position:absolute; inset:0; overflow:hidden;">
+                <div id="sniper-container" style="transform-origin:0 0; position:absolute; will-change:transform;">
+                    <canvas id="sniper-base" style="display:block;"></canvas>
+                    <canvas id="sniper-vectors" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+                    <canvas id="sniper-ghost" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
                 </div>
                 
-                <div style="pointer-events:auto; display:flex; flex-direction:column; gap:15px;">
-                    <div style="align-self:flex-end; display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:6px;">
-                        <div class="nudge" data-x="0" data-y="-2" style="grid-column:2; grid-row:1; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↑</div>
-                        <div class="nudge" data-x="-2" data-y="0" style="grid-column:1; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">←</div>
-                        <div class="nudge" data-x="2" data-y="0" style="grid-column:3; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">→</div>
-                        <div class="nudge" data-x="0" data-y="2" style="grid-column:2; grid-row:3; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↓</div>
+                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); pointer-events:none; z-index:50;">
+                    <div style="position:absolute; width:44px; height:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+                    <div style="position:absolute; height:44px; width:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+                    <div style="position:absolute; width:4px; height:4px; background:#fff; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+                </div>
+
+                <div style="position:absolute; inset:0; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:20px; padding-bottom:env(safe-area-inset-bottom, 30px); padding-top:env(safe-area-inset-top, 20px);">
+                    <div style="display:flex; justify-content:space-between; pointer-events:auto;">
+                        <button id="sniper-cancel" style="background:rgba(0,0,0,0.8); color:white; border:1px solid #444; padding:12px 24px; border-radius:8px; font-weight:bold;">Cancel</button>
+                        <button id="sniper-save" style="background:#10b981; color:white; border:none; padding:12px 24px; border-radius:8px; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.4);">Save Blueprint</button>
                     </div>
-                    <button id="sniper-action" style="width:100%; padding:20px; background:#0dcaf0; border:none; border-radius:12px; font-size:18px; font-weight:900; text-transform:uppercase; box-shadow:0 6px 20px rgba(13,202,240,0.3);">🎯 Place Anchor</button>
+                    
+                    <div style="pointer-events:auto; display:flex; flex-direction:column; gap:15px;">
+                        <div style="align-self:flex-end; display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:6px;">
+                            <div class="nudge" data-x="0" data-y="-2" style="grid-column:2; grid-row:1; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↑</div>
+                            <div class="nudge" data-x="-2" data-y="0" style="grid-column:1; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">←</div>
+                            <div class="nudge" data-x="2" data-y="0" style="grid-column:3; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">→</div>
+                            <div class="nudge" data-x="0" data-y="2" style="grid-column:2; grid-row:3; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↓</div>
+                        </div>
+                        <button id="sniper-action" style="width:100%; padding:20px; background:#0dcaf0; border:none; border-radius:12px; font-size:18px; font-weight:900; text-transform:uppercase; box-shadow:0 6px 20px rgba(13,202,240,0.3);">🎯 Place Anchor</button>
+                    </div>
                 </div>
             </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
+        `;
+        document.body.appendChild(modal);
 
-    // --- 6. DYNAMIC FILE INPUT HOOKING ---
-    window.sniperLogs = [];
-    const S = { activeSuffix: 'Front', scale: 1, offsetX: 0, offsetY: 0, isDragging: false, lastTouch: {x:0, y:0}, initialPinch: null, anchor: null, vectors: [] };
-    
-    document.querySelectorAll('input[type="file"]').forEach(input => {
-        if(input.dataset.hooked) return;
-        input.dataset.hooked = "true";
-
-        const editBtn = document.createElement('button');
-        editBtn.innerHTML = "🎯 LAUNCH CROSSHAIR TOOL";
-        editBtn.style.cssText = "width:100%; padding:16px; border-radius:8px; background:#0dcaf0; color:black; font-weight:900; border:none; margin-top:15px; display:none; cursor:pointer; box-shadow:0 4px 15px rgba(13,202,240,0.4); text-transform:uppercase;";
+        // --- 6. DYNAMIC FILE INPUT HOOKING ---
+        window.sniperLogs = [];
+        const S = { activeSuffix: 'Front', scale: 1, offsetX: 0, offsetY: 0, isDragging: false, lastTouch: {x:0, y:0}, initialPinch: null, anchor: null, vectors: [] };
         
-        input.parentNode.insertBefore(editBtn, input.nextSibling);
+        document.querySelectorAll('input[type="file"]').forEach(input => {
+            if(input.dataset.hooked) return;
+            input.dataset.hooked = "true";
 
-        input.addEventListener('change', e => {
-            if(e.target.files.length > 0) editBtn.style.display = 'block';
-        });
-
-        editBtn.addEventListener('click', e => {
-            e.preventDefault();
+            const editBtn = document.createElement('button');
+            editBtn.innerHTML = "🎯 LAUNCH CROSSHAIR TOOL";
+            editBtn.style.cssText = "width:100%; padding:16px; border-radius:8px; background:#0dcaf0; color:black; font-weight:900; border:none; margin-top:15px; display:none; cursor:pointer; box-shadow:0 4px 15px rgba(13,202,240,0.4); text-transform:uppercase;";
             
-            const container = input.closest('div, section, .border');
-            const oldCanvas = container ? container.querySelector('canvas') : null;
-            if(oldCanvas) S.activeSuffix = oldCanvas.id.replace('canvas', '') || 'Misc';
+            input.parentNode.insertBefore(editBtn, input.nextSibling);
 
-            const file = input.files[0];
-            if(!file) return;
+            input.addEventListener('change', e => {
+                if(e.target.files.length > 0) editBtn.style.display = 'block';
+            });
 
-            const url = URL.createObjectURL(file);
-            const img = new Image();
-            img.onload = () => {
-                const baseCanvas = document.getElementById('sniper-base');
-                const vecCanvas = document.getElementById('sniper-vectors');
-                const ghostCanvas = document.getElementById('sniper-ghost');
+            editBtn.addEventListener('click', e => {
+                e.preventDefault();
                 
-                const w = img.naturalWidth; const h = img.naturalHeight;
-                baseCanvas.width = vecCanvas.width = ghostCanvas.width = w;
-                baseCanvas.height = vecCanvas.height = ghostCanvas.height = h;
-                
-                baseCanvas.getContext('2d').drawImage(img, 0, 0);
-                S.vectors = []; S.anchor = null; 
-                
-                S.offsetX = (window.innerWidth - w)/2; S.offsetY = (window.innerHeight - h)/2;
-                S.scale = Math.min(window.innerWidth/w, window.innerHeight/h) * 0.9;
-                
-                updateTransform();
-                modal.style.display = 'block';
-            };
-            img.src = url;
+                const container = input.closest('div, section, .border');
+                const oldCanvas = container ? container.querySelector('canvas') : null;
+                if(oldCanvas) S.activeSuffix = oldCanvas.id.replace('canvas', '') || 'Misc';
+
+                const file = input.files[0];
+                if(!file) return;
+
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    const baseCanvas = document.getElementById('sniper-base');
+                    const vecCanvas = document.getElementById('sniper-vectors');
+                    const ghostCanvas = document.getElementById('sniper-ghost');
+                    
+                    const w = img.naturalWidth; const h = img.naturalHeight;
+                    baseCanvas.width = vecCanvas.width = ghostCanvas.width = w;
+                    baseCanvas.height = vecCanvas.height = ghostCanvas.height = h;
+                    
+                    baseCanvas.getContext('2d').drawImage(img, 0, 0);
+                    S.vectors = []; S.anchor = null; 
+                    
+                    S.offsetX = (window.innerWidth - w)/2; S.offsetY = (window.innerHeight - h)/2;
+                    S.scale = Math.min(window.innerWidth/w, window.innerHeight/h) * 0.9;
+                    
+                    updateTransform();
+                    modal.style.display = 'block';
+                };
+                img.src = url;
+            });
         });
-    });
 
-    // --- 7. SNIPER ENGINE MATH ---
-    const vp = document.getElementById('sniper-viewport');
-    const container = document.getElementById('sniper-container');
-    const vecCtx = document.getElementById('sniper-vectors').getContext('2d');
-    const ghostCtx = document.getElementById('sniper-ghost').getContext('2d');
-    const actionBtn = document.getElementById('sniper-action');
+        // --- 7. SNIPER ENGINE MATH ---
+        const vp = document.getElementById('sniper-viewport');
+        const container = document.getElementById('sniper-container');
+        const vecCtx = document.getElementById('sniper-vectors').getContext('2d');
+        const ghostCtx = document.getElementById('sniper-ghost').getContext('2d');
+        const actionBtn = document.getElementById('sniper-action');
 
-    function renderVectors() {
-        const cvs = document.getElementById('sniper-vectors');
-        vecCtx.clearRect(0,0, cvs.width, cvs.height);
-        const lw = 4 / S.scale; const fs = 24 / S.scale; const pad = 10 / S.scale;
+        function renderVectors() {
+            const cvs = document.getElementById('sniper-vectors');
+            vecCtx.clearRect(0,0, cvs.width, cvs.height);
+            const lw = 4 / S.scale; const fs = 24 / S.scale; const pad = 10 / S.scale;
 
-        S.vectors.forEach(v => {
-            vecCtx.beginPath(); vecCtx.moveTo(v.x1, v.y1); vecCtx.lineTo(v.x2, v.y2);
-            vecCtx.lineWidth = lw; vecCtx.strokeStyle = '#0dcaf0'; vecCtx.stroke();
-            if(v.text) {
-                const mx = (v.x1 + v.x2)/2; const my = (v.y1 + v.y2)/2;
-                vecCtx.fillStyle = '#1A1A1A'; vecCtx.font = `bold ${fs}px sans-serif`;
-                const tw = vecCtx.measureText(v.text).width;
-                vecCtx.fillRect(mx - tw/2 - pad, my - fs, tw + pad*2, fs + pad*2);
-                vecCtx.fillStyle = '#0dcaf0'; vecCtx.textAlign = 'center'; vecCtx.textBaseline = 'middle';
-                vecCtx.fillText(v.text, mx, my);
+            S.vectors.forEach(v => {
+                vecCtx.beginPath(); vecCtx.moveTo(v.x1, v.y1); vecCtx.lineTo(v.x2, v.y2);
+                vecCtx.lineWidth = lw; vecCtx.strokeStyle = '#0dcaf0'; vecCtx.stroke();
+                if(v.text) {
+                    const mx = (v.x1 + v.x2)/2; const my = (v.y1 + v.y2)/2;
+                    vecCtx.fillStyle = '#1A1A1A'; vecCtx.font = `bold ${fs}px sans-serif`;
+                    const tw = vecCtx.measureText(v.text).width;
+                    vecCtx.fillRect(mx - tw/2 - pad, my - fs, tw + pad*2, fs + pad*2);
+                    vecCtx.fillStyle = '#0dcaf0'; vecCtx.textAlign = 'center'; vecCtx.textBaseline = 'middle';
+                    vecCtx.fillText(v.text, mx, my);
+                }
+            });
+        }
+
+        function updateTransform() {
+            container.style.transform = `translate(${S.offsetX}px, ${S.offsetY}px) scale(${S.scale})`;
+            renderVectors(); 
+            
+            const gCvs = document.getElementById('sniper-ghost');
+            ghostCtx.clearRect(0,0, gCvs.width, gCvs.height);
+            if(S.anchor) {
+                const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
+                ghostCtx.beginPath(); ghostCtx.moveTo(S.anchor.x, S.anchor.y); ghostCtx.lineTo(cur.x, cur.y);
+                ghostCtx.lineWidth = 4 / S.scale; ghostCtx.strokeStyle = '#0dcaf0'; 
+                ghostCtx.setLineDash([15/S.scale, 15/S.scale]); ghostCtx.stroke(); ghostCtx.setLineDash([]);
             }
-        });
-    }
+        }
 
-    function updateTransform() {
-        container.style.transform = `translate(${S.offsetX}px, ${S.offsetY}px) scale(${S.scale})`;
-        renderVectors(); 
-        
-        const gCvs = document.getElementById('sniper-ghost');
-        ghostCtx.clearRect(0,0, gCvs.width, gCvs.height);
-        if(S.anchor) {
+        vp.addEventListener('touchstart', e => {
+            if(e.target.closest('button') || e.target.closest('.nudge')) return;
+            e.preventDefault();
+            if(e.touches.length === 1) { S.isDragging = true; S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; }
+            else if(e.touches.length === 2) { S.isDragging = false; S.initialPinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
+        }, {passive:false});
+
+        vp.addEventListener('touchmove', e => {
+            if(e.target.closest('button') || e.target.closest('.nudge')) return;
+            e.preventDefault();
+            if(e.touches.length === 1 && S.isDragging) {
+                S.offsetX += e.touches[0].clientX - S.lastTouch.x; S.offsetY += e.touches[0].clientY - S.lastTouch.y;
+                S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; updateTransform();
+            } else if(e.touches.length === 2 && S.initialPinch) {
+                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                const oldScale = S.scale; S.scale *= (dist / S.initialPinch);
+                if(S.scale < 0.1) S.scale = 0.1; if(S.scale > 15) S.scale = 15;
+                const cx = window.innerWidth/2; const cy = window.innerHeight/2;
+                S.offsetX = cx - ((cx - S.offsetX) / oldScale * S.scale); S.offsetY = cy - ((cy - S.offsetY) / oldScale * S.scale);
+                S.initialPinch = dist; updateTransform();
+            }
+        }, {passive:false});
+
+        vp.addEventListener('touchend', e => { if(e.touches.length < 2) S.initialPinch = null; if(e.touches.length === 0) S.isDragging = false; });
+
+        document.querySelectorAll('.nudge').forEach(btn => {
+            btn.addEventListener('touchstart', e => {
+                e.preventDefault();
+                S.offsetX -= parseInt(btn.dataset.x) * S.scale; S.offsetY -= parseInt(btn.dataset.y) * S.scale; updateTransform();
+            });
+        });
+
+        actionBtn.addEventListener('touchstart', e => {
+            e.preventDefault();
             const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
-            ghostCtx.beginPath(); ghostCtx.moveTo(S.anchor.x, S.anchor.y); ghostCtx.lineTo(cur.x, cur.y);
-            ghostCtx.lineWidth = 4 / S.scale; ghostCtx.strokeStyle = '#0dcaf0'; 
-            ghostCtx.setLineDash([15/S.scale, 15/S.scale]); ghostCtx.stroke(); ghostCtx.setLineDash([]);
-        }
-    }
-
-    // Mobile Touch Handlers
-    vp.addEventListener('touchstart', e => {
-        if(e.target.closest('button') || e.target.closest('.nudge')) return;
-        e.preventDefault();
-        if(e.touches.length === 1) { S.isDragging = true; S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; }
-        else if(e.touches.length === 2) { S.isDragging = false; S.initialPinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
-    }, {passive:false});
-
-    vp.addEventListener('touchmove', e => {
-        if(e.target.closest('button') || e.target.closest('.nudge')) return;
-        e.preventDefault();
-        if(e.touches.length === 1 && S.isDragging) {
-            S.offsetX += e.touches[0].clientX - S.lastTouch.x; S.offsetY += e.touches[0].clientY - S.lastTouch.y;
-            S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; updateTransform();
-        } else if(e.touches.length === 2 && S.initialPinch) {
-            const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-            const oldScale = S.scale; S.scale *= (dist / S.initialPinch);
-            if(S.scale < 0.1) S.scale = 0.1; if(S.scale > 15) S.scale = 15;
-            const cx = window.innerWidth/2; const cy = window.innerHeight/2;
-            S.offsetX = cx - ((cx - S.offsetX) / oldScale * S.scale); S.offsetY = cy - ((cy - S.offsetY) / oldScale * S.scale);
-            S.initialPinch = dist; updateTransform();
-        }
-    }, {passive:false});
-
-    vp.addEventListener('touchend', e => { if(e.touches.length < 2) S.initialPinch = null; if(e.touches.length === 0) S.isDragging = false; });
-
-    document.querySelectorAll('.nudge').forEach(btn => {
-        btn.addEventListener('touchstart', e => {
-            e.preventDefault();
-            S.offsetX -= parseInt(btn.dataset.x) * S.scale; S.offsetY -= parseInt(btn.dataset.y) * S.scale; updateTransform();
+            if(!S.anchor) {
+                S.anchor = cur; actionBtn.innerText = "✅ Confirm Endpoint"; actionBtn.style.background = "#10b981"; updateTransform();
+            } else {
+                const measurement = prompt("Enter Measurement (e.g., 2400mm):");
+                if(measurement) {
+                    S.vectors.push({ x1: S.anchor.x, y1: S.anchor.y, x2: cur.x, y2: cur.y, text: measurement });
+                    window.sniperLogs.push(`${S.activeSuffix} Elevation: ${measurement}`);
+                }
+                S.anchor = null; actionBtn.innerText = "🎯 Place Anchor"; actionBtn.style.background = "#0dcaf0"; updateTransform();
+            }
         });
-    });
 
-    actionBtn.addEventListener('touchstart', e => {
-        e.preventDefault();
-        const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
-        if(!S.anchor) {
-            S.anchor = cur; actionBtn.innerText = "✅ Confirm Endpoint"; actionBtn.style.background = "#10b981"; updateTransform();
-        } else {
-            const measurement = prompt("Enter Measurement (e.g., 2400mm):");
-            if(measurement) {
-                S.vectors.push({ x1: S.anchor.x, y1: S.anchor.y, x2: cur.x, y2: cur.y, text: measurement });
-                window.sniperLogs.push(`${S.activeSuffix} Elevation: ${measurement}`);
-            }
-            S.anchor = null; actionBtn.innerText = "🎯 Place Anchor"; actionBtn.style.background = "#0dcaf0"; updateTransform();
-        }
-    });
+        document.getElementById('sniper-cancel').onclick = () => modal.style.display = 'none';
 
-    // Save Logic & PDF Intercept
-    document.getElementById('sniper-cancel').onclick = () => modal.style.display = 'none';
-
-    document.getElementById('sniper-save').onclick = () => {
-        const baseCanvas = document.getElementById('sniper-base');
-        const vCanvas = document.getElementById('sniper-vectors');
-        const comp = document.createElement('canvas'); comp.width = baseCanvas.width; comp.height = baseCanvas.height;
-        const ctx = comp.getContext('2d');
-        ctx.drawImage(baseCanvas, 0,0); ctx.drawImage(vCanvas, 0,0);
-        
-        const b64 = comp.toDataURL('image/jpeg', 0.9);
-        const targetCanvas = document.getElementById(`canvas${S.activeSuffix}`);
-        if(targetCanvas) {
-            targetCanvas.setAttribute('data-sniper', b64);
+        document.getElementById('sniper-save').onclick = () => {
+            const baseCanvas = document.getElementById('sniper-base');
+            const vCanvas = document.getElementById('sniper-vectors');
+            const comp = document.createElement('canvas'); comp.width = baseCanvas.width; comp.height = baseCanvas.height;
+            const ctx = comp.getContext('2d');
+            ctx.drawImage(baseCanvas, 0,0); ctx.drawImage(vCanvas, 0,0);
             
-            // Create a locked image preview to completely bypass Fabric.js rendering
-            const wrapper = targetCanvas.closest('div');
-            let preview = wrapper.querySelector('.sniper-preview-img');
-            if(!preview) {
-                preview = document.createElement('img');
-                preview.className = 'sniper-preview-img';
-                preview.style.cssText = "width:100%; border-radius:8px; margin-top:10px; border:2px solid #0dcaf0;";
-                wrapper.appendChild(preview);
+            const b64 = comp.toDataURL('image/jpeg', 0.9);
+            const targetCanvas = document.getElementById(`canvas${S.activeSuffix}`);
+            if(targetCanvas) {
+                targetCanvas.setAttribute('data-sniper', b64);
+                
+                const wrapper = targetCanvas.closest('div');
+                let preview = wrapper.querySelector('.sniper-preview-img');
+                if(!preview) {
+                    preview = document.createElement('img');
+                    preview.className = 'sniper-preview-img';
+                    preview.style.cssText = "width:100%; border-radius:8px; margin-top:10px; border:2px solid #0dcaf0;";
+                    wrapper.appendChild(preview);
+                }
+                preview.src = b64;
             }
-            preview.src = b64;
-        }
-        modal.style.display = 'none';
-        if(window.showToast) window.showToast("Blueprint Saved in High Res!", true);
-    };
+            modal.style.display = 'none';
+            if(window.showToast) window.showToast("Blueprint Saved in High Res!", true);
+        };
 
-    const oldDataURL = HTMLCanvasElement.prototype.toDataURL;
-    HTMLCanvasElement.prototype.toDataURL = function(t, e) {
-        if(this.hasAttribute('data-sniper')) return this.getAttribute('data-sniper');
-        return oldDataURL.call(this, t, e);
-    };
-
-});
-</script>
+        const oldDataURL = HTMLCanvasElement.prototype.toDataURL;
+        HTMLCanvasElement.prototype.toDataURL = function(t, e) {
+            if(this.hasAttribute('data-sniper')) return this.getAttribute('data-sniper');
+            return oldDataURL.call(this, t, e);
+        };
+    });
+    </script>
 </body>
 </html>
