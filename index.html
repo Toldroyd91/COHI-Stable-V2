@@ -1050,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 });
 </script>
-<script type="module">
+    <script type="module">
     // 1. DYNAMIC UNIFIED AUTH GATE
     const authGate = document.createElement('div');
     authGate.id = 'unifiedAuthGate';
@@ -1072,21 +1072,15 @@ document.addEventListener('DOMContentLoaded', () => {
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    const appConfig = {
-        apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", 
-        authDomain: "cohi-survey-engine.firebaseapp.com",
-        projectId: "cohi-survey-engine"
-    };
-
+    const appConfig = { apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", authDomain: "cohi-survey-engine.firebaseapp.com", projectId: "cohi-survey-engine" };
     const app = !getApps().length ? initializeApp(appConfig) : getApp();
     const auth = getAuth(app);
     window.db = getFirestore(app);
 
-    // 3. SECURE THE GATE & PURGE OLD LOGIN
+    // 3. SECURE THE GATE
     onAuthStateChanged(auth, (user) => {
         const oldAuth = document.getElementById('authOverlay');
-        if(oldAuth) oldAuth.remove(); // Kill the old legacy login screen
-
+        if(oldAuth) oldAuth.remove(); 
         if (user) {
             authGate.style.display = 'none';
             document.body.style.overflow = 'auto';
@@ -1109,43 +1103,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = document.getElementById('uniBtnLogin');
         if(!email || !pass) { err.innerText = "Enter credentials."; err.style.display = 'block'; return; }
         btn.innerText = "AUTHENTICATING...";
-        signInWithEmailAndPassword(auth, email, pass).catch(error => {
-            err.innerText = "Invalid Credentials."; err.style.display = 'block'; btn.innerText = "AUTHENTICATE";
-        });
+        signInWithEmailAndPassword(auth, email, pass).catch(() => { err.innerText = "Invalid Credentials."; err.style.display = 'block'; btn.innerText = "AUTHENTICATE"; });
     });
-</script>
 
-<script>
-// 4. THE HUNTER-KILLER SNIPER ENGINE
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("Pinnacle V8 Sniper Injector Running...");
+    // 4. V10 AIR-GAPPED SNIPER ENGINE
+    console.log("Pinnacle V10 Sniper Injector Running (Air-Gapped Protocol)...");
 
     const getVal = (id1, id2) => document.getElementById(id1)?.value || document.getElementById(id2)?.value || 'N/A';
 
-    setTimeout(() => {
-        const nameInp = document.getElementById('customerName') || document.getElementById('input-client-name');
-        if(nameInp && !nameInp.value) nameInp.value = "Mr. Dall";
-        const roofInp = document.getElementById('roofType') || document.getElementById('input-roof-type');
-        if(roofInp) roofInp.value = "Edwardian roof";
-    }, 500);
-
-    // --- THE UI ASSASSIN ---
+    // UI ASSASSIN
     setInterval(() => {
         document.querySelectorAll('button').forEach(btn => {
             const txt = btn.innerText.toLowerCase();
-            if (txt.includes('draw line') || txt.includes('add text') || txt.includes('undo') || txt.includes('clear')) {
-                btn.style.display = 'none';
-            }
+            if (txt.includes('draw line') || txt.includes('add text') || txt.includes('undo') || txt.includes('clear')) btn.style.display = 'none';
         });
         document.querySelectorAll('.canvas-container').forEach(c => {
-            if(!c.classList.contains('sniper-cleared')) {
-                c.style.display = 'none';
-                c.classList.add('sniper-cleared');
-            }
+            if(!c.classList.contains('sniper-cleared')) { c.style.display = 'none'; c.classList.add('sniper-cleared'); }
         });
     }, 500);
 
-    // --- INJECT SYNC BUTTONS ---
+    // INJECT DASHBOARD BUTTONS
     const pdfBtn = document.getElementById('generateCustomerPdfBtn') || document.getElementById('generateInternalPdfBtn') || document.querySelector('button[id*="Pdf"]');
     if(pdfBtn && !document.getElementById('btn-legacy-dash')) {
         const container = document.createElement('div');
@@ -1158,69 +1135,34 @@ document.addEventListener('DOMContentLoaded', () => {
         pdfBtn.parentNode.insertBefore(container, pdfBtn.nextSibling);
     }
 
-    // --- CRM EXPORT COMPILER ---
-    document.addEventListener('click', (e) => {
+    // CRM & V3 SYNC LOGIC
+    document.addEventListener('click', async (e) => {
         if(e.target.id === 'btn-legacy-dash') {
             const client = getVal('customerName', 'input-client-name');
-            const pc = getVal('postCode', 'input-postcode');
-            const build = getVal('buildType', 'input-build-type');
-            const roof = getVal('roofType', 'input-roof-type');
-            const size = getVal('proposedSize', 'input-proposed-size');
-            const found = getVal('foundations', 'input-foundations');
-            const drain = getVal('drainage', 'input-drainage');
-            const brick = getVal('brickMatch', 'input-brick-match');
-            const notes = getVal('customerNotes', 'input-notes') || 'None';
-            
-            const vLogs = (window.sniperLogs && window.sniperLogs.length > 0) ? window.sniperLogs.join('\n') : "No structural vectors recorded.";
-            
-            const txt = `=== COHI CRM SURVEY EXPORT ===\nDate: ${new Date().toLocaleDateString()}\nClient: ${client}\nPostcode: ${pc}\n\n-- PROPERTY SPECIFICATIONS --\nBuild Category: ${build}\nRoof System: ${roof}\nFootprint: ${size} sqm\nFoundations: ${found}\nDrainage: ${drain}\nBrick Match: ${brick}\n\n-- STRUCTURAL VECTORS --\n${vLogs}\n\n-- SITE NOTES --\n${notes}\n==============================`;
-            
-            navigator.clipboard.writeText(txt).then(() => { if(window.showToast) window.showToast("Copied full payload to CRM!", true); });
+            const txt = `=== COHI CRM EXPORT ===\nDate: ${new Date().toLocaleDateString()}\nClient: ${client}\nPostcode: ${getVal('postCode', 'input-postcode')}\nBuild: ${getVal('buildType', 'input-build-type')}\nRoof: ${getVal('roofType', 'input-roof-type')}\nSize: ${getVal('proposedSize', 'input-proposed-size')} sqm\nNotes: ${getVal('customerNotes', 'input-notes') || 'None'}\n\nVectors: ${(window.sniperLogs || []).join(', ')}`;
+            navigator.clipboard.writeText(txt).then(() => { if(window.showToast) window.showToast("Copied to CRM!", true); });
         }
+        if(e.target.id === 'btn-v3-dash') window.open('portal.html', '_blank');
         
-        if(e.target.id === 'btn-v3-dash') {
-            window.open('portal.html', '_blank');
-        }
-    });
-
-    // --- FIREBASE V3 SYNC ---
-    document.addEventListener('click', async (e) => {
         if(e.target.id === 'btn-sync-v3') {
-            if(!window.db) { alert('Database not connected.'); return; }
-            if(window.showToast) window.showToast("Authenticating and Pushing to V3...", true);
+            if(!window.db) return alert('Database not connected.');
+            if(window.showToast) window.showToast("Pushing to V3...", true);
             try {
-                const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
                 const fCv = document.getElementById('canvasFront');
                 const fImg = fCv && fCv.hasAttribute('data-sniper') ? fCv.getAttribute('data-sniper') : null;
-                
-                const docRef = await addDoc(collection(window.db, "surveys"), {
+                await addDoc(collection(window.db, "surveys"), {
                     clientName: getVal('customerName', 'input-client-name'),
                     userId: getVal('input-designer', 'designerName') || 'Designer',
                     updatedAt: serverTimestamp(),
-                    data: {
-                        inputs: {
-                            postCode: getVal('postCode', 'input-postcode'),
-                            clientNum: getVal('customerNumber', 'input-customer-num') || 'survey123',
-                            roofType: getVal('roofType', 'input-roof-type'),
-                            buildType: getVal('buildType', 'input-build-type'),
-                            proposedSize: getVal('proposedSize', 'input-proposed-size'),
-                            _pipelineStatus: "1. Consultation & Survey",
-                            _brand: getVal('companyBrand', 'input-brand') || 'CO Home Improvements'
-                        }
-                    },
+                    data: { inputs: { postCode: getVal('postCode', 'input-postcode'), _pipelineStatus: "1. Consultation & Survey" } },
                     images: { frontElevation: fImg || null }
                 });
-                
-                const notes = getVal('customerNotes', 'input-notes');
-                if(notes && notes !== 'N/A') {
-                    await addDoc(collection(window.db, `surveys/${docRef.id}/internalNotes`), { content: notes, visibility: 'external', timestamp: serverTimestamp() });
-                }
-                if(window.showToast) window.showToast("Successfully Synced to V3 Vault!", true);
-            } catch(err) { console.error(err); if(window.showToast) window.showToast("V3 Sync Failed", false); }
+                if(window.showToast) window.showToast("Successfully Synced!", true);
+            } catch(err) { console.error(err); if(window.showToast) window.showToast("Sync Failed", false); }
         }
     });
 
-    // --- BUILD SNIPER MODAL UI ---
+    // --- SNIPER MODAL UI ---
     const modal = document.createElement('div');
     modal.id = 'sniper-modal';
     modal.style.cssText = "display:none; position:fixed; inset:0; z-index:999999; background:#0b1118; font-family:system-ui, sans-serif; touch-action:none;";
@@ -1255,52 +1197,78 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.body.appendChild(modal);
 
-    // --- DYNAMIC FILE INPUT HOOKING ---
+    // --- AIR-GAPPED FILE UPLOAD SYSTEM ---
     window.sniperLogs = [];
-    const S = { activeSuffix: 'Front', scale: 1, offsetX: 0, offsetY: 0, isDragging: false, lastTouch: {x:0, y:0}, initialPinch: null, anchor: null, vectors: [] };
+    const S = { activeSuffix: 'Front', activeWrapper: null, scale: 1, offsetX: 0, offsetY: 0, isDragging: false, lastTouch: {x:0, y:0}, initialPinch: null, anchor: null, vectors: [] };
     
-    document.querySelectorAll('input[type="file"]').forEach(input => {
-        if(input.dataset.hooked) return;
-        input.dataset.hooked = "true";
-        const editBtn = document.createElement('button');
-        editBtn.innerHTML = "🎯 LAUNCH CROSSHAIR TOOL";
-        editBtn.style.cssText = "width:100%; padding:16px; border-radius:8px; background:#0dcaf0; color:black; font-weight:900; border:none; margin-top:15px; display:none; cursor:pointer; box-shadow:0 4px 15px rgba(13,202,240,0.4); text-transform:uppercase;";
-        input.parentNode.insertBefore(editBtn, input.nextSibling);
+    // Create the secret input element entirely outside the normal DOM structure
+    const secretInput = document.createElement('input');
+    secretInput.type = 'file';
+    secretInput.accept = 'image/*';
+    secretInput.style.display = 'none';
+    document.body.appendChild(secretInput);
 
-        input.addEventListener('change', e => { if(e.target.files.length > 0) editBtn.style.display = 'block'; });
+    secretInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
 
-        editBtn.addEventListener('click', e => {
-            e.preventDefault();
-            const container = input.closest('div, section, .border');
-            const oldCanvas = container ? container.querySelector('canvas') : null;
-            if(oldCanvas) S.activeSuffix = oldCanvas.id.replace('canvas', '') || 'Misc';
-
-            const file = input.files[0];
-            if(!file) return;
-
-            const url = URL.createObjectURL(file);
-            const img = new Image();
-            img.onload = () => {
-                const baseCanvas = document.getElementById('sniper-base');
-                const vecCanvas = document.getElementById('sniper-vectors');
-                const ghostCanvas = document.getElementById('sniper-ghost');
-                const w = img.naturalWidth; const h = img.naturalHeight;
-                baseCanvas.width = vecCanvas.width = ghostCanvas.width = w;
-                baseCanvas.height = vecCanvas.height = ghostCanvas.height = h;
-                
-                baseCanvas.getContext('2d').drawImage(img, 0, 0);
-                S.vectors = []; S.anchor = null; 
-                S.offsetX = (window.innerWidth - w)/2; S.offsetY = (window.innerHeight - h)/2;
-                S.scale = Math.min(window.innerWidth/w, window.innerHeight/h) * 0.9;
-                
-                updateTransform();
-                modal.style.display = 'block';
-            };
-            img.src = url;
-        });
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+            const baseCanvas = document.getElementById('sniper-base');
+            const vecCanvas = document.getElementById('sniper-vectors');
+            const ghostCanvas = document.getElementById('sniper-ghost');
+            const w = img.naturalWidth; const h = img.naturalHeight;
+            baseCanvas.width = vecCanvas.width = ghostCanvas.width = w;
+            baseCanvas.height = vecCanvas.height = ghostCanvas.height = h;
+            
+            baseCanvas.getContext('2d').drawImage(img, 0, 0);
+            S.vectors = []; S.anchor = null; 
+            S.offsetX = (window.innerWidth - w)/2; S.offsetY = (window.innerHeight - h)/2;
+            S.scale = Math.min(window.innerWidth/w, window.innerHeight/h) * 0.9;
+            
+            updateTransform();
+            modal.style.display = 'block';
+            
+            // Reset the secret input so the same file can be re-uploaded if needed
+            secretInput.value = ''; 
+        };
+        img.src = url;
     });
 
-    // --- SNIPER ENGINE MATH ---
+    // Visually replace the old inputs
+    setTimeout(() => {
+        document.querySelectorAll('input[type="file"]').forEach(oldInput => {
+            if(oldInput === secretInput || oldInput.dataset.airgapped) return;
+            oldInput.dataset.airgapped = "true";
+            
+            // Physically hide the old input so app.js can't see us interacting with it
+            oldInput.style.display = 'none';
+
+            // Figure out the suffix for saving
+            const id = oldInput.id || '';
+            let suffix = 'Misc';
+            if(id.toLowerCase().includes('front')) suffix = 'Front';
+            else if(id.toLowerCase().includes('rear')) suffix = 'Rear';
+            else if(id.toLowerCase().includes('side')) suffix = 'Side';
+            else if(id.toLowerCase().includes('drainage')) suffix = 'Drainage';
+
+            const triggerBtn = document.createElement('button');
+            triggerBtn.innerHTML = `📸 UPLOAD ${suffix.toUpperCase()}`;
+            triggerBtn.style.cssText = "width:100%; padding:16px; border-radius:8px; background:#0dcaf0; color:black; font-weight:900; border:none; margin-top:10px; cursor:pointer; box-shadow:0 4px 15px rgba(13,202,240,0.4); text-transform:uppercase;";
+            
+            oldInput.parentNode.insertBefore(triggerBtn, oldInput.nextSibling);
+
+            triggerBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                S.activeSuffix = suffix;
+                S.activeWrapper = oldInput.closest('div, section, .border');
+                secretInput.click(); // Trigger the air-gapped input
+            });
+        });
+    }, 800);
+
+    // --- SNIPER MATH & GESTURES ---
     const vp = document.getElementById('sniper-viewport');
     const container = document.getElementById('sniper-container');
     const vecCtx = document.getElementById('sniper-vectors').getContext('2d');
@@ -1382,7 +1350,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('sniper-cancel').onclick = () => modal.style.display = 'none';
+    document.getElementById('sniper-cancel').onclick = () => document.getElementById('sniper-modal').style.display = 'none';
 
     document.getElementById('sniper-save').onclick = () => {
         const baseCanvas = document.getElementById('sniper-base');
@@ -1392,20 +1360,25 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.drawImage(baseCanvas, 0,0); ctx.drawImage(vCanvas, 0,0);
         
         const b64 = comp.toDataURL('image/jpeg', 0.9);
-        const targetCanvas = document.getElementById(`canvas${S.activeSuffix}`);
-        if(targetCanvas) {
-            targetCanvas.setAttribute('data-sniper', b64);
-            const wrapper = targetCanvas.closest('div');
-            let preview = wrapper.querySelector('.sniper-preview-img');
+        
+        if(S.activeWrapper) {
+            const targetCanvas = S.activeWrapper.querySelector('canvas') || document.getElementById(`canvas${S.activeSuffix}`);
+            if(targetCanvas) {
+                targetCanvas.setAttribute('data-sniper', b64);
+                targetCanvas.style.display = 'none'; 
+            }
+            
+            let preview = S.activeWrapper.querySelector('.sniper-preview-img');
             if(!preview) {
                 preview = document.createElement('img');
                 preview.className = 'sniper-preview-img';
                 preview.style.cssText = "width:100%; border-radius:8px; margin-top:10px; border:2px solid #0dcaf0;";
-                wrapper.appendChild(preview);
+                S.activeWrapper.appendChild(preview);
             }
             preview.src = b64;
         }
-        modal.style.display = 'none';
+        
+        document.getElementById('sniper-modal').style.display = 'none';
         if(window.showToast) window.showToast("Blueprint Saved in High Res!", true);
     };
 
@@ -1414,7 +1387,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(this.hasAttribute('data-sniper')) return this.getAttribute('data-sniper');
         return oldDataURL.call(this, t, e);
     };
-});
 </script>
 </body>
 </html>
