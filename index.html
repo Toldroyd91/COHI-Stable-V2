@@ -14,404 +14,936 @@
     </script>
     
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#121212">
+    <meta name="theme-color" content="#15202b">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Survey Pro">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <link rel="stylesheet" href="style.css">
 
     <style>
-        :root { --base-bg: #121212; --card-bg: #1E1E1E; --input-bg: #1A1A1A; --accent: #0D6EFD; }
-        body { background: var(--base-bg); color: #F7F7F7; font-family: system-ui, sans-serif; margin: 0; padding: 0; }
+        /* FANCY SPLASH SCREEN CSS */
+        #splashScreen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #0b1118; z-index: 999999;
+            display: flex; justify-content: center; align-items: center;
+            transition: opacity 0.8s ease-in-out, visibility 0.8s;
+        }
+        .logo-container { position: relative; width: 280px; height: 140px; }
+        .splash-logo {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: contain; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #logoCoh { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 15px rgba(255,107,0,0.15)); }
+        #logoCoh.fade-out { opacity: 0; transform: scale(1.1); filter: drop-shadow(0 0 0px transparent); }
+        #logoBrand { opacity: 0; transform: scale(0.9); }
+        #logoBrand.fade-in { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 25px rgba(255,255,255,0.15)); }
         
-        .luxury-input { background: var(--input-bg); border: 1px solid #333; color: #fff; padding: 14px 16px; border-radius: 8px; width: 100%; outline: none; margin-bottom: 15px; font-size: 16px; transition: 0.3s; }
-        .luxury-input:focus { border-color: var(--accent); }
-        .section-card { background: var(--card-bg); padding: 24px; border-radius: 12px; border: 1px solid #333; margin-bottom: 30px; }
-        .section-header { font-size: 1.25rem; font-weight: 700; color: var(--accent); border-bottom: 1px solid #333; padding-bottom: 12px; margin-bottom: 24px; }
-        .form-label { display: block; font-size: 0.75rem; color: #A0A0A0; margin-bottom: 6px; text-transform: uppercase; font-weight: 600; }
-        .button { background: var(--accent); color: #fff; border: none; padding: 14px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .button:active { transform: scale(0.98); }
+        .photo-badge {
+            background: #FF6B00; color: #fff; padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: bold; margin-left: 5px; display: none;
+        }
 
-        /* Unified Designer Auth Gate */
-        #authGate { position: fixed; inset: 0; background: #0b1118; z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .auth-box { background: var(--card-bg); padding: 40px; border-radius: 16px; border: 1px solid #333; width: 100%; max-width: 400px; text-align: center; }
+        /* Ensure canvases don't break page width */
+        .canvas-container { max-width: 100% !important; overflow: hidden; margin: 0 auto; }
+        .canvas-container canvas { max-width: 100% !important; }
     </style>
 </head>
 <body>
 
-    <div id="authGate">
-        <div class="auth-box">
-            <h1 class="text-3xl font-black text-white mb-2">DESIGNER <span class="text-[#0dcaf0]">LOGIN</span></h1>
-            <p class="text-gray-400 text-sm mb-6">Unified Enterprise Authentication</p>
-            <input type="email" id="authEmail" class="luxury-input" placeholder="Designer Email">
-            <input type="password" id="authPassword" class="luxury-input" placeholder="Password">
-            <button id="btnLogin" class="button w-full mb-4" style="background: #0dcaf0; color: black;">Authenticate</button>
-            <p id="authError" class="text-red-500 text-sm hidden">Invalid Credentials.</p>
+    <div id="splashScreen">
+        <div class="logo-container">
+            <img id="logoCoh" class="splash-logo" src="co-logo.png" alt="COHI Group">
+            <img id="logoBrand" class="splash-logo" src="" alt="Designer Brand">
         </div>
     </div>
 
-    <nav class="sticky top-0 bg-[#1E1E1E] shadow-xl z-50 p-4 border-b border-gray-800" id="mainNav" style="display: none;">
-        <div class="flex justify-between items-center max-w-6xl mx-auto flex-wrap gap-4">
-            <h2 class="text-xl font-bold text-white">Survey<span class="text-[#0dcaf0]">Engine</span> V2</h2>
-            <div class="flex gap-2 flex-wrap">
-                <button id="btn-go-v3" class="bg-indigo-600 text-white text-xs font-bold py-2 px-4 rounded-lg hover:bg-indigo-500">View V3 Dashboard</button>
-                <button id="generateCustomerPdfBtn" class="bg-blue-600 text-white text-xs font-bold py-2 px-5 rounded-lg hover:bg-blue-500">Export PDF</button>
-                <button id="btnLogout" class="text-gray-400 text-xs hover:text-white px-2">Logout</button>
+    <div id="authOverlay" class="modal-overlay" style="display: none; flex-direction: column; background: var(--base-bg); z-index: 99998; justify-content: center; align-items: center;">
+        <div class="card" style="max-width: 400px; width: 90%; text-align: center; margin: 0;">
+            <h2 class="card__title" style="border: none; margin-bottom: 10px;">ENGINE ACCESS</h2>
+            
+            <div id="loginView">
+                <div class="form-group"><input type="email" id="authEmail" class="form-group__input" placeholder="Email Address"></div>
+                <div class="form-group mt-10"><input type="password" id="authPassword" class="form-group__input" placeholder="Password"></div>
+                <button id="loginBtn" class="button" style="width: 100%; margin-top: 25px;">Secure Log In</button>
+                <button id="showRegisterBtn" class="button button--secondary" style="width: 100%; margin-top: 10px;">Register New Designer</button>
             </div>
-        </div>
-    </nav>
 
-    <main class="p-4 md:p-8 max-w-6xl mx-auto" id="mainApp" style="display:none;">
-        
-        <section class="section-card">
-            <h3 class="section-header">1. System Identity</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="form-label">Designer ID</label>
-                    <input type="text" id="input-designer" class="luxury-input" value="Tom" readonly>
-                </div>
-                <div>
-                    <label class="form-label">Brand Identity</label>
-                    <select id="input-brand" class="luxury-input">
+            <div id="registerView" style="display: none; text-align: left;">
+                <div class="form-group">
+                    <select id="regBrand" class="form-group__input">
+                        <option value="">Select Brand...</option>
                         <option value="Yorkshire Windows">Yorkshire Windows</option>
                         <option value="CO Home Improvements">CO Home Improvements</option>
+                        <option value="Clearview">Clearview</option>
+                        <option value="Orion Windows">Orion Windows</option>
+                        <option value="Planet">Planet</option>
+                        <option value="Trent Valley Windows">Trent Valley Windows</option>
+                        <option value="West Yorkshire Windows">West Yorkshire Windows</option>
                     </select>
+                </div>
+                <div class="form-group mt-10"><input type="text" id="regName" class="form-group__input" placeholder="Full Name"></div>
+                <div class="form-group mt-10"><input type="tel" id="regPhone" class="form-group__input" placeholder="Contact Number"></div>
+                <div class="form-group mt-10"><textarea id="regBio" class="form-group__input" rows="2" placeholder="Short Designer Bio"></textarea></div>
+                <div class="form-group mt-10"><input type="email" id="regEmail" class="form-group__input" placeholder="Email Address"></div>
+                <div class="form-group mt-10"><input type="password" id="regPassword" class="form-group__input" placeholder="Create Password"></div>
+                
+                <button id="registerBtn" class="button" style="width: 100%; margin-top: 20px;">Create Profile & Enter</button>
+                <button id="cancelRegisterBtn" class="button button--secondary" style="width: 100%; margin-top: 10px;">Back to Login</button>
+            </div>
+            
+            <p id="authError" style="color: #ff4444; margin-top: 15px; font-size: 0.85rem; display: none;"></p>
+            <p id="appVersionDisplay" style="color: #666; font-size: 0.75rem; margin-top: 20px; border-top: 1px solid #333; padding-top: 10px;">Loading Build Version...</p>
+        </div>
+    </div>
+
+    <header class="navbar navbar--top" id="mainHeader">
+        <div class="navbar__container header-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <h1 class="navbar__title">Survey Pro</h1>
+                <span id="activeDesignerProfile" style="color: var(--accent); font-size: 0.9rem; font-weight: bold; border-left: 1px solid #444; padding-left: 15px; display: none;"></span>
+            </div>
+            <div class="nav-controls">
+                <button id="logoutBtn" class="nav-btn btn-icon tool-btn" style="background: var(--input-bg); border: 1px solid #444; color: #ff4444;" title="Log Out">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="designerApp" class="main-container main-container--centered layout-wrapper" style="display: none;">
+        <article class="card" id="cloudDashboard" style="border-color: var(--accent); background: #1E1E1E;">
+            <h2 class="card__title" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; margin-bottom: 15px; padding-bottom: 10px;">
+                <span style="color: #fff;">☁️ Cloud Workspace</span>
+                <span id="syncStatus" style="font-size: 0.85rem; color: #0dcaf0; font-weight: normal;">Connected</span>
+            </h2>
+            <div class="form-grid" style="align-items: end;">
+                <div class="form-group" style="flex-grow: 2;">
+                    <label class="form-group__label">Load Previous Survey:</label>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="cloudDrafts" class="form-group__input">
+                            <option value="">Fetching drafts...</option>
+                        </select>
+                        <button id="loadCloudBtn" class="button button--secondary" style="white-space: nowrap;">Load Survey</button>
+                    </div>
                 </div>
             </div>
-        </section>
+        </article>
+        
+        <article class="card">
+            <h2 class="card__title">Client Profile</h2>
+            <div class="form-grid">
+                <div class="form-group"><label class="form-group__label">Name *</label><input type="text" id="clientName" class="form-group__input" required></div>
+                <div class="form-group"><label class="form-group__label">Customer Number</label><input type="tel" id="clientNum" class="form-group__input"></div>
+                <div class="form-group"><label class="form-group__label">Postcode *</label><input type="text" id="postCode" class="form-group__input" required></div>
+                <div class="form-group"><label class="form-group__label">Consultation Date</label><input type="date" id="apptDate" class="form-group__input"></div>
+                <div class="form-group"><label class="form-group__label">Revisit Date</label><input type="date" id="revisitDate" class="form-group__input"></div>
+                <div class="form-group"><label class="form-group__label">Revisit Location</label><input type="text" id="revisitLocation" class="form-group__input" placeholder="e.g. Showroom"></div>
+            </div>
+        </article>
 
-        <section class="section-card">
-            <h3 class="section-header">2. Client & Property Specifications</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-2">
-                <div>
-                    <label class="form-label">Lead Name</label>
-                    <input type="text" id="input-client-name" class="luxury-input" placeholder="e.g. Mr. Dall">
+        <article class="card">
+            <h2 class="card__title">Elevations & Markup</h2>
+            
+            <div class="form-group" style="margin-bottom: 20px; background: #252525; padding: 15px; border-radius: 8px; border: 1px solid #333;">
+                <label class="form-group__label" style="color: #0dcaf0;">Primary Build Area (Shows enlarged on report for notes):</label>
+                <select id="primaryBuildArea" class="form-group__input">
+                    <option value="frontelevation">Front Elevation</option>
+                    <option value="sideelevation">Side Elevation</option>
+                    <option value="rearelevation" selected>Rear Elevation</option>
+                </select>
+            </div>
+
+            <div class="canvas-group" data-id="frontelevation">
+                <div class="custom-file-upload">
+                    <input type="file" id="front-cam" class="camera-input hidden-input" accept="image/*">
+                    <label for="front-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Front Elevation</label>
                 </div>
-                <div>
-                    <label class="form-label">Postcode</label>
-                    <input type="text" id="input-postcode" class="luxury-input" placeholder="e.g. S70 1AA">
+                <div class="canvas-container"><canvas id="canvas-frontelevation" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
+                    <div class="tool-section">
+                        <button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg></button>
+                        <button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button>
+                    </div>
+                    <div class="tool-section flex-right">
+                        <button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
+                        <button type="button" class="tool-btn clear-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </div>
                 </div>
-                <div>
-                    <label class="form-label">Customer Vault PIN</label>
-                    <input type="text" id="input-customer-num" class="luxury-input" placeholder="survey123">
+            </div>
+
+            <div class="canvas-group mt-30" data-id="sideelevation">
+                <div class="custom-file-upload">
+                    <input type="file" id="side-cam" class="camera-input hidden-input" accept="image/*">
+                    <label for="side-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Side Elevation</label>
                 </div>
-                <div>
-                    <label class="form-label">Build Category</label>
-                    <select id="input-build-type" class="luxury-input">
-                        <option value="Extension">Home Extension</option>
-                        <option value="Conservatory">Conservatory</option>
-                        <option value="Orangery">Orangery</option>
-                        <option value="Replacement Roof">Replacement Roof</option>
-                        <option value="Windows/Doors">Windows & Doors Only</option>
-                    </select>
+                <div class="canvas-container"><canvas id="canvas-sideelevation" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
+                    <div class="tool-section">
+                        <button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg></button>
+                        <button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button>
+                    </div>
+                    <div class="tool-section flex-right">
+                        <button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
+                        <button type="button" class="tool-btn clear-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </div>
                 </div>
-                <div>
-                    <label class="form-label">Roof System Spec</label>
-                    <select id="input-roof-type" class="luxury-input">
-                        <option value="Edwardian roof" selected>Edwardian roof</option>
+            </div>
+            
+            <div class="canvas-group mt-30" data-id="rearelevation">
+                <div class="custom-file-upload">
+                    <input type="file" id="rear-cam" class="camera-input hidden-input" accept="image/*">
+                    <label for="rear-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Rear Elevation</label>
+                </div>
+                <div class="canvas-container"><canvas id="canvas-rearelevation" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
+                    <div class="tool-section">
+                        <button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg></button>
+                        <button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button>
+                    </div>
+                    <div class="tool-section flex-right">
+                        <button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
+                        <button type="button" class="tool-btn clear-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <article class="card">
+            <h2 class="card__title">Access & Logistics</h2>
+            <div class="form-grid">
+                <div class="form-group"><label class="form-group__label">Access Issues?</label><select id="accessDifficult" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Narrowest access point (mm):</label><input type="number" id="accessWidth" class="form-group__input"></div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-group__label">Upload access photos:</label>
+                    <div class="custom-file-upload mt-10" style="display: flex; gap: 10px; align-items: center;">
+                        <input type="file" id="accessPhotos" class="hidden-input" accept="image/*" multiple>
+                        <label for="accessPhotos" class="upload-label" style="flex-grow: 1;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Select Access Images <span id="count-access" class="photo-badge">0</span></label>
+                        <button type="button" class="button btn-danger" onclick="window.clearPhotos('access')" style="padding: 10px; min-width: 40px;" title="Clear Photos">X</button>
+                    </div>
+                </div>
+            </div>
+            
+            <h3 class="section-subtitle mt-30" style="color: var(--accent); margin-bottom: 15px;">Site Survey Basics</h3>
+            <div class="form-grid">
+                <div class="form-group"><label class="form-group__label">DPC Depth (mm):</label><input type="number" id="dpcDepth" class="form-group__input"></div>
+                <div class="form-group"><label class="form-group__label">House material:</label><select id="houseMaterial" class="form-group__input"><option value="">Select...</option><option value="Brick">Brick</option><option value="Stone">Stone</option><option value="Render">Render</option><option value="Other">Other</option></select></div>
+                <div class="form-group"><label class="form-group__label">Fascia Height (mm):</label><input type="text" id="fasciaHeight" class="form-group__input"></div>
+                <div class="form-group"><label class="form-group__label">Air Bricks? How many?</label><select id="airbricks" class="form-group__input"><option value="">Select...</option><option value="No">No</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5+">5+</option></select></div>
+                <div class="form-group"><label class="form-group__label">SAP Calcs Required?</label><select id="sapCalcs" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group" style="grid-column: 1 / -1;"><label class="form-group__label">Wall Obstacles:</label><textarea id="wallObstacles" class="form-group__input" rows="2"></textarea></div>
+            </div>
+
+            <div class="form-grid mt-30">
+                <div class="form-group"><label class="form-group__label">Trees within 30m?</label><select id="treesExist" class="form-group__input dyn-survey-select"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Manholes visible?</label><select id="manholeExist" class="form-group__input dyn-survey-select"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Weep vents visible?</label><select id="weepventsExist" class="form-group__input dyn-survey-select"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Pipes (RWP/SVP) exist?</label><select id="pipesExist" class="form-group__input dyn-survey-select"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            </div>
+            
+            <div class="form-group" style="margin-top: 25px; background: #252525; padding: 15px; border-radius: 8px; border: 1px solid #333;">
+                <label id="dynamicSurveyUploadLabel" class="form-group__label" style="color: var(--accent); margin-bottom: 10px;">Site Survey Photos (General)</label>
+                <div class="custom-file-upload" style="display: flex; gap: 10px; align-items: center;">
+                    <input type="file" id="surveyPhotos" class="hidden-input" accept="image/*" multiple>
+                    <label for="surveyPhotos" class="upload-label" style="flex-grow: 1;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> Upload Survey Photos <span id="count-survey" class="photo-badge">0</span></label>
+                    <button type="button" class="button btn-danger" onclick="window.clearPhotos('survey')" style="padding: 10px; min-width: 40px;" title="Clear Photos">X</button>
+                </div>
+            </div>
+        </article>
+
+        <article class="card">
+            <h2 class="card__title">Design Ideas</h2>
+            <div class="form-grid">
+                <div class="form-group"><label class="form-group__label">Build Type *</label><select id="buildType" class="form-group__input" required><option value="">Select...</option><option value="Conservatory">Conservatory</option><option value="Extension">Extension</option><option value="Porch">Porch</option><option value="Roof and Frame">Roof and Frame</option><option value="Other">Other</option></select></div>
+                <div class="form-group"><label class="form-group__label">Roof Type:</label>
+                    <select id="roofType" class="form-group__input">
+                        <option value="">Select...</option>
                         <option value="Ultra380">Ultra380</option>
                         <option value="LivinRoof">LivinRoof</option>
+                        <option value="Glass Roof">Glass Roof</option>
+                        <option value="Flat Roof">Flat Roof</option>
+                        <option value="Other">Other</option>
                     </select>
                 </div>
-                <div>
-                    <label class="form-label">Proposed Footprint (SQM)</label>
-                    <input type="number" id="input-proposed-size" class="luxury-input" placeholder="e.g. 15">
-                </div>
-            </div>
-        </section>
-
-        <section class="section-card">
-            <h3 class="section-header">3. Technical Sub-Structure & Data</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div>
-                    <label class="form-label">Existing Foundations</label>
-                    <select id="input-foundations" class="luxury-input">
-                        <option value="New Required">New Required</option>
-                        <option value="Existing (Retain)">Existing (Retain)</option>
+                <div class="form-group"><label class="form-group__label">Proposed Size (mm):</label><input type="text" id="proposedSize" class="form-group__input"></div>
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                    <label class="form-group__label">Frame Colour (External):</label>
+                    <select id="frameColour" class="form-group__input">
+                        <option value="">Select...</option>
+                        <option value="White">White</option>
+                        <option value="Grey Foil">Grey Foil</option>
+                        <option value="Rosewood">Rosewood</option>
+                        <option value="Light Oak">Light Oak</option>
+                        <option value="Black Brown Foil">Black Brown Foil</option>
+                        <option value="Cream Foil">Cream Foil</option>
+                        <option value="Chartwell Green Foil">Chartwell Green Foil</option>
+                        <option value="Agate Grey">Agate Grey</option>
                     </select>
                 </div>
-                <div>
-                    <label class="form-label">Drainage Alterations</label>
-                    <select id="input-drainage" class="luxury-input">
-                        <option value="None">None Expected</option>
-                        <option value="Move Manhole">Move Manhole</option>
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                    <label class="form-group__label">Frame Colour (Internal):</label>
+                    <select id="internalFrameColour" class="form-group__input">
+                        <option value="White">White</option>
+                        <option value="Match External">Match External Colour</option>
                     </select>
                 </div>
-                <div>
-                    <label class="form-label">Brick Match Required</label>
-                    <input type="text" id="input-brick-match" class="luxury-input" placeholder="e.g. Ibstock Red">
+                <div class="form-group"><label class="form-group__label">Building Regs Required?</label><select id="buildingRegs" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Planning Permission Required?</label><select id="planningPerms" class="form-group__input"><option value="">Select...</option><option value="No">No</option><option value="Pre Approved">Pre Approved</option><option value="Full Planning">Full Planning</option></select></div>
+                
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <div style="display: flex; justify-content: space-between; align-items: end; margin-bottom: 5px;">
+                        <label class="form-group__label" style="margin: 0;">Designer Notes (Raw):</label>
+                        <button id="aiRewriteBtn" type="button" class="button button--secondary" style="padding: 5px 10px; font-size: 0.8rem; background: #2c2c2c; border-color: #555;">✨ AI Polish</button>
+                    </div>
+                    <textarea id="designerNotes" class="form-group__input" rows="4" placeholder="Type raw internal notes here..."></textarea>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1; margin-top: 10px;">
+                    <label class="form-group__label" style="color: #0dcaf0;">Customer Facing Notes (AI Generated):</label>
+                    <textarea id="customerNotes" class="form-group__input" rows="3" placeholder="Polished text for the customer PDF will appear here..."></textarea>
                 </div>
             </div>
-            <div>
-                <label class="form-label text-[#0dcaf0]">Designer Site Observations</label>
-                <textarea id="customerNotes" class="luxury-input" rows="6" placeholder="Enter rough site observations..."></textarea>
-            </div>
-        </section>
 
-        <section class="section-card">
-            <h3 class="section-header">4. Blueprint Uploads</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                <div class="border border-gray-700 p-4 rounded-xl text-center">
-                    <label class="form-label text-white mb-3">Front Elevation</label>
-                    <input type="file" id="photo-front" accept="image/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#1A1A1A] file:text-[#0dcaf0] hover:file:bg-gray-800">
-                    <div id="canvasFront-wrapper" class="hidden mt-4"><canvas id="canvasFront"></canvas></div>
+            <div class="canvas-group mt-30" data-id="designersketch">
+                <div class="custom-file-upload">
+                    <input type="file" id="sketch-cam" class="camera-input hidden-input" accept="image/*">
+                    <label for="sketch-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Upload Base Sketch</label>
                 </div>
-                
-                <div class="border border-gray-700 p-4 rounded-xl text-center">
-                    <label class="form-label text-white mb-3">Rear Elevation</label>
-                    <input type="file" id="photo-rear" accept="image/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#1A1A1A] file:text-[#0dcaf0] hover:file:bg-gray-800">
-                    <div id="canvasRear-wrapper" class="hidden mt-4"><canvas id="canvasRear"></canvas></div>
+                <div class="canvas-container"><canvas id="canvas-designersketch" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
+                    <div class="tool-section">
+                        <button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg></button>
+                        <button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button>
+                    </div>
+                    <div class="tool-section flex-right">
+                        <button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
+                        <button type="button" class="tool-btn clear-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </div>
                 </div>
-                
-                <div class="border border-gray-700 p-4 rounded-xl text-center">
-                    <label class="form-label text-white mb-3">Side Elevation</label>
-                    <input type="file" id="photo-side" accept="image/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#1A1A1A] file:text-[#0dcaf0] hover:file:bg-gray-800">
-                    <div id="canvasSide-wrapper" class="hidden mt-4"><canvas id="canvasSide"></canvas></div>
-                </div>
-                
-                <div class="border border-gray-700 p-4 rounded-xl text-center">
-                    <label class="form-label text-white mb-3">Drainage / Misc</label>
-                    <input type="file" id="photo-drainage" accept="image/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#1A1A1A] file:text-[#0dcaf0] hover:file:bg-gray-800">
-                    <div id="canvasDrainage-wrapper" class="hidden mt-4"><canvas id="canvasDrainage"></canvas></div>
-                </div>
-
             </div>
-        </section>
+        </article>
+
+        <article class="card">
+            <h2 class="card__title">Misc</h2>
+            <div class="form-group" style="margin-top:15px;">
+                <label class="form-group__label">Additional Photos (Upload multiple):</label>
+                <div class="custom-file-upload mt-10" style="display: flex; gap: 10px; align-items: center;">
+                    <input type="file" id="miscPhotos" class="hidden-input" accept="image/*" multiple>
+                    <label for="miscPhotos" class="upload-label" style="flex-grow: 1;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg> Select Misc Images <span id="count-misc" class="photo-badge">0</span></label>
+                    <button type="button" class="button btn-danger" onclick="window.clearPhotos('misc')" style="padding: 10px; min-width: 40px;" title="Clear Photos">X</button>
+                </div>
+            </div>
+        </article>
+
+        <article class="card" style="border: 1px solid #0dcaf0;">
+            <h2 class="card__title" style="color: #0dcaf0;">Customer Pack Settings</h2>
+            <div class="form-group" style="margin-top: 10px;">
+                <label style="color: #fff;"><input type="checkbox" id="includeSketchInPack" checked> Include Designer Sketch</label>
+            </div>
+            <div class="form-group" style="margin-top: 10px;">
+                <label style="color: #fff;"><input type="checkbox" id="includeNotesInPack" checked> Include Designer Notes</label>
+            </div>
+            
+            <h3 class="section-subtitle mt-20" style="color: #fff; font-size: 0.9rem; margin-bottom: 10px; border-top: 1px solid #333; padding-top: 15px;">Smart Pamphlets to Include:</h3>
+            <div id="flyerToggles" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9rem; color: #ccc;">
+                <label><input type="checkbox" class="pamphlet-cb" value="journey-1.jpg" checked> The Journey (Pt 1)</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="journey-2.jpg" checked> The Journey (Pt 2)</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="who-we-are.jpg" checked> Who We Are</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="protecting-home.jpg" checked> Protecting Your Home</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="tailored.jpg" checked> Tailored For You</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="why-choose-us.jpg" checked> Why Choose Us</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="planning.jpg" id="cb-planning" checked> Planning Permission</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="sap-calcs.jpg" id="cb-sap" checked> SAP Calcs</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="cavity.jpg" id="cb-cavity"> Cavity Trays</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="piling.jpg" id="cb-piling"> Piling System</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="roof-info.jpg" id="cb-roof"> Selected Roof Info</label>
+            </div>
+        </article>
+
+        <div style="display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap;">
+            <button id="generateInternalPdfBtn" class="button button--secondary" style="width: 48%;">Designer Survey (Internal)</button>
+            <button id="generateCustomerPdfBtn" class="button" style="width: 48%; background: #0dcaf0; color: #000; border-color: #0dcaf0;">Designer Survey (Customer)</button>
+        </div>
+        <button id="resetFormBtn" class="button btn-danger" style="margin-top: 20px; width: 100%;">Clear Form for Next Appointment</button>
+
+        <button id="copyPortalLinkBtn" class="button button--secondary" style="width: 100%; margin-top: 10px; border-color: #f97316; color: #f97316;">Copy Vault Link for Customer</button>
     </main>
-    <script type="module" src="app.js"></script>
-    <script src="pdfGenerator.js"></script>
     
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW failed: ', err));
-            });
-        }
-    </script>
+    <main id="adminDashboard" class="main-container main-container--centered layout-wrapper" style="display: none;">
+        <article class="card" style="border-color: #ff9800; background: #1E1E1E;">
+            <h2 class="card__title" style="border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px;">
+                <span style="color: #ff9800;">📊 Manager Intelligence Hub</span>
+            </h2>
+
+            <div id="adminStats" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <div style="flex: 1; background: #2a2a2a; padding: 15px; border-radius: 8px; text-align: center; border-top: 3px solid #ff9800;">
+                    <h4 style="margin: 0; color: #888; font-size: 0.8rem; text-transform: uppercase;">Total Surveys</h4>
+                    <p id="statTotal" style="margin: 5px 0 0 0; font-size: 1.5rem; color: #fff; font-weight: bold;">0</p>
+                </div>
+                <div style="flex: 1; background: #2a2a2a; padding: 15px; border-radius: 8px; text-align: center; border-top: 3px solid #0dcaf0;">
+                    <h4 style="margin: 0; color: #888; font-size: 0.8rem; text-transform: uppercase;">Active Designers</h4>
+                    <p id="statDesigners" style="margin: 5px 0 0 0; font-size: 1.5rem; color: #fff; font-weight: bold;">0</p>
+                </div>
+                <div style="flex: 1; background: #2a2a2a; padding: 15px; border-radius: 8px; text-align: center; border-top: 3px solid #28a745;">
+                    <h4 style="margin: 0; color: #888; font-size: 0.8rem; text-transform: uppercase;">Today's Leads</h4>
+                    <p id="statToday" style="margin: 5px 0 0 0; font-size: 1.5rem; color: #fff; font-weight: bold;">0</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="adminSearch" class="form-group__input" placeholder="Search leads by Client Name or Postcode..." style="flex-grow: 1;">
+                <button id="adminExportBtn" class="button" style="background: #ff9800; white-space: nowrap;">Export CSV</button>
+            </div>
+
+            <div id="adminLeadsContainer" style="display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; padding-right: 5px;">
+                <p style="color: #888; text-align: center;">Fetching company data...</p>
+            </div>
+        </article>
+    </main>
+
+    <div id="pdfTemplateInternal" style="display: none; background: #fff; color: #222; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; box-sizing: border-box;">
+        
+        <div class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px;">
+                <div>
+                    <h1 style="font-size: 42px; font-weight: 900; color: #111; margin: 0; letter-spacing: -1px; text-transform: uppercase;">Designer<br><span class="brand-text" style="color: #002f54;">Survey.</span></h1>
+                </div>
+                <img class="dynamic-brand-logo" src="" style="max-width: 200px; max-height: 80px; object-fit: contain;">
+            </div>
+
+            <div class="brand-bg" style="background: #002f54; padding: 25px 40px; color: #ffffff; border-radius: 8px;">
+                <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+                    <div style="width: 45%;">
+                        <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px;">Customer Name</p>
+                        <p class="bind-name" style="margin: 5px 0 0 0; font-size: 24px; font-weight: bold;"></p>
+                    </div>
+                    <div style="width: 45%;">
+                        <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px;">Site Location</p>
+                        <p class="bind-address" style="margin: 5px 0 0 0; font-size: 18px; font-weight: 500;"></p>
+                    </div>
+                    <div style="width: 45%; margin-top: 10px;">
+                        <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px;">Contact Number</p>
+                        <p class="bind-num" style="margin: 5px 0 0 0; font-size: 16px;"></p>
+                    </div>
+                    <div style="width: 45%; margin-top: 10px;">
+                        <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px;">Lead Designer</p>
+                        <p id="pdfPrintDesigner" style="margin: 5px 0 0 0; font-size: 16px; font-weight: bold;"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="width: 100%; height: auto; min-height: 400px; max-height: 650px; background: #fafafa; border-radius: 12px; margin-top: 30px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid #eaeaea;">
+                <img class="dynamic-brand-logo" src="" style="position: absolute; width: 60%; opacity: 0.05; pointer-events: none; mix-blend-mode: multiply;">
+                <img id="pdfHeroImg" src="" style="width: 100%; max-height: 650px; object-fit: contain; position: relative; z-index: 2;">
+            </div>
+        </div>
+
+        <div class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 2px solid #ddd; padding-bottom: 15px;">
+                <h2 style="font-size: 24px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Project <span class="brand-text" style="color: #002f54;">Specifications</span></h2>
+                <img class="dynamic-brand-logo" src="" style="max-width: 120px; max-height: 40px; object-fit: contain;">
+            </div>
+            
+            <h4 style="color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 15px 0;">Design & Architecture</h4>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 35px;">
+                <div class="brand-border-bottom" style="width: 31%; background: #f9f9f9; padding: 20px; border-radius: 12px; border-bottom: 4px solid #002f54;">
+                    <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px;">Build Type</p>
+                    <p id="pdfBuildType" style="margin: 5px 0 0 0; font-size: 20px; font-weight: 800; color: #111;"></p>
+                </div>
+                <div class="brand-border-bottom" style="width: 31%; background: #f9f9f9; padding: 20px; border-radius: 12px; border-bottom: 4px solid #002f54;">
+                    <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px;">Proposed Size</p>
+                    <p id="pdfProposedSize" style="margin: 5px 0 0 0; font-size: 20px; font-weight: 800; color: #111;"></p>
+                </div>
+                <div class="brand-border-bottom" style="width: 31%; background: #f9f9f9; padding: 20px; border-radius: 12px; border-bottom: 4px solid #002f54;">
+                    <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px;">Roof Style</p>
+                    <p id="pdfRoofType" style="margin: 5px 0 0 0; font-size: 20px; font-weight: 800; color: #111;"></p>
+                </div>
+                <div style="width: 31%; background: #f9f9f9; padding: 15px 20px; border-radius: 12px;">
+                    <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase;">Frame Colour</p>
+                    <p id="pdfFrameColour" style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111; line-height: 1.3;"></p>
+                </div>
+                <div style="width: 31%; background: #f9f9f9; padding: 15px 20px; border-radius: 12px;">
+                    <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase;">Building Regs</p>
+                    <p id="pdfBuildingRegs" style="margin: 5px 0 0 0; font-size: 16px; font-weight: bold; color: #111;"></p>
+                </div>
+                <div style="width: 31%; background: #f9f9f9; padding: 15px 20px; border-radius: 12px;">
+                    <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase;">Planning Perms</p>
+                    <p id="pdfPlanningPerms" style="margin: 5px 0 0 0; font-size: 16px; font-weight: bold; color: #111;"></p>
+                </div>
+            </div>
+
+            <h4 style="color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 15px 0;">Structural & Access Logistics</h4>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 35px;">
+                <div style="width: 23%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
+                    <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">House Material</p>
+                    <p id="pdfHouseMaterial" style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111;"></p>
+                </div>
+                <div style="width: 23%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
+                    <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">DPC Depth</p>
+                    <p style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111;"><span id="pdfDpcDepth"></span> mm</p>
+                </div>
+                <div style="width: 23%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
+                    <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">Access Width</p>
+                    <p style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111;"><span id="pdfAccessWidth"></span> mm</p>
+                </div>
+                <div style="width: 23%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
+                    <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">Access Issues</p>
+                    <p id="pdfAccessDifficult" style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111;"></p>
+                </div>
+                <div style="width: 100%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
+                    <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">Wall Obstacles</p>
+                    <p id="pdfWallObstacles" style="margin: 5px 0 0 0; font-size: 14px; font-weight: bold; color: #111;"></p>
+                </div>
+            </div>
+
+            <h4 style="color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px 0;">Designer Insights</h4>
+            <div style="font-size: 14px; padding: 25px; border-radius: 12px; min-height: 120px; background: #f9f9f9; color: #444; line-height: 1.7; border: 1px solid #eee;" id="pdfDesignerNotes"></div>
+        </div>
+
+        <div class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 2px solid #ddd; padding-bottom: 15px;">
+                <h2 style="font-size: 24px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Property <span class="brand-text" style="color: #002f54;">Elevations</span></h2>
+                <img class="dynamic-brand-logo" src="" style="max-width: 120px; max-height: 40px; object-fit: contain;">
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+                <div style="width: 32%;">
+                    <p style="margin:0 0 8px 0; font-weight:800; font-size: 12px; text-transform:uppercase; color: #444; letter-spacing: 1px;">Front Elevation</p>
+                    <div style="background: #f9f9f9; height: auto; min-height: 150px; display: flex; justify-content: center; align-items: center; border-radius: 8px; border: 1px solid #ddd; position: relative; overflow: hidden;">
+                        <img id="pdfThumbFront" src="" style="width: 100%; max-height: 250px; object-fit: contain; position: relative; z-index: 2;">
+                    </div>
+                </div>
+                <div style="width: 32%;">
+                    <p style="margin:0 0 8px 0; font-weight:800; font-size: 12px; text-transform:uppercase; color: #444; letter-spacing: 1px;">Side Elevation</p>
+                    <div style="background: #f9f9f9; height: auto; min-height: 150px; display: flex; justify-content: center; align-items: center; border-radius: 8px; border: 1px solid #ddd; position: relative; overflow: hidden;">
+                        <img id="pdfThumbSide" src="" style="width: 100%; max-height: 250px; object-fit: contain; position: relative; z-index: 2;">
+                    </div>
+                </div>
+                <div style="width: 32%;">
+                    <p style="margin:0 0 8px 0; font-weight:800; font-size: 12px; text-transform:uppercase; color: #444; letter-spacing: 1px;">Rear Elevation</p>
+                    <div style="background: #f9f9f9; height: auto; min-height: 150px; display: flex; justify-content: center; align-items: center; border-radius: 8px; border: 1px solid #ddd; position: relative; overflow: hidden;">
+                        <img id="pdfThumbRear" src="" style="width: 100%; max-height: 250px; object-fit: contain; position: relative; z-index: 2;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="pdfFocusPage" class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 15px;">
+                <h2 id="pdfFocusTitle" style="font-size: 24px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Primary Build <span class="brand-text" style="color: #002f54;">Focus</span></h2>
+                <img class="dynamic-brand-logo" src="" style="max-width: 120px; max-height: 40px; object-fit: contain;">
+            </div>
+            
+            <div style="background: #fafafa; height: auto; min-height: 350px; display: flex; justify-content: center; align-items: center; border-radius: 12px; border: 1px solid #ddd; position: relative; overflow: hidden; margin-bottom: 30px;">
+                <img class="dynamic-brand-logo" src="" style="position: absolute; width: 50%; opacity: 0.05; pointer-events: none;">
+                <img id="pdfFocusImg" src="" style="width: 100%; max-height: 450px; object-fit: contain; position: relative; z-index: 2;">
+            </div>
+
+            <h2 id="pdfSketchTitle" style="font-size: 20px; margin: 0 0 15px 0; font-weight: 800; text-transform: uppercase; color: #111; border-bottom: 2px solid #ddd; padding-bottom: 10px;">Designer <span class="brand-text" style="color: #002f54;">Sketch</span></h2>
+            
+            <div id="pdfSketchWrapper" style="background: #fafafa; height: auto; min-height: 300px; display: flex; justify-content: center; align-items: center; border-radius: 12px; border: 1px solid #ddd; position: relative; overflow: hidden;">
+                <img class="dynamic-brand-logo" src="" style="position: absolute; width: 50%; opacity: 0.05; pointer-events: none;">
+                <img id="pdfSketchImg" src="" style="width: 100%; max-height: 400px; object-fit: contain; position: relative; z-index: 2;">
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    
+    <script src="app.js"></script>
 
     <script type="module">
-        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        // ⚠️ Check these match your Firebase Console
-        const appConfig = {
-            apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", 
+        const app = initializeApp({
+            apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0",
             authDomain: "cohi-survey-engine.firebaseapp.com",
-            projectId: "cohi-survey-engine"
+            projectId: "cohi-survey-engine",
+            storageBucket: "cohi-survey-engine.firebasestorage.app",
+            messagingSenderId: "208212115382",
+            appId: "1:208212115382:web:db7d4276b194f89a274b17"
+        });
+        const auth = getAuth(app); const db = getFirestore(app);
+
+        document.getElementById('appVersionDisplay').innerText = "Engine Build: " + new Date(document.lastModified).toLocaleString();
+
+        const authOverlay = document.getElementById('authOverlay');
+        const designerApp = document.getElementById('designerApp');
+        const adminDashboard = document.getElementById('adminDashboard');
+        const activeProfileUI = document.getElementById('activeDesignerProfile');
+
+        document.getElementById('showRegisterBtn')?.addEventListener('click', () => { document.getElementById('loginView').style.display = 'none'; document.getElementById('registerView').style.display = 'block'; });
+        document.getElementById('cancelRegisterBtn')?.addEventListener('click', () => { document.getElementById('registerView').style.display = 'none'; document.getElementById('loginView').style.display = 'block'; });
+
+        const splash = document.getElementById('splashScreen');
+        const logoCoh = document.getElementById('logoCoh');
+        const logoBrand = document.getElementById('logoBrand');
+
+        const logoMap = {
+            'CO Home Improvements': 'co-logo.png',
+            'Clearview': 'clearview.png',
+            'Orion Windows': 'orion.png',
+            'Planet': 'planet.png',
+            'Trent Valley Windows': 'trentvalley.png',
+            'West Yorkshire Windows': 'westyorkshire.png',
+            'Yorkshire Windows': 'yorkshire.png'
         };
 
-        const app = !getApps().length ? initializeApp(appConfig) : getApp();
-        const auth = getAuth(app);
-
-        const authGate = document.getElementById('authGate');
-        const mainNav = document.getElementById('mainNav');
-        const mainApp = document.getElementById('mainApp');
-        const loginBtn = document.getElementById('btnLogin');
-        const logoutBtn = document.getElementById('btnLogout');
-        const authError = document.getElementById('authError');
-
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
-                authGate.style.display = 'none';
-                if(mainNav) mainNav.style.display = 'flex';
-                if(mainApp) mainApp.style.display = 'block';
-                
-                const designerName = user.email.split('@')[0];
-                const nameInput = document.getElementById('input-designer');
-                if(nameInput) nameInput.value = designerName.charAt(0).toUpperCase() + designerName.slice(1);
-            } else {
-                authGate.style.display = 'flex';
-                if(mainNav) mainNav.style.display = 'none';
-                if(mainApp) mainApp.style.display = 'none';
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists()) {
+                    const userData = userDoc.data(); window.currentUserProfile = userData;
+                    
+                    const brandFile = logoMap[userData.brand] || 'logo.png';
+                    logoBrand.src = brandFile;
+
+                    setTimeout(() => {
+                        logoCoh.classList.add('fade-out');
+                        logoBrand.classList.add('fade-in');
+                    }, 500); 
+
+                    setTimeout(() => {
+                        splash.style.opacity = '0';
+                        setTimeout(() => splash.style.display = 'none', 800);
+                        authOverlay.style.display = 'none';
+
+                        if (userData.role === 'admin') {
+                            designerApp.style.display = 'none'; adminDashboard.style.display = 'block';
+                            activeProfileUI.innerHTML = `MANAGER HUB | ${userData.name}`; activeProfileUI.style.display = 'inline';
+                            fetchAdminLeads();
+                        } else {
+                            adminDashboard.style.display = 'none'; designerApp.style.display = 'block';
+                            activeProfileUI.innerHTML = `${userData.brand} | ${userData.name}`; activeProfileUI.style.display = 'inline';
+                            fetchCloudDrafts(user.uid);
+                        }
+                    }, 2200);
+                }
+            } else { 
+                setTimeout(() => { logoCoh.classList.add('fade-out'); }, 500);
+                setTimeout(() => {
+                    splash.style.opacity = '0';
+                    setTimeout(() => splash.style.display = 'none', 800);
+                    authOverlay.style.display = 'flex'; 
+                    designerApp.style.display = 'none'; 
+                    adminDashboard.style.display = 'none'; 
+                    activeProfileUI.style.display = 'none'; 
+                }, 1200);
             }
         });
 
-        if(loginBtn) {
-            loginBtn.addEventListener('click', () => {
-                const email = document.getElementById('authEmail').value.trim();
-                const pass = document.getElementById('authPassword').value;
-                
-                if(!email || !pass) {
-                    authError.innerText = "Please enter both email and password.";
-                    authError.style.display = 'block';
-                    return;
-                }
-                
-                loginBtn.innerText = "Authenticating...";
-                signInWithEmailAndPassword(auth, email, pass).catch(err => {
-                    console.error("Auth Failed:", err);
-                    authError.innerText = "Invalid Credentials. Access Denied.";
-                    authError.style.display = 'block';
-                    loginBtn.innerText = "Authenticate";
+        document.getElementById('registerBtn')?.addEventListener('click', async () => {
+            const errEl = document.getElementById('authError'); errEl.style.display = 'none';
+            const brand = document.getElementById('regBrand').value, name = document.getElementById('regName').value.trim(), email = document.getElementById('regEmail').value.trim(), pass = document.getElementById('regPassword').value;
+            if(!brand || !name || !email || !pass) return errEl.innerText = "Fill all required fields.", errEl.style.display = 'block';
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, pass);
+                await setDoc(doc(db, "users", cred.user.uid), { brand, name, phone: document.getElementById('regPhone').value, bio: document.getElementById('regBio').value, email, role: 'designer', createdAt: serverTimestamp() });
+            } catch (error) { errEl.innerText = error.message.replace('Firebase: ', ''); errEl.style.display = 'block'; }
+        });
+
+        document.getElementById('loginBtn')?.addEventListener('click', () => signInWithEmailAndPassword(auth, document.getElementById('authEmail').value, document.getElementById('authPassword').value));
+        document.getElementById('logoutBtn')?.addEventListener('click', () => { signOut(auth).then(() => { location.reload(); }); });
+
+        const getFormState = () => {
+            const data = {}; document.querySelectorAll('.form-group__input').forEach(el => { if (el.id && el.type !== 'file') data[el.id] = el.value; });
+            const canvases = {}; if (window.appCanvases) { for (let key in window.appCanvases) canvases[key] = window.appCanvases[key].toJSON(); }
+            return { inputs: data, canvases };
+        };
+
+        const loadFormState = (payload) => {
+            if (payload.inputs) { for (let key in payload.inputs) { const el = document.getElementById(key); if (el) el.value = payload.inputs[key]; } }
+            if (payload.canvases && window.appCanvases) { for (let key in payload.canvases) if (window.appCanvases[key]) window.appCanvases[key].loadFromJSON(payload.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key])); }
+            ['misc', 'survey', 'access'].forEach(k => window.updatePhotoCount(k));
+            window.showToast("Survey Loaded");
+        };
+
+        let offlineQueue = false;
+        window.performCloudAutoSave = async () => {
+            if (!auth.currentUser) return;
+            const cName = document.getElementById('clientName').value.trim();
+            if (!cName) return; 
+
+            // --- V3 METADATA INJECTION ---
+            const metadata = {
+                _designerName: window.currentUserProfile?.name || 'Unassigned',
+                _pipelineStatus: 'Active Survey',
+                _lastContacted: Date.now(),
+                _brand: window.currentUserProfile?.brand || 'COHI'
+            };
+            // -----------------------------
+
+            const sId = cName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + auth.currentUser.uid.slice(-4);
+            const syncStatus = document.getElementById('syncStatus');
+            
+            if (!navigator.onLine) {
+                if(syncStatus) { syncStatus.innerText = "Offline - Queued"; syncStatus.style.color = "#ff4444"; }
+                offlineQueue = true; return;
+            }
+            if(syncStatus) { syncStatus.innerText = "Autosaving..."; syncStatus.style.color = "#ffc107"; }
+            
+            try {
+                // --- MERGE METADATA INTO THE SAVED OBJECT ---
+                await setDoc(doc(db, "surveys", sId), { 
+                    userId: auth.currentUser.uid, 
+                    clientName: cName, 
+                    data: { ...getFormState(), inputs: { ...getFormState().inputs, ...metadata } }, 
+                    updatedAt: serverTimestamp() 
                 });
-            });
+                if(syncStatus) { syncStatus.innerText = "Saved"; syncStatus.style.color = "#28a745"; }
+                offlineQueue = false;
+            } catch (error) { console.error(error); if(syncStatus) syncStatus.innerText = "Error Saving"; }
+        };
+
+        window.addEventListener('online', () => { window.showToast("Signal Restored. Syncing...", true); if(offlineQueue) window.performCloudAutoSave(); });
+        window.addEventListener('offline', () => { window.showToast("Dead Zone: Working Offline", false); const syncStatus = document.getElementById('syncStatus'); if(syncStatus) { syncStatus.innerText = "Offline Mode"; syncStatus.style.color = "#ff4444"; } });
+
+        let currentDrafts = {};
+        async function fetchCloudDrafts(uid) {
+            const q = query(collection(db, "surveys"), where("userId", "==", uid));
+            try {
+                const snap = await getDocs(q);
+                const select = document.getElementById('cloudDrafts'); select.innerHTML = '<option value="">Load Previous...</option>';
+                snap.forEach((doc) => { currentDrafts[doc.id] = doc.data(); select.innerHTML += `<option value="${doc.id}">${doc.data().clientName}</option>`; });
+            } catch (e) { console.error(e); }
+        }
+        document.getElementById('loadCloudBtn')?.addEventListener('click', () => { const id = document.getElementById('cloudDrafts').value; if(id) loadFormState(currentDrafts[id].data); });
+
+        async function fetchAdminLeads() {
+            const container = document.getElementById('adminLeadsContainer');
+            try {
+                const snapshot = await getDocs(collection(db, "surveys"));
+                container.innerHTML = snapshot.empty ? '<p style="color:#888;">No surveys yet.</p>' : '';
+                
+                let totalSurveys = 0, todaySurveys = 0; let designersSet = new Set();
+                const todayStr = new Date().toLocaleDateString();
+
+                snapshot.forEach(doc => {
+                    const data = doc.data(), inputs = data.data.inputs || {}, dDate = data.updatedAt ? new Date(data.updatedAt.toDate()).toLocaleDateString() : 'N/A';
+                    totalSurveys++; designersSet.add(data.userId); if (dDate === todayStr) todaySurveys++;
+
+                    container.innerHTML += `
+                        <div class="admin-lead-card" style="background:#2a2a2a; padding:15px; border-radius:8px; border-left:4px solid #ff9800; display:flex; justify-content:space-between; margin-bottom:10px;">
+                            <div>
+                                <h3 style="margin:0 0 5px 0; color:#fff;">${data.clientName || 'Unnamed'} <span style="font-size:0.8rem; color:#ff9800;">${inputs.postCode || ''}</span></h3>
+                                <p style="margin:0; color:#aaa; font-size:0.85rem;">Build: ${inputs.buildType || 'TBC'} | Size: ${inputs.proposedSize || 'TBC'}</p>
+                                <p style="margin:5px 0 0 0; color:#888; font-size:0.8rem;">Date Saved: ${dDate}</p>
+                            </div>
+                        </div>`;
+                });
+                document.getElementById('statTotal').innerText = totalSurveys;
+                document.getElementById('statDesigners').innerText = designersSet.size;
+                document.getElementById('statToday').innerText = todaySurveys;
+            } catch (error) { console.error(error); }
         }
 
-        if(logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                signOut(auth);
-            });
-        }
+        document.getElementById('adminSearch')?.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            document.querySelectorAll('.admin-lead-card').forEach(card => { card.style.display = card.innerText.toLowerCase().includes(term) ? 'flex' : 'none'; });
+        });
+
+        document.getElementById('adminExportBtn')?.addEventListener('click', async () => {
+            if(window.showToast) window.showToast("Compiling Report...", false);
+            try {
+                const snapshot = await getDocs(collection(db, "surveys"));
+                let csv = "Date Saved,Designer ID,Client Name,Postcode,Build Type,Proposed Size\n";
+                snapshot.forEach(doc => {
+                    const data = doc.data(), inputs = data.data.inputs || {};
+                    const date = data.updatedAt ? new Date(data.updatedAt.toDate()).toLocaleDateString() : 'N/A';
+                    csv += `"${date}","${data.userId}","${data.clientName || ''}","${inputs.postCode || ''}","${inputs.buildType || ''}","${inputs.proposedSize || ''}"\n`;
+                });
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Survey_Leads_Report.csv`; a.click();
+                if(window.showToast) window.showToast("CSV Downloaded!", true);
+            } catch (err) { console.error(err); if(window.showToast) window.showToast("Export Failed", false); }
+        });
     </script>
+    <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("Pinnacle V5 Sniper Injector Running...");
 
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log("Pinnacle V7 Sniper Injector Running...");
+    // --- 0. SILENT WORKFLOW DEFAULTS ---
+    setTimeout(() => {
+        const nameInp = document.getElementById('customerName') || document.getElementById('input-client-name');
+        if(nameInp && !nameInp.value) nameInp.value = "Mr. Dall";
+        const roofInp = document.getElementById('roofType') || document.getElementById('input-roof-type');
+        if(roofInp) roofInp.value = "Edwardian roof";
+    }, 500);
 
-        const getVal = (id1, id2) => document.getElementById(id1)?.value || document.getElementById(id2)?.value || 'N/A';
+    // --- 1. INJECT SYNC BUTTONS ---
+    const pdfBtn = document.getElementById('generateCustomerPdfBtn') || document.getElementById('generateInternalPdfBtn');
+    if(pdfBtn) {
+        const container = document.createElement('div');
+        container.style.cssText = "display:flex; gap:10px; margin-top:15px; justify-content:center; flex-wrap:wrap; width:100%;";
+        container.innerHTML = `
+            <button id="btn-legacy-dash" style="background:#1A1A1A; color:#0dcaf0; border:1px solid #0dcaf0; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">📋 Copy to CRM</button>
+            <button id="btn-sync-v3" style="background:#10b981; color:white; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">☁️ Sync to V3 Vault</button>
+        `;
+        pdfBtn.parentNode.insertBefore(container, pdfBtn.nextSibling);
+    }
 
-        setTimeout(() => {
-            const nameInp = document.getElementById('customerName') || document.getElementById('input-client-name');
-            if(nameInp && !nameInp.value) nameInp.value = "Mr. Dall";
-            const roofInp = document.getElementById('roofType') || document.getElementById('input-roof-type');
-            if(roofInp) roofInp.value = "Edwardian roof";
-        }, 500);
+    // --- 2. BUILD SNIPER MODAL UI ---
+    const modal = document.createElement('div');
+    modal.id = 'sniper-modal';
+    modal.style.cssText = "display:none; position:fixed; inset:0; z-index:999999; background:#0b1118; font-family:system-ui, sans-serif; touch-action:none;";
+    modal.innerHTML = `
+        <div id="sniper-viewport" style="position:absolute; inset:0; overflow:hidden;">
+            <div id="sniper-container" style="transform-origin:0 0; position:absolute; will-change:transform;">
+                <canvas id="sniper-base" style="display:block;"></canvas>
+                <canvas id="sniper-vectors" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+                <canvas id="sniper-ghost" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+            </div>
+            
+            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); pointer-events:none; z-index:50;">
+                <div style="position:absolute; width:44px; height:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+                <div style="position:absolute; height:44px; width:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+                <div style="position:absolute; width:4px; height:4px; background:#fff; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+            </div>
 
-        // --- 1. THE UI ASSASSIN ---
-        setInterval(() => {
-            document.querySelectorAll('button').forEach(btn => {
-                const txt = btn.innerText.toLowerCase();
-                if (txt.includes('draw line') || txt.includes('add text') || txt.includes('undo') || txt.includes('clear')) {
-                    btn.style.display = 'none';
-                }
-            });
-            document.querySelectorAll('.canvas-container').forEach(c => {
-                if(!c.classList.contains('sniper-cleared')) {
-                    c.style.display = 'none';
-                    c.classList.add('sniper-cleared');
-                }
-            });
-        }, 500);
-
-        // --- 2. INJECT SYNC BUTTONS ---
-        const pdfBtn = document.getElementById('generateCustomerPdfBtn') || document.getElementById('generateInternalPdfBtn');
-        if(pdfBtn && !document.getElementById('btn-legacy-dash')) {
-            const container = document.createElement('div');
-            container.style.cssText = "display:flex; gap:10px; margin-top:15px; justify-content:center; flex-wrap:wrap; width:100%;";
-            container.innerHTML = `
-                <button id="btn-legacy-dash" style="background:#1A1A1A; color:#0dcaf0; border:1px solid #0dcaf0; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">📋 Copy to CRM</button>
-                <button id="btn-sync-v3" style="background:#10b981; color:white; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">☁️ Sync to V3 Vault</button>
-            `;
-            pdfBtn.parentNode.insertBefore(container, pdfBtn.nextSibling);
-        }
-
-        // --- 3. CRM EXPORT COMPILER ---
-        document.addEventListener('click', (e) => {
-            if(e.target.id === 'btn-legacy-dash') {
-                const client = getVal('customerName', 'input-client-name');
-                const pc = getVal('postCode', 'input-postcode');
-                const build = getVal('buildType', 'input-build-type');
-                const roof = getVal('roofType', 'input-roof-type');
-                const size = getVal('proposedSize', 'input-proposed-size');
-                const found = getVal('foundations', 'input-foundations');
-                const drain = getVal('drainage', 'input-drainage');
-                const brick = getVal('brickMatch', 'input-brick-match');
-                const notes = getVal('customerNotes', 'input-notes') || 'None';
-                
-                const vLogs = (window.sniperLogs && window.sniperLogs.length > 0) ? window.sniperLogs.join('\n') : "No structural vectors recorded.";
-                
-                const txt = `=== COHI CRM SURVEY EXPORT ===\nDate: ${new Date().toLocaleDateString()}\nClient: ${client}\nPostcode: ${pc}\n\n-- PROPERTY SPECIFICATIONS --\nBuild Category: ${build}\nRoof System: ${roof}\nFootprint: ${size} sqm\nFoundations: ${found}\nDrainage: ${drain}\nBrick Match: ${brick}\n\n-- STRUCTURAL VECTORS --\n${vLogs}\n\n-- SITE NOTES --\n${notes}\n==============================`;
-                
-                navigator.clipboard.writeText(txt).then(() => { if(window.showToast) window.showToast("Copied full payload to CRM!", true); });
-            }
-        });
-
-        // --- 4. FIREBASE V3 SYNC ---
-        document.addEventListener('click', async (e) => {
-            if(e.target.id === 'btn-sync-v3') {
-                if(window.showToast) window.showToast("Authenticating and Pushing to V3...", true);
-                try {
-                    const { initializeApp, getApps, getApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
-                    const { getFirestore, collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-                    
-                    const appConfig = { apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", authDomain: "cohi-survey-engine.firebaseapp.com", projectId: "cohi-survey-engine" };
-                    const app = !getApps().length ? initializeApp(appConfig) : getApp();
-                    const db = getFirestore(app);
-
-                    const fCv = document.getElementById('canvasFront');
-                    const fImg = fCv && fCv.hasAttribute('data-sniper') ? fCv.getAttribute('data-sniper') : null;
-                    
-                    const docRef = await addDoc(collection(db, "surveys"), {
-                        clientName: getVal('customerName', 'input-client-name'),
-                        userId: getVal('input-designer', 'designerName') || 'Designer',
-                        updatedAt: serverTimestamp(),
-                        data: {
-                            inputs: {
-                                postCode: getVal('postCode', 'input-postcode'),
-                                clientNum: getVal('customerNumber', 'input-customer-num') || 'survey123',
-                                roofType: getVal('roofType', 'input-roof-type'),
-                                buildType: getVal('buildType', 'input-build-type'),
-                                proposedSize: getVal('proposedSize', 'input-proposed-size'),
-                                _pipelineStatus: "1. Consultation & Survey"
-                            }
-                        },
-                        images: { frontElevation: fImg || null }
-                    });
-                    
-                    const notes = getVal('customerNotes', 'input-notes');
-                    if(notes && notes !== 'N/A') {
-                        await addDoc(collection(db, `surveys/${docRef.id}/internalNotes`), { content: notes, visibility: 'external', timestamp: serverTimestamp() });
-                    }
-                    
-                    if(window.showToast) window.showToast("Successfully Synced to V3 Vault!", true);
-                } catch(err) { console.error(err); if(window.showToast) window.showToast("V3 Sync Failed", false); }
-            }
-        });
-
-        // --- 5. BUILD SNIPER MODAL UI ---
-        const modal = document.createElement('div');
-        modal.id = 'sniper-modal';
-        modal.style.cssText = "display:none; position:fixed; inset:0; z-index:999999; background:#0b1118; font-family:system-ui, sans-serif; touch-action:none;";
-        modal.innerHTML = `
-            <div id="sniper-viewport" style="position:absolute; inset:0; overflow:hidden;">
-                <div id="sniper-container" style="transform-origin:0 0; position:absolute; will-change:transform;">
-                    <canvas id="sniper-base" style="display:block;"></canvas>
-                    <canvas id="sniper-vectors" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
-                    <canvas id="sniper-ghost" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+            <div style="position:absolute; inset:0; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:20px; padding-bottom:env(safe-area-inset-bottom, 30px); padding-top:env(safe-area-inset-top, 20px);">
+                <div style="display:flex; justify-content:space-between; pointer-events:auto;">
+                    <button id="sniper-cancel" style="background:rgba(0,0,0,0.8); color:white; border:1px solid #444; padding:12px 24px; border-radius:8px; font-weight:bold;">Cancel</button>
+                    <button id="sniper-save" style="background:#10b981; color:white; border:none; padding:12px 24px; border-radius:8px; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.4);">Save Blueprint</button>
                 </div>
                 
-                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); pointer-events:none; z-index:50;">
-                    <div style="position:absolute; width:44px; height:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
-                    <div style="position:absolute; height:44px; width:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
-                    <div style="position:absolute; width:4px; height:4px; background:#fff; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
-                </div>
-
-                <div style="position:absolute; inset:0; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:20px; padding-bottom:env(safe-area-inset-bottom, 30px); padding-top:env(safe-area-inset-top, 20px);">
-                    <div style="display:flex; justify-content:space-between; pointer-events:auto;">
-                        <button id="sniper-cancel" style="background:rgba(0,0,0,0.8); color:white; border:1px solid #444; padding:12px 24px; border-radius:8px; font-weight:bold;">Cancel</button>
-                        <button id="sniper-save" style="background:#10b981; color:white; border:none; padding:12px 24px; border-radius:8px; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.4);">Save Blueprint</button>
+                <div style="pointer-events:auto; display:flex; flex-direction:column; gap:15px;">
+                    <div style="align-self:flex-end; display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:6px;">
+                        <div class="nudge" data-x="0" data-y="-2" style="grid-column:2; grid-row:1; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↑</div>
+                        <div class="nudge" data-x="-2" data-y="0" style="grid-column:1; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">←</div>
+                        <div class="nudge" data-x="2" data-y="0" style="grid-column:3; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">→</div>
+                        <div class="nudge" data-x="0" data-y="2" style="grid-column:2; grid-row:3; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↓</div>
                     </div>
-                    
-                    <div style="pointer-events:auto; display:flex; flex-direction:column; gap:15px;">
-                        <div style="align-self:flex-end; display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:6px;">
-                            <div class="nudge" data-x="0" data-y="-2" style="grid-column:2; grid-row:1; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↑</div>
-                            <div class="nudge" data-x="-2" data-y="0" style="grid-column:1; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">←</div>
-                            <div class="nudge" data-x="2" data-y="0" style="grid-column:3; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">→</div>
-                            <div class="nudge" data-x="0" data-y="2" style="grid-column:2; grid-row:3; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↓</div>
-                        </div>
-                        <button id="sniper-action" style="width:100%; padding:20px; background:#0dcaf0; border:none; border-radius:12px; font-size:18px; font-weight:900; text-transform:uppercase; box-shadow:0 6px 20px rgba(13,202,240,0.3);">🎯 Place Anchor</button>
-                    </div>
+                    <button id="sniper-action" style="width:100%; padding:20px; background:#0dcaf0; border:none; border-radius:12px; font-size:18px; font-weight:900; text-transform:uppercase; box-shadow:0 6px 20px rgba(13,202,240,0.3);">🎯 Place Anchor</button>
                 </div>
             </div>
-        `;
-        document.body.appendChild(modal);
+        </div>
+    `;
+    document.body.appendChild(modal);
 
-        // --- 6. DYNAMIC FILE INPUT HOOKING ---
-        window.sniperLogs = [];
-        const S = { activeSuffix: 'Front', scale: 1, offsetX: 0, offsetY: 0, isDragging: false, lastTouch: {x:0, y:0}, initialPinch: null, anchor: null, vectors: [] };
+    // --- 3. DYNAMIC RESOLUTION & THICKNESS MATH ---
+    const S = {
+        activeSuffix: null, scale: 1, offsetX: 0, offsetY: 0,
+        isDragging: false, lastTouch: {x:0, y:0}, initialPinch: null,
+        anchor: null, vectors: [], dashboardLogs: []
+    };
+
+    const vp = document.getElementById('sniper-viewport');
+    const container = document.getElementById('sniper-container');
+    const baseCanvas = document.getElementById('sniper-base');
+    const baseCtx = baseCanvas.getContext('2d');
+    const vecCanvas = document.getElementById('sniper-vectors');
+    const vecCtx = vecCanvas.getContext('2d');
+    const ghostCanvas = document.getElementById('sniper-ghost');
+    const ghostCtx = ghostCanvas.getContext('2d');
+    const actionBtn = document.getElementById('sniper-action');
+
+    // This guarantees the lines stay physically thin no matter how deep you zoom
+    function renderVectors() {
+        vecCtx.clearRect(0,0, vecCanvas.width, vecCanvas.height);
+        const lw = 4 / S.scale; 
+        const fs = 24 / S.scale;
+        const pad = 10 / S.scale;
+
+        S.vectors.forEach(v => {
+            vecCtx.beginPath(); vecCtx.moveTo(v.x1, v.y1); vecCtx.lineTo(v.x2, v.y2);
+            vecCtx.lineWidth = lw; vecCtx.strokeStyle = '#0dcaf0'; vecCtx.stroke();
+            if(v.text) {
+                const mx = (v.x1 + v.x2)/2; const my = (v.y1 + v.y2)/2;
+                vecCtx.fillStyle = '#1A1A1A';
+                vecCtx.font = `bold ${fs}px sans-serif`;
+                const tw = vecCtx.measureText(v.text).width;
+                vecCtx.fillRect(mx - tw/2 - pad, my - fs, tw + pad*2, fs + pad*2);
+                vecCtx.fillStyle = '#0dcaf0'; vecCtx.textAlign = 'center'; vecCtx.textBaseline = 'middle';
+                vecCtx.fillText(v.text, mx, my);
+            }
+        });
+    }
+
+    function updateTransform() {
+        container.style.transform = `translate(${S.offsetX}px, ${S.offsetY}px) scale(${S.scale})`;
+        renderVectors(); // Redraw instantly to adjust thickness during zoom
         
-        document.querySelectorAll('input[type="file"]').forEach(input => {
-            if(input.dataset.hooked) return;
-            input.dataset.hooked = "true";
+        ghostCtx.clearRect(0,0, ghostCanvas.width, ghostCanvas.height);
+        if(S.anchor) {
+            const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
+            ghostCtx.beginPath(); ghostCtx.moveTo(S.anchor.x, S.anchor.y); ghostCtx.lineTo(cur.x, cur.y);
+            ghostCtx.lineWidth = 4 / S.scale; ghostCtx.strokeStyle = '#0dcaf0'; 
+            ghostCtx.setLineDash([15/S.scale, 15/S.scale]); ghostCtx.stroke(); ghostCtx.setLineDash([]);
+        }
+    }
 
+    // Touch Engine (Pan & Pinch)
+    vp.addEventListener('touchstart', e => {
+        if(e.target.closest('button') || e.target.closest('.nudge')) return;
+        e.preventDefault();
+        if(e.touches.length === 1) { S.isDragging = true; S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; }
+        else if(e.touches.length === 2) { S.isDragging = false; S.initialPinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
+    }, {passive:false});
+
+    vp.addEventListener('touchmove', e => {
+        if(e.target.closest('button') || e.target.closest('.nudge')) return;
+        e.preventDefault();
+        if(e.touches.length === 1 && S.isDragging) {
+            S.offsetX += e.touches[0].clientX - S.lastTouch.x; S.offsetY += e.touches[0].clientY - S.lastTouch.y;
+            S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; updateTransform();
+        } else if(e.touches.length === 2 && S.initialPinch) {
+            const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            const oldScale = S.scale; S.scale *= (dist / S.initialPinch);
+            if(S.scale < 0.1) S.scale = 0.1; if(S.scale > 15) S.scale = 15;
+            const cx = window.innerWidth/2; const cy = window.innerHeight/2;
+            S.offsetX = cx - ((cx - S.offsetX) / oldScale * S.scale); S.offsetY = cy - ((cy - S.offsetY) / oldScale * S.scale);
+            S.initialPinch = dist; updateTransform();
+        }
+    }, {passive:false});
+
+    vp.addEventListener('touchend', e => { if(e.touches.length < 2) S.initialPinch = null; if(e.touches.length === 0) S.isDragging = false; });
+
+    // D-Pad Logic
+    document.querySelectorAll('.nudge').forEach(btn => {
+        btn.addEventListener('touchstart', e => {
+            e.preventDefault();
+            S.offsetX -= parseInt(btn.dataset.x) * S.scale; S.offsetY -= parseInt(btn.dataset.y) * S.scale; updateTransform();
+        });
+    });
+
+    // Anchor & Measurement Commit
+    actionBtn.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
+        if(!S.anchor) {
+            S.anchor = cur; actionBtn.innerText = "✅ Confirm Endpoint"; actionBtn.style.background = "#10b981"; updateTransform();
+        } else {
+            const measurement = prompt("Enter Measurement (e.g., 2400mm):");
+            if(measurement) {
+                S.vectors.push({ x1: S.anchor.x, y1: S.anchor.y, x2: cur.x, y2: cur.y, text: measurement });
+                S.dashboardLogs.push(`${S.activeSuffix} Elevation: ${measurement}`);
+            }
+            S.anchor = null; actionBtn.innerText = "🎯 Place Anchor"; actionBtn.style.background = "#0dcaf0"; updateTransform();
+        }
+    });
+
+    // --- 4. HOOK INTO EXISTING FILE UPLOADS ---
+    ['Front', 'Side', 'Rear', 'Drainage'].forEach(suffix => {
+        const input = document.getElementById(`photo-${suffix.toLowerCase()}`);
+        if(input) {
             const editBtn = document.createElement('button');
-            editBtn.innerHTML = "🎯 LAUNCH CROSSHAIR TOOL";
-            editBtn.style.cssText = "width:100%; padding:16px; border-radius:8px; background:#0dcaf0; color:black; font-weight:900; border:none; margin-top:15px; display:none; cursor:pointer; box-shadow:0 4px 15px rgba(13,202,240,0.4); text-transform:uppercase;";
-            
-            input.parentNode.insertBefore(editBtn, input.nextSibling);
+            editBtn.innerText = "🎯 Precision Edit Blueprint";
+            editBtn.style.cssText = "width:100%; padding:14px; border-radius:8px; background:#0dcaf0; color:black; font-weight:900; border:none; margin-top:10px; display:none; cursor:pointer;";
+            input.parentNode.appendChild(editBtn);
 
             input.addEventListener('change', e => {
                 if(e.target.files.length > 0) editBtn.style.display = 'block';
@@ -419,159 +951,470 @@
 
             editBtn.addEventListener('click', e => {
                 e.preventDefault();
-                
-                const container = input.closest('div, section, .border');
-                const oldCanvas = container ? container.querySelector('canvas') : null;
-                if(oldCanvas) S.activeSuffix = oldCanvas.id.replace('canvas', '') || 'Misc';
-
+                S.activeSuffix = suffix;
                 const file = input.files[0];
                 if(!file) return;
 
                 const url = URL.createObjectURL(file);
                 const img = new Image();
                 img.onload = () => {
-                    const baseCanvas = document.getElementById('sniper-base');
-                    const vecCanvas = document.getElementById('sniper-vectors');
-                    const ghostCanvas = document.getElementById('sniper-ghost');
-                    
+                    // Pulling TRUE 4k natural width directly from the file to prevent tiny renders
                     const w = img.naturalWidth; const h = img.naturalHeight;
-                    baseCanvas.width = vecCanvas.width = ghostCanvas.width = w;
-                    baseCanvas.height = vecCanvas.height = ghostCanvas.height = h;
+                    baseCanvas.width = w; baseCanvas.height = h;
+                    vecCanvas.width = w; vecCanvas.height = h;
+                    ghostCanvas.width = w; ghostCanvas.height = h;
                     
-                    baseCanvas.getContext('2d').drawImage(img, 0, 0);
-                    S.vectors = []; S.anchor = null; 
+                    baseCtx.drawImage(img, 0, 0);
+                    S.vectors = []; S.anchor = null; S.dashboardLogs = [];
                     
                     S.offsetX = (window.innerWidth - w)/2; S.offsetY = (window.innerHeight - h)/2;
                     S.scale = Math.min(window.innerWidth/w, window.innerHeight/h) * 0.9;
-                    
                     updateTransform();
                     modal.style.display = 'block';
                 };
                 img.src = url;
             });
-        });
-
-        // --- 7. SNIPER ENGINE MATH ---
-        const vp = document.getElementById('sniper-viewport');
-        const container = document.getElementById('sniper-container');
-        const vecCtx = document.getElementById('sniper-vectors').getContext('2d');
-        const ghostCtx = document.getElementById('sniper-ghost').getContext('2d');
-        const actionBtn = document.getElementById('sniper-action');
-
-        function renderVectors() {
-            const cvs = document.getElementById('sniper-vectors');
-            vecCtx.clearRect(0,0, cvs.width, cvs.height);
-            const lw = 4 / S.scale; const fs = 24 / S.scale; const pad = 10 / S.scale;
-
-            S.vectors.forEach(v => {
-                vecCtx.beginPath(); vecCtx.moveTo(v.x1, v.y1); vecCtx.lineTo(v.x2, v.y2);
-                vecCtx.lineWidth = lw; vecCtx.strokeStyle = '#0dcaf0'; vecCtx.stroke();
-                if(v.text) {
-                    const mx = (v.x1 + v.x2)/2; const my = (v.y1 + v.y2)/2;
-                    vecCtx.fillStyle = '#1A1A1A'; vecCtx.font = `bold ${fs}px sans-serif`;
-                    const tw = vecCtx.measureText(v.text).width;
-                    vecCtx.fillRect(mx - tw/2 - pad, my - fs, tw + pad*2, fs + pad*2);
-                    vecCtx.fillStyle = '#0dcaf0'; vecCtx.textAlign = 'center'; vecCtx.textBaseline = 'middle';
-                    vecCtx.fillText(v.text, mx, my);
-                }
-            });
         }
-
-        function updateTransform() {
-            container.style.transform = `translate(${S.offsetX}px, ${S.offsetY}px) scale(${S.scale})`;
-            renderVectors(); 
-            
-            const gCvs = document.getElementById('sniper-ghost');
-            ghostCtx.clearRect(0,0, gCvs.width, gCvs.height);
-            if(S.anchor) {
-                const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
-                ghostCtx.beginPath(); ghostCtx.moveTo(S.anchor.x, S.anchor.y); ghostCtx.lineTo(cur.x, cur.y);
-                ghostCtx.lineWidth = 4 / S.scale; ghostCtx.strokeStyle = '#0dcaf0'; 
-                ghostCtx.setLineDash([15/S.scale, 15/S.scale]); ghostCtx.stroke(); ghostCtx.setLineDash([]);
-            }
-        }
-
-        vp.addEventListener('touchstart', e => {
-            if(e.target.closest('button') || e.target.closest('.nudge')) return;
-            e.preventDefault();
-            if(e.touches.length === 1) { S.isDragging = true; S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; }
-            else if(e.touches.length === 2) { S.isDragging = false; S.initialPinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
-        }, {passive:false});
-
-        vp.addEventListener('touchmove', e => {
-            if(e.target.closest('button') || e.target.closest('.nudge')) return;
-            e.preventDefault();
-            if(e.touches.length === 1 && S.isDragging) {
-                S.offsetX += e.touches[0].clientX - S.lastTouch.x; S.offsetY += e.touches[0].clientY - S.lastTouch.y;
-                S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; updateTransform();
-            } else if(e.touches.length === 2 && S.initialPinch) {
-                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                const oldScale = S.scale; S.scale *= (dist / S.initialPinch);
-                if(S.scale < 0.1) S.scale = 0.1; if(S.scale > 15) S.scale = 15;
-                const cx = window.innerWidth/2; const cy = window.innerHeight/2;
-                S.offsetX = cx - ((cx - S.offsetX) / oldScale * S.scale); S.offsetY = cy - ((cy - S.offsetY) / oldScale * S.scale);
-                S.initialPinch = dist; updateTransform();
-            }
-        }, {passive:false});
-
-        vp.addEventListener('touchend', e => { if(e.touches.length < 2) S.initialPinch = null; if(e.touches.length === 0) S.isDragging = false; });
-
-        document.querySelectorAll('.nudge').forEach(btn => {
-            btn.addEventListener('touchstart', e => {
-                e.preventDefault();
-                S.offsetX -= parseInt(btn.dataset.x) * S.scale; S.offsetY -= parseInt(btn.dataset.y) * S.scale; updateTransform();
-            });
-        });
-
-        actionBtn.addEventListener('touchstart', e => {
-            e.preventDefault();
-            const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
-            if(!S.anchor) {
-                S.anchor = cur; actionBtn.innerText = "✅ Confirm Endpoint"; actionBtn.style.background = "#10b981"; updateTransform();
-            } else {
-                const measurement = prompt("Enter Measurement (e.g., 2400mm):");
-                if(measurement) {
-                    S.vectors.push({ x1: S.anchor.x, y1: S.anchor.y, x2: cur.x, y2: cur.y, text: measurement });
-                    window.sniperLogs.push(`${S.activeSuffix} Elevation: ${measurement}`);
-                }
-                S.anchor = null; actionBtn.innerText = "🎯 Place Anchor"; actionBtn.style.background = "#0dcaf0"; updateTransform();
-            }
-        });
-
-        document.getElementById('sniper-cancel').onclick = () => modal.style.display = 'none';
-
-        document.getElementById('sniper-save').onclick = () => {
-            const baseCanvas = document.getElementById('sniper-base');
-            const vCanvas = document.getElementById('sniper-vectors');
-            const comp = document.createElement('canvas'); comp.width = baseCanvas.width; comp.height = baseCanvas.height;
-            const ctx = comp.getContext('2d');
-            ctx.drawImage(baseCanvas, 0,0); ctx.drawImage(vCanvas, 0,0);
-            
-            const b64 = comp.toDataURL('image/jpeg', 0.9);
-            const targetCanvas = document.getElementById(`canvas${S.activeSuffix}`);
-            if(targetCanvas) {
-                targetCanvas.setAttribute('data-sniper', b64);
-                
-                const wrapper = targetCanvas.closest('div');
-                let preview = wrapper.querySelector('.sniper-preview-img');
-                if(!preview) {
-                    preview = document.createElement('img');
-                    preview.className = 'sniper-preview-img';
-                    preview.style.cssText = "width:100%; border-radius:8px; margin-top:10px; border:2px solid #0dcaf0;";
-                    wrapper.appendChild(preview);
-                }
-                preview.src = b64;
-            }
-            modal.style.display = 'none';
-            if(window.showToast) window.showToast("Blueprint Saved in High Res!", true);
-        };
-
-        const oldDataURL = HTMLCanvasElement.prototype.toDataURL;
-        HTMLCanvasElement.prototype.toDataURL = function(t, e) {
-            if(this.hasAttribute('data-sniper')) return this.getAttribute('data-sniper');
-            return oldDataURL.call(this, t, e);
-        };
     });
-    </script>
+
+    // Save Logic & PDF Intercept
+    document.getElementById('sniper-cancel').onclick = () => modal.style.display = 'none';
+
+    document.getElementById('sniper-save').onclick = () => {
+        const comp = document.createElement('canvas'); comp.width = baseCanvas.width; comp.height = baseCanvas.height;
+        const ctx = comp.getContext('2d');
+        ctx.drawImage(baseCanvas, 0,0); ctx.drawImage(vecCanvas, 0,0);
+        
+        const b64 = comp.toDataURL('image/jpeg', 0.9);
+        const oldCanvas = document.getElementById(`canvas${S.activeSuffix}`);
+        if(oldCanvas) {
+            oldCanvas.setAttribute('data-sniper', b64);
+            const wrapper = oldCanvas.closest('.canvas-container') || oldCanvas.parentNode;
+            wrapper.style.display = 'none'; // Hide clunky Fabric UI completely
+            
+            const preview = document.createElement('img');
+            preview.src = b64;
+            preview.style.cssText = "width:100%; border-radius:8px; margin-top:10px; border:2px solid #10b981;";
+            wrapper.parentNode.appendChild(preview);
+        }
+        modal.style.display = 'none';
+        if(window.showToast) window.showToast("Blueprint Saved in High Res!", true);
+    };
+
+    const oldDataURL = HTMLCanvasElement.prototype.toDataURL;
+    HTMLCanvasElement.prototype.toDataURL = function(t, e) {
+        if(this.hasAttribute('data-sniper')) return this.getAttribute('data-sniper');
+        return oldDataURL.call(this, t, e);
+    };
+
+    // --- 5. CRM DASHBOARD & V3 VAULT EXPORT ---
+    document.getElementById('btn-legacy-dash')?.addEventListener('click', () => {
+        const client = document.getElementById('customerName')?.value || document.getElementById('input-client-name')?.value || 'Client';
+        const pc = document.getElementById('postCode')?.value || document.getElementById('input-postcode')?.value || '';
+        const notes = document.getElementById('customerNotes')?.value || '';
+        const vLogs = S.dashboardLogs.length > 0 ? S.dashboardLogs.join('\\n') : "No structural vectors recorded.";
+        
+        const txt = `=== DASHBOARD EXPORT ===\\nClient: ${client}\\nPostcode: ${pc}\\n\\n-- STRUCTURAL VECTORS --\\n${vLogs}\\n\\n-- NOTES --\\n${notes}\\n======================`;
+        navigator.clipboard.writeText(txt).then(() => { if(window.showToast) window.showToast("Copied for Dashboard!", true); });
+    });
+
+    document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
+        if(!window.db) { alert("Firebase is not initialized in this file."); return; }
+        if(window.showToast) window.showToast("Pushing to V3 Vault...", true);
+        try {
+            const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+            const fCv = document.getElementById('canvasFront');
+            const fImg = fCv && fCv.hasAttribute('data-sniper') ? fCv.getAttribute('data-sniper') : null;
+            
+            const docRef = await addDoc(collection(window.db, "surveys"), {
+                clientName: document.getElementById('customerName')?.value || 'Unnamed Client',
+                userId: "Designer",
+                updatedAt: serverTimestamp(),
+                data: {
+                    inputs: {
+                        postCode: document.getElementById('postCode')?.value || 'N/A',
+                        clientNum: document.getElementById('customerNumber')?.value || 'survey123',
+                        roofType: document.getElementById('roofType')?.value || 'Edwardian roof',
+                        _pipelineStatus: "1. Consultation & Survey"
+                    }
+                },
+                images: { frontElevation: fImg || null }
+            });
+            
+            const notes = document.getElementById('customerNotes')?.value;
+            if(notes) await addDoc(collection(window.db, `surveys/${docRef.id}/internalNotes`), { content: notes, visibility: 'external', timestamp: serverTimestamp() });
+            
+            if(window.showToast) window.showToast("Successfully Synced to V3 Vault!", true);
+        } catch(e) { console.error(e); if(window.showToast) window.showToast("V3 Sync Failed", false); }
+    });
+
+});
+</script>
+<script type="module">
+    // 1. DYNAMIC UNIFIED AUTH GATE
+    const authGate = document.createElement('div');
+    authGate.id = 'unifiedAuthGate';
+    authGate.style.cssText = 'position: fixed; inset: 0; background: #0b1118; z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: system-ui, sans-serif;';
+    authGate.innerHTML = `
+        <div style="background: #1E1E1E; padding: 40px; border-radius: 16px; border: 1px solid #333; width: 100%; max-width: 400px; text-align: center; box-sizing: border-box; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+            <h1 style="font-size: 28px; font-weight: 900; color: white; margin-bottom: 8px; margin-top: 0;">DESIGNER <span style="color: #0dcaf0;">LOGIN</span></h1>
+            <p style="color: #aaa; font-size: 14px; margin-bottom: 24px;">Unified Enterprise Authentication</p>
+            <input type="email" id="uniAuthEmail" placeholder="Designer Email" style="background: #1A1A1A; border: 1px solid #333; color: white; padding: 16px; border-radius: 8px; width: 100%; margin-bottom: 15px; box-sizing: border-box; outline: none;">
+            <input type="password" id="uniAuthPassword" placeholder="Password" style="background: #1A1A1A; border: 1px solid #333; color: white; padding: 16px; border-radius: 8px; width: 100%; margin-bottom: 15px; box-sizing: border-box; outline: none;">
+            <button id="uniBtnLogin" style="background: #0dcaf0; color: black; border: none; padding: 16px; border-radius: 8px; font-weight: 900; font-size: 16px; width: 100%; cursor: pointer; margin-bottom: 15px; text-transform: uppercase; transition: 0.2s;">Authenticate</button>
+            <p id="uniAuthError" style="color: #ef4444; font-size: 14px; display: none; font-weight: bold; margin: 0;">Invalid Credentials.</p>
+        </div>
+    `;
+    document.body.appendChild(authGate);
+
+    // 2. FIREBASE INITIALIZATION
+    import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const appConfig = {
+        apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", 
+        authDomain: "cohi-survey-engine.firebaseapp.com",
+        projectId: "cohi-survey-engine"
+    };
+
+    const app = !getApps().length ? initializeApp(appConfig) : getApp();
+    const auth = getAuth(app);
+    window.db = getFirestore(app);
+
+    // 3. SECURE THE GATE & PURGE OLD LOGIN
+    onAuthStateChanged(auth, (user) => {
+        const oldAuth = document.getElementById('authOverlay');
+        if(oldAuth) oldAuth.remove(); // Kill the old legacy login screen
+
+        if (user) {
+            authGate.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            const designerName = user.email.split('@')[0];
+            const nameInput = document.getElementById('input-designer') || document.getElementById('designerName') || document.getElementById('activeDesignerProfile');
+            if(nameInput) {
+                if(nameInput.tagName === 'INPUT') nameInput.value = designerName.charAt(0).toUpperCase() + designerName.slice(1);
+                else { nameInput.innerText = designerName.charAt(0).toUpperCase() + designerName.slice(1); nameInput.style.display = 'inline-block'; }
+            }
+        } else {
+            authGate.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    });
+
+    document.getElementById('uniBtnLogin').addEventListener('click', () => {
+        const email = document.getElementById('uniAuthEmail').value.trim();
+        const pass = document.getElementById('uniAuthPassword').value;
+        const err = document.getElementById('uniAuthError');
+        const btn = document.getElementById('uniBtnLogin');
+        if(!email || !pass) { err.innerText = "Enter credentials."; err.style.display = 'block'; return; }
+        btn.innerText = "AUTHENTICATING...";
+        signInWithEmailAndPassword(auth, email, pass).catch(error => {
+            err.innerText = "Invalid Credentials."; err.style.display = 'block'; btn.innerText = "AUTHENTICATE";
+        });
+    });
+</script>
+
+<script>
+// 4. THE HUNTER-KILLER SNIPER ENGINE
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("Pinnacle V8 Sniper Injector Running...");
+
+    const getVal = (id1, id2) => document.getElementById(id1)?.value || document.getElementById(id2)?.value || 'N/A';
+
+    setTimeout(() => {
+        const nameInp = document.getElementById('customerName') || document.getElementById('input-client-name');
+        if(nameInp && !nameInp.value) nameInp.value = "Mr. Dall";
+        const roofInp = document.getElementById('roofType') || document.getElementById('input-roof-type');
+        if(roofInp) roofInp.value = "Edwardian roof";
+    }, 500);
+
+    // --- THE UI ASSASSIN ---
+    setInterval(() => {
+        document.querySelectorAll('button').forEach(btn => {
+            const txt = btn.innerText.toLowerCase();
+            if (txt.includes('draw line') || txt.includes('add text') || txt.includes('undo') || txt.includes('clear')) {
+                btn.style.display = 'none';
+            }
+        });
+        document.querySelectorAll('.canvas-container').forEach(c => {
+            if(!c.classList.contains('sniper-cleared')) {
+                c.style.display = 'none';
+                c.classList.add('sniper-cleared');
+            }
+        });
+    }, 500);
+
+    // --- INJECT SYNC BUTTONS ---
+    const pdfBtn = document.getElementById('generateCustomerPdfBtn') || document.getElementById('generateInternalPdfBtn') || document.querySelector('button[id*="Pdf"]');
+    if(pdfBtn && !document.getElementById('btn-legacy-dash')) {
+        const container = document.createElement('div');
+        container.style.cssText = "display:flex; gap:10px; margin-top:15px; justify-content:center; flex-wrap:wrap; width:100%;";
+        container.innerHTML = `
+            <button id="btn-legacy-dash" style="background:#1A1A1A; color:#0dcaf0; border:1px solid #0dcaf0; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">📋 Copy to CRM</button>
+            <button id="btn-sync-v3" style="background:#10b981; color:white; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">☁️ Sync to V3 Vault</button>
+            <button id="btn-v3-dash" style="background:#4f46e5; color:white; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">Launch V3 Portal</button>
+        `;
+        pdfBtn.parentNode.insertBefore(container, pdfBtn.nextSibling);
+    }
+
+    // --- CRM EXPORT COMPILER ---
+    document.addEventListener('click', (e) => {
+        if(e.target.id === 'btn-legacy-dash') {
+            const client = getVal('customerName', 'input-client-name');
+            const pc = getVal('postCode', 'input-postcode');
+            const build = getVal('buildType', 'input-build-type');
+            const roof = getVal('roofType', 'input-roof-type');
+            const size = getVal('proposedSize', 'input-proposed-size');
+            const found = getVal('foundations', 'input-foundations');
+            const drain = getVal('drainage', 'input-drainage');
+            const brick = getVal('brickMatch', 'input-brick-match');
+            const notes = getVal('customerNotes', 'input-notes') || 'None';
+            
+            const vLogs = (window.sniperLogs && window.sniperLogs.length > 0) ? window.sniperLogs.join('\n') : "No structural vectors recorded.";
+            
+            const txt = `=== COHI CRM SURVEY EXPORT ===\nDate: ${new Date().toLocaleDateString()}\nClient: ${client}\nPostcode: ${pc}\n\n-- PROPERTY SPECIFICATIONS --\nBuild Category: ${build}\nRoof System: ${roof}\nFootprint: ${size} sqm\nFoundations: ${found}\nDrainage: ${drain}\nBrick Match: ${brick}\n\n-- STRUCTURAL VECTORS --\n${vLogs}\n\n-- SITE NOTES --\n${notes}\n==============================`;
+            
+            navigator.clipboard.writeText(txt).then(() => { if(window.showToast) window.showToast("Copied full payload to CRM!", true); });
+        }
+        
+        if(e.target.id === 'btn-v3-dash') {
+            window.open('portal.html', '_blank');
+        }
+    });
+
+    // --- FIREBASE V3 SYNC ---
+    document.addEventListener('click', async (e) => {
+        if(e.target.id === 'btn-sync-v3') {
+            if(!window.db) { alert('Database not connected.'); return; }
+            if(window.showToast) window.showToast("Authenticating and Pushing to V3...", true);
+            try {
+                const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+                const fCv = document.getElementById('canvasFront');
+                const fImg = fCv && fCv.hasAttribute('data-sniper') ? fCv.getAttribute('data-sniper') : null;
+                
+                const docRef = await addDoc(collection(window.db, "surveys"), {
+                    clientName: getVal('customerName', 'input-client-name'),
+                    userId: getVal('input-designer', 'designerName') || 'Designer',
+                    updatedAt: serverTimestamp(),
+                    data: {
+                        inputs: {
+                            postCode: getVal('postCode', 'input-postcode'),
+                            clientNum: getVal('customerNumber', 'input-customer-num') || 'survey123',
+                            roofType: getVal('roofType', 'input-roof-type'),
+                            buildType: getVal('buildType', 'input-build-type'),
+                            proposedSize: getVal('proposedSize', 'input-proposed-size'),
+                            _pipelineStatus: "1. Consultation & Survey",
+                            _brand: getVal('companyBrand', 'input-brand') || 'CO Home Improvements'
+                        }
+                    },
+                    images: { frontElevation: fImg || null }
+                });
+                
+                const notes = getVal('customerNotes', 'input-notes');
+                if(notes && notes !== 'N/A') {
+                    await addDoc(collection(window.db, `surveys/${docRef.id}/internalNotes`), { content: notes, visibility: 'external', timestamp: serverTimestamp() });
+                }
+                if(window.showToast) window.showToast("Successfully Synced to V3 Vault!", true);
+            } catch(err) { console.error(err); if(window.showToast) window.showToast("V3 Sync Failed", false); }
+        }
+    });
+
+    // --- BUILD SNIPER MODAL UI ---
+    const modal = document.createElement('div');
+    modal.id = 'sniper-modal';
+    modal.style.cssText = "display:none; position:fixed; inset:0; z-index:999999; background:#0b1118; font-family:system-ui, sans-serif; touch-action:none;";
+    modal.innerHTML = `
+        <div id="sniper-viewport" style="position:absolute; inset:0; overflow:hidden;">
+            <div id="sniper-container" style="transform-origin:0 0; position:absolute; will-change:transform;">
+                <canvas id="sniper-base" style="display:block;"></canvas>
+                <canvas id="sniper-vectors" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+                <canvas id="sniper-ghost" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+            </div>
+            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); pointer-events:none; z-index:50;">
+                <div style="position:absolute; width:44px; height:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+                <div style="position:absolute; height:44px; width:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+                <div style="position:absolute; width:4px; height:4px; background:#fff; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+            </div>
+            <div style="position:absolute; inset:0; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:20px; padding-bottom:env(safe-area-inset-bottom, 30px); padding-top:env(safe-area-inset-top, 20px);">
+                <div style="display:flex; justify-content:space-between; pointer-events:auto;">
+                    <button id="sniper-cancel" style="background:rgba(0,0,0,0.8); color:white; border:1px solid #444; padding:12px 24px; border-radius:8px; font-weight:bold;">Cancel</button>
+                    <button id="sniper-save" style="background:#10b981; color:white; border:none; padding:12px 24px; border-radius:8px; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.4);">Save Blueprint</button>
+                </div>
+                <div style="pointer-events:auto; display:flex; flex-direction:column; gap:15px;">
+                    <div style="align-self:flex-end; display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:6px;">
+                        <div class="nudge" data-x="0" data-y="-2" style="grid-column:2; grid-row:1; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↑</div>
+                        <div class="nudge" data-x="-2" data-y="0" style="grid-column:1; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">←</div>
+                        <div class="nudge" data-x="2" data-y="0" style="grid-column:3; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">→</div>
+                        <div class="nudge" data-x="0" data-y="2" style="grid-column:2; grid-row:3; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↓</div>
+                    </div>
+                    <button id="sniper-action" style="width:100%; padding:20px; background:#0dcaf0; border:none; border-radius:12px; font-size:18px; font-weight:900; text-transform:uppercase; box-shadow:0 6px 20px rgba(13,202,240,0.3);">🎯 Place Anchor</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // --- DYNAMIC FILE INPUT HOOKING ---
+    window.sniperLogs = [];
+    const S = { activeSuffix: 'Front', scale: 1, offsetX: 0, offsetY: 0, isDragging: false, lastTouch: {x:0, y:0}, initialPinch: null, anchor: null, vectors: [] };
+    
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        if(input.dataset.hooked) return;
+        input.dataset.hooked = "true";
+        const editBtn = document.createElement('button');
+        editBtn.innerHTML = "🎯 LAUNCH CROSSHAIR TOOL";
+        editBtn.style.cssText = "width:100%; padding:16px; border-radius:8px; background:#0dcaf0; color:black; font-weight:900; border:none; margin-top:15px; display:none; cursor:pointer; box-shadow:0 4px 15px rgba(13,202,240,0.4); text-transform:uppercase;";
+        input.parentNode.insertBefore(editBtn, input.nextSibling);
+
+        input.addEventListener('change', e => { if(e.target.files.length > 0) editBtn.style.display = 'block'; });
+
+        editBtn.addEventListener('click', e => {
+            e.preventDefault();
+            const container = input.closest('div, section, .border');
+            const oldCanvas = container ? container.querySelector('canvas') : null;
+            if(oldCanvas) S.activeSuffix = oldCanvas.id.replace('canvas', '') || 'Misc';
+
+            const file = input.files[0];
+            if(!file) return;
+
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                const baseCanvas = document.getElementById('sniper-base');
+                const vecCanvas = document.getElementById('sniper-vectors');
+                const ghostCanvas = document.getElementById('sniper-ghost');
+                const w = img.naturalWidth; const h = img.naturalHeight;
+                baseCanvas.width = vecCanvas.width = ghostCanvas.width = w;
+                baseCanvas.height = vecCanvas.height = ghostCanvas.height = h;
+                
+                baseCanvas.getContext('2d').drawImage(img, 0, 0);
+                S.vectors = []; S.anchor = null; 
+                S.offsetX = (window.innerWidth - w)/2; S.offsetY = (window.innerHeight - h)/2;
+                S.scale = Math.min(window.innerWidth/w, window.innerHeight/h) * 0.9;
+                
+                updateTransform();
+                modal.style.display = 'block';
+            };
+            img.src = url;
+        });
+    });
+
+    // --- SNIPER ENGINE MATH ---
+    const vp = document.getElementById('sniper-viewport');
+    const container = document.getElementById('sniper-container');
+    const vecCtx = document.getElementById('sniper-vectors').getContext('2d');
+    const ghostCtx = document.getElementById('sniper-ghost').getContext('2d');
+    const actionBtn = document.getElementById('sniper-action');
+
+    function renderVectors() {
+        const cvs = document.getElementById('sniper-vectors');
+        vecCtx.clearRect(0,0, cvs.width, cvs.height);
+        const lw = 4 / S.scale; const fs = 24 / S.scale; const pad = 10 / S.scale;
+        S.vectors.forEach(v => {
+            vecCtx.beginPath(); vecCtx.moveTo(v.x1, v.y1); vecCtx.lineTo(v.x2, v.y2);
+            vecCtx.lineWidth = lw; vecCtx.strokeStyle = '#0dcaf0'; vecCtx.stroke();
+            if(v.text) {
+                const mx = (v.x1 + v.x2)/2; const my = (v.y1 + v.y2)/2;
+                vecCtx.fillStyle = '#1A1A1A'; vecCtx.font = `bold ${fs}px sans-serif`;
+                const tw = vecCtx.measureText(v.text).width;
+                vecCtx.fillRect(mx - tw/2 - pad, my - fs, tw + pad*2, fs + pad*2);
+                vecCtx.fillStyle = '#0dcaf0'; vecCtx.textAlign = 'center'; vecCtx.textBaseline = 'middle';
+                vecCtx.fillText(v.text, mx, my);
+            }
+        });
+    }
+
+    function updateTransform() {
+        container.style.transform = `translate(${S.offsetX}px, ${S.offsetY}px) scale(${S.scale})`;
+        renderVectors(); 
+        const gCvs = document.getElementById('sniper-ghost');
+        ghostCtx.clearRect(0,0, gCvs.width, gCvs.height);
+        if(S.anchor) {
+            const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
+            ghostCtx.beginPath(); ghostCtx.moveTo(S.anchor.x, S.anchor.y); ghostCtx.lineTo(cur.x, cur.y);
+            ghostCtx.lineWidth = 4 / S.scale; ghostCtx.strokeStyle = '#0dcaf0'; 
+            ghostCtx.setLineDash([15/S.scale, 15/S.scale]); ghostCtx.stroke(); ghostCtx.setLineDash([]);
+        }
+    }
+
+    vp.addEventListener('touchstart', e => {
+        if(e.target.closest('button') || e.target.closest('.nudge')) return;
+        e.preventDefault();
+        if(e.touches.length === 1) { S.isDragging = true; S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; }
+        else if(e.touches.length === 2) { S.isDragging = false; S.initialPinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
+    }, {passive:false});
+
+    vp.addEventListener('touchmove', e => {
+        if(e.target.closest('button') || e.target.closest('.nudge')) return;
+        e.preventDefault();
+        if(e.touches.length === 1 && S.isDragging) {
+            S.offsetX += e.touches[0].clientX - S.lastTouch.x; S.offsetY += e.touches[0].clientY - S.lastTouch.y;
+            S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; updateTransform();
+        } else if(e.touches.length === 2 && S.initialPinch) {
+            const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            const oldScale = S.scale; S.scale *= (dist / S.initialPinch);
+            if(S.scale < 0.1) S.scale = 0.1; if(S.scale > 15) S.scale = 15;
+            const cx = window.innerWidth/2; const cy = window.innerHeight/2;
+            S.offsetX = cx - ((cx - S.offsetX) / oldScale * S.scale); S.offsetY = cy - ((cy - S.offsetY) / oldScale * S.scale);
+            S.initialPinch = dist; updateTransform();
+        }
+    }, {passive:false});
+
+    vp.addEventListener('touchend', e => { if(e.touches.length < 2) S.initialPinch = null; if(e.touches.length === 0) S.isDragging = false; });
+
+    document.querySelectorAll('.nudge').forEach(btn => {
+        btn.addEventListener('touchstart', e => { e.preventDefault(); S.offsetX -= parseInt(btn.dataset.x) * S.scale; S.offsetY -= parseInt(btn.dataset.y) * S.scale; updateTransform(); });
+    });
+
+    actionBtn.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
+        if(!S.anchor) {
+            S.anchor = cur; actionBtn.innerText = "✅ Confirm Endpoint"; actionBtn.style.background = "#10b981"; updateTransform();
+        } else {
+            const measurement = prompt("Enter Measurement (e.g., 2400mm):");
+            if(measurement) {
+                S.vectors.push({ x1: S.anchor.x, y1: S.anchor.y, x2: cur.x, y2: cur.y, text: measurement });
+                window.sniperLogs.push(`${S.activeSuffix} Elevation: ${measurement}`);
+            }
+            S.anchor = null; actionBtn.innerText = "🎯 Place Anchor"; actionBtn.style.background = "#0dcaf0"; updateTransform();
+        }
+    });
+
+    document.getElementById('sniper-cancel').onclick = () => modal.style.display = 'none';
+
+    document.getElementById('sniper-save').onclick = () => {
+        const baseCanvas = document.getElementById('sniper-base');
+        const vCanvas = document.getElementById('sniper-vectors');
+        const comp = document.createElement('canvas'); comp.width = baseCanvas.width; comp.height = baseCanvas.height;
+        const ctx = comp.getContext('2d');
+        ctx.drawImage(baseCanvas, 0,0); ctx.drawImage(vCanvas, 0,0);
+        
+        const b64 = comp.toDataURL('image/jpeg', 0.9);
+        const targetCanvas = document.getElementById(`canvas${S.activeSuffix}`);
+        if(targetCanvas) {
+            targetCanvas.setAttribute('data-sniper', b64);
+            const wrapper = targetCanvas.closest('div');
+            let preview = wrapper.querySelector('.sniper-preview-img');
+            if(!preview) {
+                preview = document.createElement('img');
+                preview.className = 'sniper-preview-img';
+                preview.style.cssText = "width:100%; border-radius:8px; margin-top:10px; border:2px solid #0dcaf0;";
+                wrapper.appendChild(preview);
+            }
+            preview.src = b64;
+        }
+        modal.style.display = 'none';
+        if(window.showToast) window.showToast("Blueprint Saved in High Res!", true);
+    };
+
+    const oldDataURL = HTMLCanvasElement.prototype.toDataURL;
+    HTMLCanvasElement.prototype.toDataURL = function(t, e) {
+        if(this.hasAttribute('data-sniper')) return this.getAttribute('data-sniper');
+        return oldDataURL.call(this, t, e);
+    };
+});
+</script>
 </body>
 </html>
