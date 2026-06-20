@@ -1,350 +1,597 @@
-// --- TOAST NOTIFICATION UI ---
-window.showToast = function(msg, isSuccess = true) {
-    let toast = document.getElementById('engineToast');
-    if (!toast) {
-        toast = document.createElement('div');
-        toast.id = 'engineToast';
-        toast.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; color: #fff; border-radius: 8px; z-index: 99999; display: none; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.4); transition: opacity 0.3s; pointer-events: none;';
-        document.body.appendChild(toast);
-    }
-    toast.style.background = isSuccess ? '#28a745' : '#ff9800';
-    toast.innerText = msg;
-    toast.style.display = 'block';
-    setTimeout(() => toast.style.opacity = '1', 10);
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.style.display = 'none', 300);
-    }, 3000);
-};
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("[Diagnostics] Blueprint Enterprise Engine Initialized (V4 Exact Fit).");
-    let jsPDF = window.jspdf ? window.jspdf.jsPDF : null;
-
-    // --- PHOTO MANAGEMENT UTILS ---
-    window.uploadedImagesStore = { misc: [], survey: [], access: [] };
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>COHI Survey Pro</title>
     
-    window.updatePhotoCount = function(storeKey) {
-        const badge = document.getElementById(`count-${storeKey}`);
-        if(badge) {
-            const count = window.uploadedImagesStore[storeKey].length;
-            badge.innerText = count > 0 ? `(${count})` : '';
-            badge.style.display = count > 0 ? 'inline-block' : 'none';
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX'); 
+    </script>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#15202b">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Survey Pro">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        /* FANCY SPLASH SCREEN CSS */
+        #splashScreen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #0b1118; z-index: 999999;
+            display: flex; justify-content: center; align-items: center;
+            transition: opacity 0.8s ease-in-out, visibility 0.8s;
         }
-    };
-
-    window.clearPhotos = function(storeKey) {
-        if(confirm(`Clear all ${storeKey} photos?`)) {
-            window.uploadedImagesStore[storeKey] = [];
-            window.updatePhotoCount(storeKey);
-            triggerAutoSave();
+        .logo-container { position: relative; width: 280px; height: 140px; }
+        .splash-logo {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: contain; transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-    };
-
-    // --- 1. CONTINUOUS AUTOSAVE (V3 CRM UPGRADED) ---
-    let autoSaveTimeout;
-    const triggerAutoSave = () => {
-        clearTimeout(autoSaveTimeout);
-        autoSaveTimeout = setTimeout(() => {
-            const data = {};
-            document.querySelectorAll('input:not([type="file"]):not(.pamphlet-cb), select, textarea').forEach(input => { 
-                if(input.id) data[input.id] = input.value; 
-            });
-
-            // --- POWERHOUSE METADATA INJECTION ---
-            // This silently prepares the data for the multi-brand V3 Command Center
-            data['_brandTag'] = document.getElementById('companyBrand')?.value || "CO Home Improvements"; 
-            data['_designerName'] = "Tom";
-            data['_lastContacted'] = Date.now(); // Powers the Green/Amber/Red status
-            data['_pipelineStatus'] = "Pre-Quote"; 
-            
-            // Terminology lock
-            if (data['roofType'] && data['roofType'].toLowerCase().includes('edwardian room')) {
-                data['roofType'] = 'Edwardian roof';
-            }
-
-            localStorage.setItem('surveyAppData', JSON.stringify(data));
-            if(window.performCloudAutoSave) window.performCloudAutoSave();
-        }, 1000); 
-    };
-
-    const savedData = JSON.parse(localStorage.getItem('surveyAppData')) || {};
-    document.querySelectorAll('input:not([type="file"]):not(.pamphlet-cb), select, textarea').forEach(input => {
-        if (input.id && savedData[input.id]) input.value = savedData[input.id];
-        input.addEventListener('input', triggerAutoSave);
-    });
-
-    document.getElementById('resetFormBtn')?.addEventListener('click', () => {
-        if(confirm("Clear all data for a new appointment?")) { 
-            localStorage.removeItem('surveyAppData'); 
-            window.uploadedImagesStore = { misc: [], survey: [], access: [] };
-            location.reload(); 
-        }
-    });
-
-    // --- 2. SMART PAMPHLET AUTO-TICKERS ---
-    document.getElementById('planningPerms')?.addEventListener('change', (e) => {
-        const cb = document.getElementById('cb-planning');
-        if(cb) cb.checked = (e.target.value !== 'No' && e.target.value !== '');
-    });
-    document.getElementById('sapCalcs')?.addEventListener('change', (e) => {
-        const cb = document.getElementById('cb-sap');
-        if(cb) cb.checked = (e.target.value === 'Yes');
-    });
-    document.getElementById('roofType')?.addEventListener('change', (e) => {
-        const cb = document.getElementById('cb-roof');
-        if(cb) cb.checked = (e.target.value !== '');
-    });
-
-    // --- 3. GLOBAL IMAGE COMPRESSOR & INDICATORS ---
-    const compressAndStoreFile = (file, storeKey) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX = 800; let w = img.width, h = img.height;
-                if(w > h && w > MAX) { h *= MAX/w; w = MAX; } else if (h > MAX) { w *= MAX/h; h = MAX; }
-                canvas.width = w; canvas.height = h;
-                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                window.uploadedImagesStore[storeKey].push(canvas.toDataURL('image/jpeg', 0.6));
-                window.updatePhotoCount(storeKey);
-                triggerAutoSave();
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    };
-
-    const setupMultiUpload = (id, key) => {
-        document.getElementById(id)?.addEventListener('change', (e) => {
-            Array.from(e.target.files).forEach(file => compressAndStoreFile(file, key));
-            window.showToast("Images Compressed & Attached", true);
-        });
-    };
-    setupMultiUpload('miscPhotos', 'misc'); setupMultiUpload('surveyPhotos', 'survey'); setupMultiUpload('accessPhotos', 'access');
-
-    const updateDynamicLabel = () => {
-        const needs = [];
-        if (document.getElementById('treesExist')?.value === 'Yes') needs.push('Trees');
-        if (document.getElementById('manholeExist')?.value === 'Yes') needs.push('Manholes');
-        if (document.getElementById('weepventsExist')?.value === 'Yes') needs.push('Weep Vents');
-        if (document.getElementById('pipesExist')?.value === 'Yes') needs.push('Pipes');
+        #logoCoh { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 15px rgba(255,107,0,0.15)); }
+        #logoCoh.fade-out { opacity: 0; transform: scale(1.1); filter: drop-shadow(0 0 0px transparent); }
+        #logoBrand { opacity: 0; transform: scale(0.9); }
+        #logoBrand.fade-in { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 25px rgba(255,255,255,0.15)); }
         
-        const label = document.getElementById('dynamicSurveyUploadLabel');
-        if (label) { 
-            label.innerHTML = needs.length > 0 ? `Capture: ${needs.join(', ')}` : `Site Survey Photos (General)`; 
-            label.style.color = needs.length > 0 ? '#ffc107' : 'var(--accent)'; 
-        }
-    };
-    document.querySelectorAll('.dyn-survey-select').forEach(sel => sel.addEventListener('change', updateDynamicLabel));
-
-    // --- 4. FABRIC CANVAS ENGINE (NO-CROP DYNAMIC RESIZE) ---
-    window.appCanvases = {};
-    document.querySelectorAll('.canvas-group').forEach(group => {
-        const id = group.getAttribute('data-id');
-        const canvasEl = group.querySelector('canvas');
-        if (!canvasEl) return;
-
-        const fCanvas = new fabric.Canvas(canvasEl.id, { isDrawingMode: false, allowTouchScrolling: true, selection: false });
-        window.appCanvases[id] = fCanvas;
-        fCanvas.isCalibrating = false; 
-        fCanvas.scaleRatio = 5; 
-
-        if(savedData['canvas_' + id]) {
-            fCanvas.loadFromJSON(savedData['canvas_' + id], fCanvas.renderAll.bind(fCanvas));
+        .photo-badge {
+            background: #FF6B00; color: #fff; padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: bold; margin-left: 5px; display: none;
         }
 
-        const saveCanvas = () => { 
-            const data = JSON.parse(localStorage.getItem('surveyAppData')) || {}; 
-            data['canvas_' + id] = JSON.stringify(fCanvas.toJSON()); 
-            localStorage.setItem('surveyAppData', JSON.stringify(data)); 
-            triggerAutoSave();
-        };
+        /* Ensure canvases don't break page width */
+        .canvas-container { max-width: 100% !important; overflow: hidden; margin: 0 auto; }
+        .canvas-container canvas { max-width: 100% !important; }
+    </style>
+</head>
+<body>
 
-        let activeTool = 'locked';
-        let isDrawingLine = false;
-        let activeLineObj = null;
-        let startX = 0, startY = 0;
+    <div id="splashScreen">
+        <div class="logo-container">
+            <img id="logoCoh" class="splash-logo" src="co-logo.png" alt="COHI Group">
+            <img id="logoBrand" class="splash-logo" src="" alt="Designer Brand">
+        </div>
+    </div>
 
-        function bindDimLineTool() {
-            fCanvas.off('mouse:down'); fCanvas.off('mouse:move'); fCanvas.off('mouse:up');
-            fCanvas.on('mouse:down', function(o) {
-                if (activeTool !== 'dim-line' && activeTool !== 'line') return;
-                isDrawingLine = true;
-                const pointer = fCanvas.getPointer(o.e);
-                startX = pointer.x; startY = pointer.y;
-
-                activeLineObj = new fabric.Line([startX, startY, startX, startY], {
-                    strokeWidth: 3, 
-                    stroke: activeTool === 'dim-line' ? '#0D6EFD' : '#FF0000', 
-                    strokeDashArray: activeTool === 'dim-line' ? [5, 5] : null,
-                    originX: 'center', originY: 'center', selectable: false, hasControls: false
-                });
-                fCanvas.add(activeLineObj);
-            });
-
-            fCanvas.on('mouse:move', function(o) {
-                if (!isDrawingLine) return;
-                const pointer = fCanvas.getPointer(o.e);
-                let x2 = pointer.x; let y2 = pointer.y;
-
-                if (o.e.shiftKey) {
-                    const dx = x2 - startX;
-                    const dy = y2 - startY;
-                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-                    const snappedAngle = Math.round(angle / 45) * 45;
-                    const dist = Math.hypot(dx, dy);
-                    x2 = startX + dist * Math.cos(snappedAngle * Math.PI / 180);
-                    y2 = startY + dist * Math.sin(snappedAngle * Math.PI / 180);
-                }
-
-                activeLineObj.set({ x2: x2, y2: y2 });
-                fCanvas.renderAll();
-            });
-
-            fCanvas.on('mouse:up', function() {
-                if (!isDrawingLine) return;
-                isDrawingLine = false;
-                
-                if (activeLineObj) {
-                    activeLineObj.setCoords();
-                    if (activeTool === 'dim-line') {
-                        const x1 = activeLineObj.x1, y1 = activeLineObj.y1, x2 = activeLineObj.x2, y2 = activeLineObj.y2;
-                        const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
-                        const dist = Math.hypot(x2 - x1, y2 - y1);
-                        const mmEstimate = Math.round(dist * (fCanvas.scaleRatio || 5)); 
-                        
-                        const label = new fabric.Text(`${mmEstimate} mm`, {
-                            left: (x1 + x2) / 2, top: (y1 + y2) / 2,
-                            originX: 'center', originY: 'center',
-                            fontSize: 16, fill: '#fff', backgroundColor: '#0D6EFD',
-                            padding: 4, fontWeight: 'bold', selectable: true
-                        });
-
-                        const arrow1 = new fabric.Triangle({ width: 12, height: 12, fill: '#0D6EFD', left: x1, top: y1, originX: 'center', originY: 'center', angle: angle - 90, selectable: false });
-                        const arrow2 = new fabric.Triangle({ width: 12, height: 12, fill: '#0D6EFD', left: x2, top: y2, originX: 'center', originY: 'center', angle: angle + 90, selectable: false });
-                        
-                        fCanvas.add(arrow1, arrow2, label);
-                    }
-                }
-                saveCanvas();
-                fCanvas.renderAll();
-            });
-        }
-
-        fCanvas.on('object:modified', saveCanvas);
-
-        group.querySelector('.camera-input')?.addEventListener('change', function(e) {
-            const file = e.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                fabric.Image.fromURL(event.target.result, (img) => {
-                    fCanvas.clear();
-                    
-                    // --- DYNAMIC RESIZE FIX (NO CROPPING) ---
-                    // Calculate exactly how high the canvas needs to be to fit the image entirely based on screen width.
-                    const wrapper = group.querySelector('.canvas-container').parentElement;
-                    const targetWidth = Math.min(wrapper.clientWidth - 20, 800); // 20px padding buffer
-                    const ratio = img.height / img.width;
-                    const targetHeight = targetWidth * ratio;
-
-                    fCanvas.setWidth(targetWidth);
-                    fCanvas.setHeight(targetHeight);
-
-                    const scale = targetWidth / img.width;
-
-                    img.set({ 
-                        scaleX: scale, 
-                        scaleY: scale, 
-                        originX: 'left', 
-                        originY: 'top', 
-                        left: 0, 
-                        top: 0, 
-                        selectable: false,
-                        evented: false
-                    });
-                    
-                    fCanvas.add(img); fCanvas.sendToBack(img); saveCanvas();
-                });                
-            };
-            reader.readAsDataURL(file);
-        });
-
-        const toolSection = group.querySelector('.tool-section');
-        if(toolSection && !group.querySelector('.measure-btn')) {
-            const measureBtn = document.createElement('button');
-            measureBtn.type = 'button'; measureBtn.className = 'tool-btn measure-btn'; measureBtn.title = 'Calibrate Scale';
-            measureBtn.innerHTML = '📏';
-            toolSection.appendChild(measureBtn);
-
-            measureBtn.addEventListener('click', () => {
-                group.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active')); measureBtn.classList.add('active');
-                const knownSize = prompt("Enter real-world length of the line you will draw (in mm):");
-                if(!knownSize) return;
-                
-                fCanvas.isDrawingMode = true; fCanvas.isCalibrating = true;
-                fCanvas.freeDrawingBrush = new fabric.PencilBrush(fCanvas);
-                fCanvas.freeDrawingBrush.color = '#ff0000'; fCanvas.freeDrawingBrush.width = 3;
-                
-                fCanvas.once('path:created', (e) => {
-                    fCanvas.scaleRatio = knownSize / e.path.width;
-                    window.showToast(`Calibrated! Lines will auto-label.`);
-                    fCanvas.isDrawingMode = false; fCanvas.isCalibrating = false;
-                    fCanvas.remove(e.path); 
-                    measureBtn.classList.remove('active'); group.querySelector('.lock-btn')?.classList.add('active');
-                });
-            });
+    <div id="authOverlay" class="modal-overlay" style="display: none; flex-direction: column; background: var(--base-bg); z-index: 99998; justify-content: center; align-items: center;">
+        <div class="card" style="max-width: 400px; width: 90%; text-align: center; margin: 0;">
+            <h2 class="card__title" style="border: none; margin-bottom: 10px;">ENGINE ACCESS</h2>
             
-            if(!group.querySelector('.line-btn')) {
-                const lineBtn = document.createElement('button'); lineBtn.type='button'; lineBtn.className='tool-btn line-btn'; lineBtn.innerHTML='|'; toolSection.appendChild(lineBtn);
-                lineBtn.addEventListener('click', function() { resetBtns(); this.classList.add('active'); activeTool = 'line'; fCanvas.isDrawingMode = false; bindDimLineTool(); });
+            <div id="loginView">
+                <div class="form-group"><input type="email" id="authEmail" class="form-group__input" placeholder="Email Address"></div>
+                <div class="form-group mt-10"><input type="password" id="authPassword" class="form-group__input" placeholder="Password"></div>
+                <button id="loginBtn" class="button" style="width: 100%; margin-top: 25px;">Secure Log In</button>
+                <button id="showRegisterBtn" class="button button--secondary" style="width: 100%; margin-top: 10px;">Register New Designer</button>
+            </div>
+
+            <div id="registerView" style="display: none; text-align: left;">
+                <div class="form-group">
+                    <select id="regBrand" class="form-group__input">
+                        <option value="">Select Brand...</option>
+                        <option value="Yorkshire Windows">Yorkshire Windows</option>
+                        <option value="CO Home Improvements">CO Home Improvements</option>
+                        <option value="Clearview">Clearview</option>
+                        <option value="Orion Windows">Orion Windows</option>
+                        <option value="Planet">Planet</option>
+                        <option value="Trent Valley Windows">Trent Valley Windows</option>
+                        <option value="West Yorkshire Windows">West Yorkshire Windows</option>
+                    </select>
+                </div>
+                <div class="form-group mt-10"><input type="text" id="regName" class="form-group__input" placeholder="Full Name"></div>
+                <div class="form-group mt-10"><input type="tel" id="regPhone" class="form-group__input" placeholder="Contact Number"></div>
+                <div class="form-group mt-10"><textarea id="regBio" class="form-group__input" rows="2" placeholder="Short Designer Bio"></textarea></div>
+                <div class="form-group mt-10"><input type="email" id="regEmail" class="form-group__input" placeholder="Email Address"></div>
+                <div class="form-group mt-10"><input type="password" id="regPassword" class="form-group__input" placeholder="Create Password"></div>
                 
-                const dimBtn = document.createElement('button'); dimBtn.type='button'; dimBtn.className='tool-btn dim-line-btn'; dimBtn.innerHTML='⟷'; toolSection.appendChild(dimBtn);
-                dimBtn.addEventListener('click', function() { resetBtns(); this.classList.add('active'); activeTool = 'dim-line'; fCanvas.isDrawingMode = false; bindDimLineTool(); });
-            }
-        }
+                <button id="registerBtn" class="button" style="width: 100%; margin-top: 20px;">Create Profile & Enter</button>
+                <button id="cancelRegisterBtn" class="button button--secondary" style="width: 100%; margin-top: 10px;">Back to Login</button>
+            </div>
+            
+            <p id="authError" style="color: #ff4444; margin-top: 15px; font-size: 0.85rem; display: none;"></p>
+            <p id="appVersionDisplay" style="color: #666; font-size: 0.75rem; margin-top: 20px; border-top: 1px solid #333; padding-top: 10px;">Loading Build Version...</p>
+        </div>
+    </div>
 
-        const resetBtns = () => { 
-            group.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active')); 
-            fCanvas.off('mouse:down'); fCanvas.off('mouse:move'); fCanvas.off('mouse:up');
-        };
-        group.querySelector('.lock-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); activeTool = 'locked'; fCanvas.isDrawingMode = false; });
-        group.querySelector('.freehand-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); activeTool = 'freehand'; fCanvas.isDrawingMode = true; fCanvas.freeDrawingBrush = new fabric.PencilBrush(fCanvas); fCanvas.freeDrawingBrush.color = '#00E5FF'; fCanvas.freeDrawingBrush.width = 4; });
-        group.querySelector('.highlight-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); activeTool = 'highlight'; fCanvas.isDrawingMode = true; fCanvas.freeDrawingBrush = new fabric.PencilBrush(fCanvas); fCanvas.freeDrawingBrush.color = 'rgba(255, 255, 0, 0.4)'; fCanvas.freeDrawingBrush.width = 20; });
-        group.querySelector('.text-btn')?.addEventListener('click', function() { resetBtns(); this.classList.add('active'); activeTool = 'text'; fCanvas.isDrawingMode = false; const text = new fabric.IText('Double click to edit', { left: 50, top: 50, fontFamily: 'sans-serif', fill: '#00E5FF', fontSize: 24 }); fCanvas.add(text); fCanvas.setActiveObject(text); saveCanvas(); });
-        group.querySelector('.undo-btn')?.addEventListener('click', () => { const objs = fCanvas.getObjects(); if(objs.length > 0) { const last = objs[objs.length - 1]; if(objs.length === 1 && last.type === 'image') return; fCanvas.remove(last); saveCanvas(); } });
-        group.querySelector('.clear-btn')?.addEventListener('click', () => { fCanvas.getObjects().filter(o => o.type !== 'image').forEach(o => fCanvas.remove(o)); saveCanvas(); });
-    });
+    <header class="navbar navbar--top" id="mainHeader">
+        <div class="navbar__container header-container" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <h1 class="navbar__title">Survey Pro</h1>
+                <span id="activeDesignerProfile" style="color: var(--accent); font-size: 0.9rem; font-weight: bold; border-left: 1px solid #444; padding-left: 15px; display: none;"></span>
+            </div>
+            <div class="nav-controls">
+                <button id="logoutBtn" class="nav-btn btn-icon tool-btn" style="background: var(--input-bg); border: 1px solid #444; color: #ff4444;" title="Log Out">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </button>
+            </div>
+        </div>
+    </header>
 
-    // --- 5. LIVE AI NOTES REWRITER ---
-    document.getElementById('aiRewriteBtn')?.addEventListener('click', async () => {
-        const rawText = document.getElementById('designerNotes').value.trim();
-        if(!rawText) return window.showToast("No raw notes to rewrite.", false);
+    <main id="designerApp" class="main-container main-container--centered layout-wrapper" style="display: none;">
+        <article class="card" id="cloudDashboard" style="border-color: var(--accent); background: #1E1E1E;">
+            <h2 class="card__title" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; margin-bottom: 15px; padding-bottom: 10px;">
+                <span style="color: #fff;">☁️ Cloud Workspace</span>
+                <span id="syncStatus" style="font-size: 0.85rem; color: #0dcaf0; font-weight: normal;">Connected</span>
+            </h2>
+            <div class="form-grid" style="align-items: end;">
+                <div class="form-group" style="flex-grow: 2;">
+                    <label class="form-group__label">Load Previous Survey:</label>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="cloudDrafts" class="form-group__input">
+                            <option value="">Fetching drafts...</option>
+                        </select>
+                        <button id="loadCloudBtn" class="button button--secondary" style="white-space: nowrap;">Load Survey</button>
+                    </div>
+                </div>
+            </div>
+        </article>
         
-        window.showToast("AI Polishing...", true);
-        const btn = document.getElementById('aiRewriteBtn');
-        btn.innerText = "Processing..."; btn.disabled = true;
+        <article class="card">
+            <h2 class="card__title">Client Profile</h2>
+            <div class="form-grid">
+                <div class="form-group"><label class="form-group__label">Name *</label><input type="text" id="clientName" class="form-group__input" required></div>
+                <div class="form-group"><label class="form-group__label">Customer Number</label><input type="tel" id="clientNum" class="form-group__input"></div>
+                <div class="form-group"><label class="form-group__label">Postcode *</label><input type="text" id="postCode" class="form-group__input" required></div>
+                <div class="form-group"><label class="form-group__label">Consultation Date</label><input type="date" id="apptDate" class="form-group__input"></div>
+                <div class="form-group"><label class="form-group__label">Revisit Date</label><input type="date" id="revisitDate" class="form-group__input"></div>
+                <div class="form-group"><label class="form-group__label">Revisit Location</label><input type="text" id="revisitLocation" class="form-group__input" placeholder="e.g. Showroom"></div>
+            </div>
+        </article>
 
-        try {
-            const { getFunctions, httpsCallable } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js");
-            const functions = getFunctions();
-            const rewriteNotes = httpsCallable(functions, 'rewriteNotes');
+        <article class="card">
+            <h2 class="card__title">Elevations & Markup</h2>
+            
+            <div class="form-group" style="margin-bottom: 20px; background: #252525; padding: 15px; border-radius: 8px; border: 1px solid #333;">
+                <label class="form-group__label" style="color: #0dcaf0;">Primary Build Area (Shows enlarged on report for notes):</label>
+                <select id="primaryBuildArea" class="form-group__input">
+                    <option value="frontelevation">Front Elevation</option>
+                    <option value="sideelevation">Side Elevation</option>
+                    <option value="rearelevation" selected>Rear Elevation</option>
+                </select>
+            </div>
 
-            const result = await rewriteNotes({ rawText: rawText });
-            document.getElementById('customerNotes').value = result.data.polishedText;
-            window.showToast("Notes Polished!", true);
-            triggerAutoSave();
-        } catch (error) {
-            console.error("AI Error:", error);
-            window.showToast("AI Request Failed. Check connection.", false);
-        } finally {
-            btn.innerText = "✨ AI Polish"; btn.disabled = false;
-        }
-    });
+            <div class="canvas-group" data-id="frontelevation">
+                <div class="custom-file-upload">
+                    <input type="file" id="front-cam" class="camera-input hidden-input" accept="image/*">
+                    <label for="front-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Front Elevation</label>
+                </div>
+                <div class="canvas-container"><canvas id="canvas-frontelevation" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
+                    <div class="tool-section">
+                        <button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg></button>
+                        <button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button>
+                    </div>
+                    <div class="tool-section flex-right">
+                        <button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
+                        <button type="button" class="tool-btn clear-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </div>
+                </div>
+            </div>
 
-    // --- 6. SECURE WATERMARK & PDF ENGINE ---
-    const getBase64Logo = (brandName) => new Promise(resolve => {
+            <div class="canvas-group mt-30" data-id="sideelevation">
+                <div class="custom-file-upload">
+                    <input type="file" id="side-cam" class="camera-input hidden-input" accept="image/*">
+                    <label for="side-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Side Elevation</label>
+                </div>
+                <div class="canvas-container"><canvas id="canvas-sideelevation" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
+                    <div class="tool-section">
+                        <button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg></button>
+                        <button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button>
+                    </div>
+                    <div class="tool-section flex-right">
+                        <button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
+                        <button type="button" class="tool-btn clear-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="canvas-group mt-30" data-id="rearelevation">
+                <div class="custom-file-upload">
+                    <input type="file" id="rear-cam" class="camera-input hidden-input" accept="image/*">
+                    <label for="rear-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Rear Elevation</label>
+                </div>
+                <div class="canvas-container"><canvas id="canvas-rearelevation" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
+                    <div class="tool-section">
+                        <button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg></button>
+                        <button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button>
+                    </div>
+                    <div class="tool-section flex-right">
+                        <button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
+                        <button type="button" class="tool-btn clear-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <article class="card">
+            <h2 class="card__title">Access & Logistics</h2>
+            <div class="form-grid">
+                <div class="form-group"><label class="form-group__label">Access Issues?</label><select id="accessDifficult" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Narrowest access point (mm):</label><input type="number" id="accessWidth" class="form-group__input"></div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-group__label">Upload access photos:</label>
+                    <div class="custom-file-upload mt-10" style="display: flex; gap: 10px; align-items: center;">
+                        <input type="file" id="accessPhotos" class="hidden-input" accept="image/*" multiple>
+                        <label for="accessPhotos" class="upload-label" style="flex-grow: 1;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Select Access Images <span id="count-access" class="photo-badge">0</span></label>
+                        <button type="button" class="button btn-danger" onclick="window.clearPhotos('access')" style="padding: 10px; min-width: 40px;" title="Clear Photos">X</button>
+                    </div>
+                </div>
+            </div>
+            
+            <h3 class="section-subtitle mt-30" style="color: var(--accent); margin-bottom: 15px;">Site Survey Basics</h3>
+            <div class="form-grid">
+                <div class="form-group"><label class="form-group__label">DPC Depth (mm):</label><input type="number" id="dpcDepth" class="form-group__input"></div>
+                <div class="form-group"><label class="form-group__label">House material:</label><select id="houseMaterial" class="form-group__input"><option value="">Select...</option><option value="Brick">Brick</option><option value="Stone">Stone</option><option value="Render">Render</option><option value="Other">Other</option></select></div>
+                <div class="form-group"><label class="form-group__label">Fascia Height (mm):</label><input type="text" id="fasciaHeight" class="form-group__input"></div>
+                <div class="form-group"><label class="form-group__label">Air Bricks? How many?</label><select id="airbricks" class="form-group__input"><option value="">Select...</option><option value="No">No</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5+">5+</option></select></div>
+                <div class="form-group"><label class="form-group__label">SAP Calcs Required?</label><select id="sapCalcs" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group" style="grid-column: 1 / -1;"><label class="form-group__label">Wall Obstacles:</label><textarea id="wallObstacles" class="form-group__input" rows="2"></textarea></div>
+            </div>
+
+            <div class="form-grid mt-30">
+                <div class="form-group"><label class="form-group__label">Trees within 30m?</label><select id="treesExist" class="form-group__input dyn-survey-select"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Manholes visible?</label><select id="manholeExist" class="form-group__input dyn-survey-select"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Weep vents visible?</label><select id="weepventsExist" class="form-group__input dyn-survey-select"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Pipes (RWP/SVP) exist?</label><select id="pipesExist" class="form-group__input dyn-survey-select"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+            </div>
+            
+            <div class="form-group" style="margin-top: 25px; background: #252525; padding: 15px; border-radius: 8px; border: 1px solid #333;">
+                <label id="dynamicSurveyUploadLabel" class="form-group__label" style="color: var(--accent); margin-bottom: 10px;">Site Survey Photos (General)</label>
+                <div class="custom-file-upload" style="display: flex; gap: 10px; align-items: center;">
+                    <input type="file" id="surveyPhotos" class="hidden-input" accept="image/*" multiple>
+                    <label for="surveyPhotos" class="upload-label" style="flex-grow: 1;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> Upload Survey Photos <span id="count-survey" class="photo-badge">0</span></label>
+                    <button type="button" class="button btn-danger" onclick="window.clearPhotos('survey')" style="padding: 10px; min-width: 40px;" title="Clear Photos">X</button>
+                </div>
+            </div>
+        </article>
+
+        <article class="card">
+            <h2 class="card__title">Design Ideas</h2>
+            <div class="form-grid">
+                <div class="form-group"><label class="form-group__label">Build Type *</label><select id="buildType" class="form-group__input" required><option value="">Select...</option><option value="Conservatory">Conservatory</option><option value="Extension">Extension</option><option value="Porch">Porch</option><option value="Roof and Frame">Roof and Frame</option><option value="Other">Other</option></select></div>
+                <div class="form-group"><label class="form-group__label">Roof Type:</label>
+                    <select id="roofType" class="form-group__input">
+                        <option value="">Select...</option>
+                        <option value="Ultra380">Ultra380</option>
+                        <option value="LivinRoof">LivinRoof</option>
+                        <option value="Glass Roof">Glass Roof</option>
+                        <option value="Flat Roof">Flat Roof</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group"><label class="form-group__label">Proposed Size (mm):</label><input type="text" id="proposedSize" class="form-group__input"></div>
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                    <label class="form-group__label">Frame Colour (External):</label>
+                    <select id="frameColour" class="form-group__input">
+                        <option value="">Select...</option>
+                        <option value="White">White</option>
+                        <option value="Grey Foil">Grey Foil</option>
+                        <option value="Rosewood">Rosewood</option>
+                        <option value="Light Oak">Light Oak</option>
+                        <option value="Black Brown Foil">Black Brown Foil</option>
+                        <option value="Cream Foil">Cream Foil</option>
+                        <option value="Chartwell Green Foil">Chartwell Green Foil</option>
+                        <option value="Agate Grey">Agate Grey</option>
+                    </select>
+                </div>
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
+                    <label class="form-group__label">Frame Colour (Internal):</label>
+                    <select id="internalFrameColour" class="form-group__input">
+                        <option value="White">White</option>
+                        <option value="Match External">Match External Colour</option>
+                    </select>
+                </div>
+                <div class="form-group"><label class="form-group__label">Building Regs Required?</label><select id="buildingRegs" class="form-group__input"><option value="">Select...</option><option value="Yes">Yes</option><option value="No">No</option></select></div>
+                <div class="form-group"><label class="form-group__label">Planning Permission Required?</label><select id="planningPerms" class="form-group__input"><option value="">Select...</option><option value="No">No</option><option value="Pre Approved">Pre Approved</option><option value="Full Planning">Full Planning</option></select></div>
+                
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <div style="display: flex; justify-content: space-between; align-items: end; margin-bottom: 5px;">
+                        <label class="form-group__label" style="margin: 0;">Designer Notes (Raw):</label>
+                        <button id="aiRewriteBtn" type="button" class="button button--secondary" style="padding: 5px 10px; font-size: 0.8rem; background: #2c2c2c; border-color: #555;">✨ AI Polish</button>
+                    </div>
+                    <textarea id="designerNotes" class="form-group__input" rows="4" placeholder="Type raw internal notes here..."></textarea>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1; margin-top: 10px;">
+                    <label class="form-group__label" style="color: #0dcaf0;">Customer Facing Notes (AI Generated):</label>
+                    <textarea id="customerNotes" class="form-group__input" rows="3" placeholder="Polished text for the customer PDF will appear here..."></textarea>
+                </div>
+            </div>
+
+            <div class="canvas-group mt-30" data-id="designersketch">
+                <div class="custom-file-upload">
+                    <input type="file" id="sketch-cam" class="camera-input hidden-input" accept="image/*">
+                    <label for="sketch-cam" class="upload-label"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg> Upload Base Sketch</label>
+                </div>
+                <div class="canvas-container"><canvas id="canvas-designersketch" width="600" height="400"></canvas></div>
+                <div class="canvas-controls">
+                    <button type="button" class="tool-btn lock-btn canvas-locked active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>
+                    <div class="tool-section">
+                        <button type="button" class="tool-btn freehand-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg></button>
+                        <button type="button" class="tool-btn highlight-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg></button>
+                        <button type="button" class="tool-btn text-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></button>
+                    </div>
+                    <div class="tool-section flex-right">
+                        <button type="button" class="tool-btn undo-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg></button>
+                        <button type="button" class="tool-btn clear-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <article class="card">
+            <h2 class="card__title">Misc</h2>
+            <div class="form-group" style="margin-top:15px;">
+                <label class="form-group__label">Additional Photos (Upload multiple):</label>
+                <div class="custom-file-upload mt-10" style="display: flex; gap: 10px; align-items: center;">
+                    <input type="file" id="miscPhotos" class="hidden-input" accept="image/*" multiple>
+                    <label for="miscPhotos" class="upload-label" style="flex-grow: 1;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg> Select Misc Images <span id="count-misc" class="photo-badge">0</span></label>
+                    <button type="button" class="button btn-danger" onclick="window.clearPhotos('misc')" style="padding: 10px; min-width: 40px;" title="Clear Photos">X</button>
+                </div>
+            </div>
+        </article>
+
+        <article class="card" style="border: 1px solid #0dcaf0;">
+            <h2 class="card__title" style="color: #0dcaf0;">Customer Pack Settings</h2>
+            <div class="form-group" style="margin-top: 10px;">
+                <label style="color: #fff;"><input type="checkbox" id="includeSketchInPack" checked> Include Designer Sketch</label>
+            </div>
+            <div class="form-group" style="margin-top: 10px;">
+                <label style="color: #fff;"><input type="checkbox" id="includeNotesInPack" checked> Include Designer Notes</label>
+            </div>
+            
+            <h3 class="section-subtitle mt-20" style="color: #fff; font-size: 0.9rem; margin-bottom: 10px; border-top: 1px solid #333; padding-top: 15px;">Smart Pamphlets to Include:</h3>
+            <div id="flyerToggles" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9rem; color: #ccc;">
+                <label><input type="checkbox" class="pamphlet-cb" value="journey-1.jpg" checked> The Journey (Pt 1)</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="journey-2.jpg" checked> The Journey (Pt 2)</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="who-we-are.jpg" checked> Who We Are</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="protecting-home.jpg" checked> Protecting Your Home</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="tailored.jpg" checked> Tailored For You</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="why-choose-us.jpg" checked> Why Choose Us</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="planning.jpg" id="cb-planning" checked> Planning Permission</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="sap-calcs.jpg" id="cb-sap" checked> SAP Calcs</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="cavity.jpg" id="cb-cavity"> Cavity Trays</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="piling.jpg" id="cb-piling"> Piling System</label>
+                <label><input type="checkbox" class="pamphlet-cb" value="roof-info.jpg" id="cb-roof"> Selected Roof Info</label>
+            </div>
+        </article>
+
+        <div style="display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap;">
+            <button id="generateInternalPdfBtn" class="button button--secondary" style="width: 48%;">Designer Survey (Internal)</button>
+            <button id="generateCustomerPdfBtn" class="button" style="width: 48%; background: #0dcaf0; color: #000; border-color: #0dcaf0;">Designer Survey (Customer)</button>
+        </div>
+        <button id="resetFormBtn" class="button btn-danger" style="margin-top: 20px; width: 100%;">Clear Form for Next Appointment</button>
+
+        <button id="copyPortalLinkBtn" class="button button--secondary" style="width: 100%; margin-top: 10px; border-color: #f97316; color: #f97316;">Copy Vault Link for Customer</button>
+    </main>
+    
+    <main id="adminDashboard" class="main-container main-container--centered layout-wrapper" style="display: none;">
+        <article class="card" style="border-color: #ff9800; background: #1E1E1E;">
+            <h2 class="card__title" style="border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px;">
+                <span style="color: #ff9800;">📊 Manager Intelligence Hub</span>
+            </h2>
+
+            <div id="adminStats" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <div style="flex: 1; background: #2a2a2a; padding: 15px; border-radius: 8px; text-align: center; border-top: 3px solid #ff9800;">
+                    <h4 style="margin: 0; color: #888; font-size: 0.8rem; text-transform: uppercase;">Total Surveys</h4>
+                    <p id="statTotal" style="margin: 5px 0 0 0; font-size: 1.5rem; color: #fff; font-weight: bold;">0</p>
+                </div>
+                <div style="flex: 1; background: #2a2a2a; padding: 15px; border-radius: 8px; text-align: center; border-top: 3px solid #0dcaf0;">
+                    <h4 style="margin: 0; color: #888; font-size: 0.8rem; text-transform: uppercase;">Active Designers</h4>
+                    <p id="statDesigners" style="margin: 5px 0 0 0; font-size: 1.5rem; color: #fff; font-weight: bold;">0</p>
+                </div>
+                <div style="flex: 1; background: #2a2a2a; padding: 15px; border-radius: 8px; text-align: center; border-top: 3px solid #28a745;">
+                    <h4 style="margin: 0; color: #888; font-size: 0.8rem; text-transform: uppercase;">Today's Leads</h4>
+                    <p id="statToday" style="margin: 5px 0 0 0; font-size: 1.5rem; color: #fff; font-weight: bold;">0</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="adminSearch" class="form-group__input" placeholder="Search leads by Client Name or Postcode..." style="flex-grow: 1;">
+                <button id="adminExportBtn" class="button" style="background: #ff9800; white-space: nowrap;">Export CSV</button>
+            </div>
+
+            <div id="adminLeadsContainer" style="display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; padding-right: 5px;">
+                <p style="color: #888; text-align: center;">Fetching company data...</p>
+            </div>
+        </article>
+    </main>
+
+    <div id="pdfTemplateInternal" style="display: none; background: #fff; color: #222; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; width: 800px; box-sizing: border-box;">
+        
+        <div class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px;">
+                <div>
+                    <h1 style="font-size: 42px; font-weight: 900; color: #111; margin: 0; letter-spacing: -1px; text-transform: uppercase;">Designer<br><span class="brand-text" style="color: #002f54;">Survey.</span></h1>
+                </div>
+                <img class="dynamic-brand-logo" src="" style="max-width: 200px; max-height: 80px; object-fit: contain;">
+            </div>
+
+            <div class="brand-bg" style="background: #002f54; padding: 25px 40px; color: #ffffff; border-radius: 8px;">
+                <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+                    <div style="width: 45%;">
+                        <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px;">Customer Name</p>
+                        <p class="bind-name" style="margin: 5px 0 0 0; font-size: 24px; font-weight: bold;"></p>
+                    </div>
+                    <div style="width: 45%;">
+                        <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px;">Site Location</p>
+                        <p class="bind-address" style="margin: 5px 0 0 0; font-size: 18px; font-weight: 500;"></p>
+                    </div>
+                    <div style="width: 45%; margin-top: 10px;">
+                        <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px;">Contact Number</p>
+                        <p class="bind-num" style="margin: 5px 0 0 0; font-size: 16px;"></p>
+                    </div>
+                    <div style="width: 45%; margin-top: 10px;">
+                        <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 1px;">Lead Designer</p>
+                        <p id="pdfPrintDesigner" style="margin: 5px 0 0 0; font-size: 16px; font-weight: bold;"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="width: 100%; height: auto; min-height: 400px; max-height: 650px; background: #fafafa; border-radius: 12px; margin-top: 30px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid #eaeaea;">
+                <img class="dynamic-brand-logo" src="" style="position: absolute; width: 60%; opacity: 0.05; pointer-events: none; mix-blend-mode: multiply;">
+                <img id="pdfHeroImg" src="" style="width: 100%; max-height: 650px; object-fit: contain; position: relative; z-index: 2;">
+            </div>
+        </div>
+
+        <div class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 2px solid #ddd; padding-bottom: 15px;">
+                <h2 style="font-size: 24px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Project <span class="brand-text" style="color: #002f54;">Specifications</span></h2>
+                <img class="dynamic-brand-logo" src="" style="max-width: 120px; max-height: 40px; object-fit: contain;">
+            </div>
+            
+            <h4 style="color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 15px 0;">Design & Architecture</h4>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 35px;">
+                <div class="brand-border-bottom" style="width: 31%; background: #f9f9f9; padding: 20px; border-radius: 12px; border-bottom: 4px solid #002f54;">
+                    <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px;">Build Type</p>
+                    <p id="pdfBuildType" style="margin: 5px 0 0 0; font-size: 20px; font-weight: 800; color: #111;"></p>
+                </div>
+                <div class="brand-border-bottom" style="width: 31%; background: #f9f9f9; padding: 20px; border-radius: 12px; border-bottom: 4px solid #002f54;">
+                    <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px;">Proposed Size</p>
+                    <p id="pdfProposedSize" style="margin: 5px 0 0 0; font-size: 20px; font-weight: 800; color: #111;"></p>
+                </div>
+                <div class="brand-border-bottom" style="width: 31%; background: #f9f9f9; padding: 20px; border-radius: 12px; border-bottom: 4px solid #002f54;">
+                    <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px;">Roof Style</p>
+                    <p id="pdfRoofType" style="margin: 5px 0 0 0; font-size: 20px; font-weight: 800; color: #111;"></p>
+                </div>
+                <div style="width: 31%; background: #f9f9f9; padding: 15px 20px; border-radius: 12px;">
+                    <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase;">Frame Colour</p>
+                    <p id="pdfFrameColour" style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111; line-height: 1.3;"></p>
+                </div>
+                <div style="width: 31%; background: #f9f9f9; padding: 15px 20px; border-radius: 12px;">
+                    <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase;">Building Regs</p>
+                    <p id="pdfBuildingRegs" style="margin: 5px 0 0 0; font-size: 16px; font-weight: bold; color: #111;"></p>
+                </div>
+                <div style="width: 31%; background: #f9f9f9; padding: 15px 20px; border-radius: 12px;">
+                    <p style="margin:0; font-size: 11px; color: #888; text-transform: uppercase;">Planning Perms</p>
+                    <p id="pdfPlanningPerms" style="margin: 5px 0 0 0; font-size: 16px; font-weight: bold; color: #111;"></p>
+                </div>
+            </div>
+
+            <h4 style="color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 15px 0;">Structural & Access Logistics</h4>
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 35px;">
+                <div style="width: 23%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
+                    <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">House Material</p>
+                    <p id="pdfHouseMaterial" style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111;"></p>
+                </div>
+                <div style="width: 23%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
+                    <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">DPC Depth</p>
+                    <p style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111;"><span id="pdfDpcDepth"></span> mm</p>
+                </div>
+                <div style="width: 23%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
+                    <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">Access Width</p>
+                    <p style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111;"><span id="pdfAccessWidth"></span> mm</p>
+                </div>
+                <div style="width: 23%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
+                    <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">Access Issues</p>
+                    <p id="pdfAccessDifficult" style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #111;"></p>
+                </div>
+                <div style="width: 100%; background: #f9f9f9; padding: 15px; border-radius: 10px;">
+                    <p style="margin:0; font-size: 10px; color: #888; text-transform: uppercase;">Wall Obstacles</p>
+                    <p id="pdfWallObstacles" style="margin: 5px 0 0 0; font-size: 14px; font-weight: bold; color: #111;"></p>
+                </div>
+            </div>
+
+            <h4 style="color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px 0;">Designer Insights</h4>
+            <div style="font-size: 14px; padding: 25px; border-radius: 12px; min-height: 120px; background: #f9f9f9; color: #444; line-height: 1.7; border: 1px solid #eee;" id="pdfDesignerNotes"></div>
+        </div>
+
+        <div class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 2px solid #ddd; padding-bottom: 15px;">
+                <h2 style="font-size: 24px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Property <span class="brand-text" style="color: #002f54;">Elevations</span></h2>
+                <img class="dynamic-brand-logo" src="" style="max-width: 120px; max-height: 40px; object-fit: contain;">
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+                <div style="width: 32%;">
+                    <p style="margin:0 0 8px 0; font-weight:800; font-size: 12px; text-transform:uppercase; color: #444; letter-spacing: 1px;">Front Elevation</p>
+                    <div style="background: #f9f9f9; height: auto; min-height: 150px; display: flex; justify-content: center; align-items: center; border-radius: 8px; border: 1px solid #ddd; position: relative; overflow: hidden;">
+                        <img id="pdfThumbFront" src="" style="width: 100%; max-height: 250px; object-fit: contain; position: relative; z-index: 2;">
+                    </div>
+                </div>
+                <div style="width: 32%;">
+                    <p style="margin:0 0 8px 0; font-weight:800; font-size: 12px; text-transform:uppercase; color: #444; letter-spacing: 1px;">Side Elevation</p>
+                    <div style="background: #f9f9f9; height: auto; min-height: 150px; display: flex; justify-content: center; align-items: center; border-radius: 8px; border: 1px solid #ddd; position: relative; overflow: hidden;">
+                        <img id="pdfThumbSide" src="" style="width: 100%; max-height: 250px; object-fit: contain; position: relative; z-index: 2;">
+                    </div>
+                </div>
+                <div style="width: 32%;">
+                    <p style="margin:0 0 8px 0; font-weight:800; font-size: 12px; text-transform:uppercase; color: #444; letter-spacing: 1px;">Rear Elevation</p>
+                    <div style="background: #f9f9f9; height: auto; min-height: 150px; display: flex; justify-content: center; align-items: center; border-radius: 8px; border: 1px solid #ddd; position: relative; overflow: hidden;">
+                        <img id="pdfThumbRear" src="" style="width: 100%; max-height: 250px; object-fit: contain; position: relative; z-index: 2;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="pdfFocusPage" class="pdf-page" style="position: relative; height: 1131px; overflow: hidden; padding: 40px; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; border-bottom: 2px solid #ddd; padding-bottom: 15px;">
+                <h2 id="pdfFocusTitle" style="font-size: 24px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Primary Build <span class="brand-text" style="color: #002f54;">Focus</span></h2>
+                <img class="dynamic-brand-logo" src="" style="max-width: 120px; max-height: 40px; object-fit: contain;">
+            </div>
+            
+            <div style="background: #fafafa; height: auto; min-height: 350px; display: flex; justify-content: center; align-items: center; border-radius: 12px; border: 1px solid #ddd; position: relative; overflow: hidden; margin-bottom: 30px;">
+                <img class="dynamic-brand-logo" src="" style="position: absolute; width: 50%; opacity: 0.05; pointer-events: none;">
+                <img id="pdfFocusImg" src="" style="width: 100%; max-height: 450px; object-fit: contain; position: relative; z-index: 2;">
+            </div>
+
+            <h2 id="pdfSketchTitle" style="font-size: 20px; margin: 0 0 15px 0; font-weight: 800; text-transform: uppercase; color: #111; border-bottom: 2px solid #ddd; padding-bottom: 10px;">Designer <span class="brand-text" style="color: #002f54;">Sketch</span></h2>
+            
+            <div id="pdfSketchWrapper" style="background: #fafafa; height: auto; min-height: 300px; display: flex; justify-content: center; align-items: center; border-radius: 12px; border: 1px solid #ddd; position: relative; overflow: hidden;">
+                <img class="dynamic-brand-logo" src="" style="position: absolute; width: 50%; opacity: 0.05; pointer-events: none;">
+                <img id="pdfSketchImg" src="" style="width: 100%; max-height: 400px; object-fit: contain; position: relative; z-index: 2;">
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    
+    <script src="app.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        const app = initializeApp({
+            apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0",
+            authDomain: "cohi-survey-engine.firebaseapp.com",
+            projectId: "cohi-survey-engine",
+            storageBucket: "cohi-survey-engine.firebasestorage.app",
+            messagingSenderId: "208212115382",
+            appId: "1:208212115382:web:db7d4276b194f89a274b17"
+        });
+        const auth = getAuth(app); const db = getFirestore(app);
+
+        document.getElementById('appVersionDisplay').innerText = "Engine Build: " + new Date(document.lastModified).toLocaleString();
+
+        const authOverlay = document.getElementById('authOverlay');
+        const designerApp = document.getElementById('designerApp');
+        const adminDashboard = document.getElementById('adminDashboard');
+        const activeProfileUI = document.getElementById('activeDesignerProfile');
+
+        document.getElementById('showRegisterBtn')?.addEventListener('click', () => { document.getElementById('loginView').style.display = 'none'; document.getElementById('registerView').style.display = 'block'; });
+        document.getElementById('cancelRegisterBtn')?.addEventListener('click', () => { document.getElementById('registerView').style.display = 'none'; document.getElementById('loginView').style.display = 'block'; });
+
+        const splash = document.getElementById('splashScreen');
+        const logoCoh = document.getElementById('logoCoh');
+        const logoBrand = document.getElementById('logoBrand');
+
         const logoMap = {
             'CO Home Improvements': 'co-logo.png',
             'Clearview': 'clearview.png',
@@ -355,225 +602,819 @@ document.addEventListener('DOMContentLoaded', function() {
             'Yorkshire Windows': 'yorkshire.png'
         };
 
-        const fileName = logoMap[brandName] || 'logo.png';
-        const img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width; 
-            canvas.height = img.height;
-            canvas.getContext('2d').drawImage(img, 0, 0);
-            resolve(canvas.toDataURL('image/png'));
-        };
-        img.onerror = () => { resolve(null); };
-        img.src = fileName;
-    });
-
-    const urlToBase64 = (url) => new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width; canvas.height = img.height;
-            canvas.getContext('2d').drawImage(img, 0, 0);
-            resolve(canvas.toDataURL('image/jpeg', 0.8));
-        };
-        img.onerror = () => resolve(null);
-        img.src = url;
-    });
-
-    // Helper to get image dimensions for jsPDF dynamic sizing
-    const getImgDims = (src) => new Promise(resolve => {
-        const i = new Image();
-        i.onload = () => resolve({w: i.width, h: i.height});
-        i.src = src;
-    });
-
-    async function generateSurvey(isCustomer) {
-        if (!jsPDF) return window.showToast("PDF Engine loading...", false);
-        
-        const rawName = document.getElementById('clientName')?.value.trim();
-        const postCode = document.getElementById('postCode')?.value.trim();
-        if(!rawName || !postCode) return window.showToast("Error: Client Name & Postcode are mandatory.", false);
-        const surname = rawName.split(' ').pop() || 'Customer';
-
-        window.showToast("Generating Branded PDF...");
-        const template = document.getElementById('pdfTemplateInternal');
-        const profile = window.currentUserProfile || { brand: 'CO Home Improvements', name: 'N/A' };
-        
-        // 1. Text Binds
-        document.querySelectorAll('.bind-name').forEach(el => el.innerText = rawName);
-        document.querySelectorAll('.bind-num').forEach(el => el.innerText = document.getElementById('clientNum')?.value || 'N/A');
-        document.querySelectorAll('.bind-address').forEach(el => el.innerText = document.getElementById('postCode')?.value || 'N/A');
-        
-        const designerEl = document.getElementById('pdfPrintDesigner');
-        if (designerEl) designerEl.innerText = profile.name;
-
-        // 2. Data Fields
-        ['BuildType', 'RoofType', 'ProposedSize', 'HouseMaterial', 'DpcDepth', 'FasciaHeight', 'AirBricks', 'BuildingRegs', 'PlanningPerms', 'AccessDifficult', 'AccessWidth', 'WallObstacles'].forEach(key => {
-            const inputEl = document.getElementById(key.charAt(0).toLowerCase() + key.slice(1));
-            const textEl = document.getElementById(`pdf${key}`);
-            if (inputEl && textEl) textEl.innerText = inputEl.value || 'N/A';
-        });
-
-        const extFrame = document.getElementById('frameColour')?.value || 'N/A';
-        const intFrame = document.getElementById('internalFrameColour')?.value || 'N/A';
-        const frameTextEl = document.getElementById('pdfFrameColour');
-        if (frameTextEl) frameTextEl.innerText = `Ext: ${extFrame}\nInt: ${intFrame === 'Match External' ? extFrame : intFrame}`;
-
-        // Notes Toggle
-        const notesEl = document.getElementById('pdfDesignerNotes');
-        if(notesEl) {
-            if(isCustomer && !document.getElementById('includeNotesInPack')?.checked) {
-                notesEl.style.display = 'none';
-                if(notesEl.previousElementSibling) notesEl.previousElementSibling.style.display = 'none';
-            } else {
-                notesEl.style.display = 'block';
-                if(notesEl.previousElementSibling) notesEl.previousElementSibling.style.display = 'block';
-                notesEl.innerText = (isCustomer && document.getElementById('customerNotes')?.value) 
-                    ? document.getElementById('customerNotes').value 
-                    : (document.getElementById('designerNotes')?.value || 'None provided.');
-            }
-        }
-
-        // Primary Build Area Logic
-        const buildAreaSelect = document.getElementById('primaryBuildArea');
-        const selectedBuildAreaId = buildAreaSelect.value;
-        const buildAreaTitle = buildAreaSelect.options[buildAreaSelect.selectedIndex].text;
-        document.getElementById('pdfFocusTitle').innerText = buildAreaTitle + " (Primary Focus)";
-
-        // Render Canvases to Template images
-        ['frontelevation', 'sideelevation', 'rearelevation', 'designersketch'].forEach(id => {
-            const fCanvas = window.appCanvases[id];
-            if (fCanvas) { 
-                fCanvas.setViewportTransform([1,0,0,1,0,0]); 
-                fCanvas.discardActiveObject(); fCanvas.renderAll(); 
-                const dataUrl = fCanvas.toDataURL({ format: 'png' });
-                
-                if(id === 'frontelevation') {
-                    document.getElementById('pdfHeroImg').src = dataUrl;
-                    document.getElementById('pdfThumbFront').src = dataUrl;
-                }
-                if(id === 'sideelevation') document.getElementById('pdfThumbSide').src = dataUrl;
-                if(id === 'rearelevation') document.getElementById('pdfThumbRear').src = dataUrl;
-                if(id === 'designersketch') document.getElementById('pdfSketchImg').src = dataUrl;
-                if(id === selectedBuildAreaId) document.getElementById('pdfFocusImg').src = dataUrl;
-            }
-        });
-
-        // Sketch Toggle Logic
-        const sketchTitle = document.getElementById('pdfSketchTitle');
-        const sketchWrapper = document.getElementById('pdfSketchWrapper');
-        if (sketchWrapper && sketchTitle) {
-            if (isCustomer && !document.getElementById('includeSketchInPack')?.checked) {
-                sketchWrapper.style.display = 'none'; sketchTitle.style.display = 'none';
-            } else {
-                sketchWrapper.style.display = 'flex'; sketchTitle.style.display = 'block';
-            }
-        }
-
-        const logoBase64 = await getBase64Logo(profile.brand);
-        if(logoBase64) { template.querySelectorAll('.dynamic-brand-logo').forEach(img => { img.src = logoBase64; }); }
-
-        template.style.display = 'block'; template.style.position = 'absolute'; template.style.width = '800px'; template.style.zIndex = '-9999';
-        
-        try {
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pagesToPrint = template.querySelectorAll('.pdf-page');
-
-            const stampLogo = () => {
-                if(logoBase64) {
-                    try {
-                        pdf.setGState(new pdf.GState({opacity: 0.05}));
-                        const size = 250; const x = (210 - size) / 2; const y = (297 - size) / 2;
-                        pdf.addImage(logoBase64, 'PNG', x, y, size, size);
-                        pdf.setGState(new pdf.GState({opacity: 1.0}));
-                    } catch(e) {}
-                }
-            };
-
-            for (let i = 0; i < pagesToPrint.length; i++) {
-                if (i > 0) pdf.addPage();
-                const canvas = await html2canvas(pagesToPrint[i], { scale: 2 });
-                pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, (canvas.height * 210) / canvas.width);
-                stampLogo();
-            }
-
-            // DYNAMIC NATIVE PAGINATION FOR PHOTOS (NO CROPPING FIX)
-            const allPhotos = [
-                ...(window.uploadedImagesStore.survey || []).map(src => ({src, type: 'Survey'})),
-                ...(window.uploadedImagesStore.access || []).map(src => ({src, type: 'Access'})),
-                ...(window.uploadedImagesStore.misc || []).map(src => ({src, type: 'Misc'}))
-            ];
-
-            if (allPhotos.length > 0) {
-                const photosPerPage = 6; // 3 rows of 2
-                for (let i = 0; i < allPhotos.length; i += photosPerPage) {
-                    pdf.addPage();
-                    pdf.setFontSize(22); pdf.setFont("helvetica", "bold"); pdf.setTextColor(0, 47, 84);
-                    pdf.text("SITE IMAGERY", 15, 25);
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists()) {
+                    const userData = userDoc.data(); window.currentUserProfile = userData;
                     
-                    const chunk = allPhotos.slice(i, i + photosPerPage);
-                    for (let idx = 0; idx < chunk.length; idx++) {
-                        const item = chunk[idx];
-                        const col = idx % 2; 
-                        const row = Math.floor(idx / 2);
-                        
-                        // Available max dimensions per slot
-                        const cellW = 85; 
-                        const cellH = 75;
-                        
-                        // Dynamically calculate aspect ratio to guarantee no cropping
-                        const dims = await getImgDims(item.src);
-                        const ratio = dims.h / dims.w;
-                        
-                        let printW = cellW;
-                        let printH = cellW * ratio;
-                        
-                        if (printH > cellH) {
-                            printH = cellH;
-                            printW = cellH / ratio;
-                        }
-                        
-                        // Center mathematically within the cell slot
-                        const x = 15 + (col * 95) + ((cellW - printW) / 2);
-                        const y = 35 + (row * 85) + ((cellH - printH) / 2);
-                        
-                        pdf.setFontSize(10); pdf.setFont("helvetica", "bold"); pdf.setTextColor(100, 100, 100);
-                        pdf.text(`${item.type} Upload`, 15 + (col * 95), 35 + (row * 85) - 2);
-                        
-                        pdf.addImage(item.src, 'JPEG', x, y, printW, printH);
-                    }
-                    stampLogo();
-                }
-            }
+                    const brandFile = logoMap[userData.brand] || 'logo.png';
+                    logoBrand.src = brandFile;
 
-            // PAMPHLETS
-            if (isCustomer) {
-                const selectedFlyers = Array.from(document.querySelectorAll('.pamphlet-cb:checked')).map(cb => cb.value);
-                for (const flyerUrl of selectedFlyers) {
-                    const flyerBase64 = await urlToBase64('pamphlet/' + flyerUrl);
-                    if (flyerBase64) {
-                        pdf.addPage();
-                        pdf.addImage(flyerBase64, 'JPEG', 0, 0, 210, 297);
-                    }
+                    setTimeout(() => {
+                        logoCoh.classList.add('fade-out');
+                        logoBrand.classList.add('fade-in');
+                    }, 500); 
+
+                    setTimeout(() => {
+                        splash.style.opacity = '0';
+                        setTimeout(() => splash.style.display = 'none', 800);
+                        authOverlay.style.display = 'none';
+
+                        if (userData.role === 'admin') {
+                            designerApp.style.display = 'none'; adminDashboard.style.display = 'block';
+                            activeProfileUI.innerHTML = `MANAGER HUB | ${userData.name}`; activeProfileUI.style.display = 'inline';
+                            fetchAdminLeads();
+                        } else {
+                            adminDashboard.style.display = 'none'; designerApp.style.display = 'block';
+                            activeProfileUI.innerHTML = `${userData.brand} | ${userData.name}`; activeProfileUI.style.display = 'inline';
+                            fetchCloudDrafts(user.uid);
+                        }
+                    }, 2200);
                 }
+            } else { 
+                setTimeout(() => { logoCoh.classList.add('fade-out'); }, 500);
+                setTimeout(() => {
+                    splash.style.opacity = '0';
+                    setTimeout(() => splash.style.display = 'none', 800);
+                    authOverlay.style.display = 'flex'; 
+                    designerApp.style.display = 'none'; 
+                    adminDashboard.style.display = 'none'; 
+                    activeProfileUI.style.display = 'none'; 
+                }, 1200);
             }
+        });
+
+        document.getElementById('registerBtn')?.addEventListener('click', async () => {
+            const errEl = document.getElementById('authError'); errEl.style.display = 'none';
+            const brand = document.getElementById('regBrand').value, name = document.getElementById('regName').value.trim(), email = document.getElementById('regEmail').value.trim(), pass = document.getElementById('regPassword').value;
+            if(!brand || !name || !email || !pass) return errEl.innerText = "Fill all required fields.", errEl.style.display = 'block';
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, pass);
+                await setDoc(doc(db, "users", cred.user.uid), { brand, name, phone: document.getElementById('regPhone').value, bio: document.getElementById('regBio').value, email, role: 'designer', createdAt: serverTimestamp() });
+            } catch (error) { errEl.innerText = error.message.replace('Firebase: ', ''); errEl.style.display = 'block'; }
+        });
+
+        document.getElementById('loginBtn')?.addEventListener('click', () => signInWithEmailAndPassword(auth, document.getElementById('authEmail').value, document.getElementById('authPassword').value));
+        document.getElementById('logoutBtn')?.addEventListener('click', () => { signOut(auth).then(() => { location.reload(); }); });
+
+        const getFormState = () => {
+            const data = {}; document.querySelectorAll('.form-group__input').forEach(el => { if (el.id && el.type !== 'file') data[el.id] = el.value; });
+            const canvases = {}; if (window.appCanvases) { for (let key in window.appCanvases) canvases[key] = window.appCanvases[key].toJSON(); }
+            return { inputs: data, canvases };
+        };
+
+        const loadFormState = (payload) => {
+            if (payload.inputs) { for (let key in payload.inputs) { const el = document.getElementById(key); if (el) el.value = payload.inputs[key]; } }
+            if (payload.canvases && window.appCanvases) { for (let key in payload.canvases) if (window.appCanvases[key]) window.appCanvases[key].loadFromJSON(payload.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key])); }
+            ['misc', 'survey', 'access'].forEach(k => window.updatePhotoCount(k));
+            window.showToast("Survey Loaded");
+        };
+
+        let offlineQueue = false;
+        window.performCloudAutoSave = async () => {
+            if (!auth.currentUser) return;
+            const cName = document.getElementById('clientName').value.trim();
+            if (!cName) return; 
+
+            // --- V3 METADATA INJECTION ---
+            const metadata = {
+                _designerName: window.currentUserProfile?.name || 'Unassigned',
+                _pipelineStatus: 'Active Survey',
+                _lastContacted: Date.now(),
+                _brand: window.currentUserProfile?.brand || 'COHI'
+            };
+            // -----------------------------
+
+            const sId = cName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + auth.currentUser.uid.slice(-4);
+            const syncStatus = document.getElementById('syncStatus');
             
-            const fileNameType = isCustomer ? 'Customer_Survey' : 'Internal_Survey';
-            pdf.save(`${surname}_${fileNameType}.pdf`);
-            window.showToast("PDF Export Complete!", true);
-        } catch(e) { console.error(e); window.showToast("PDF Generation Failed", false); } 
-        finally { template.style.display = 'none'; }
+            if (!navigator.onLine) {
+                if(syncStatus) { syncStatus.innerText = "Offline - Queued"; syncStatus.style.color = "#ff4444"; }
+                offlineQueue = true; return;
+            }
+            if(syncStatus) { syncStatus.innerText = "Autosaving..."; syncStatus.style.color = "#ffc107"; }
+            
+            try {
+                // --- MERGE METADATA INTO THE SAVED OBJECT ---
+                await setDoc(doc(db, "surveys", sId), { 
+                    userId: auth.currentUser.uid, 
+                    clientName: cName, 
+                    data: { ...getFormState(), inputs: { ...getFormState().inputs, ...metadata } }, 
+                    updatedAt: serverTimestamp() 
+                });
+                if(syncStatus) { syncStatus.innerText = "Saved"; syncStatus.style.color = "#28a745"; }
+                offlineQueue = false;
+            } catch (error) { console.error(error); if(syncStatus) syncStatus.innerText = "Error Saving"; }
+        };
+
+        window.addEventListener('online', () => { window.showToast("Signal Restored. Syncing...", true); if(offlineQueue) window.performCloudAutoSave(); });
+        window.addEventListener('offline', () => { window.showToast("Dead Zone: Working Offline", false); const syncStatus = document.getElementById('syncStatus'); if(syncStatus) { syncStatus.innerText = "Offline Mode"; syncStatus.style.color = "#ff4444"; } });
+
+        let currentDrafts = {};
+        async function fetchCloudDrafts(uid) {
+            const q = query(collection(db, "surveys"), where("userId", "==", uid));
+            try {
+                const snap = await getDocs(q);
+                const select = document.getElementById('cloudDrafts'); select.innerHTML = '<option value="">Load Previous...</option>';
+                snap.forEach((doc) => { currentDrafts[doc.id] = doc.data(); select.innerHTML += `<option value="${doc.id}">${doc.data().clientName}</option>`; });
+            } catch (e) { console.error(e); }
+        }
+        document.getElementById('loadCloudBtn')?.addEventListener('click', () => { const id = document.getElementById('cloudDrafts').value; if(id) loadFormState(currentDrafts[id].data); });
+
+        async function fetchAdminLeads() {
+            const container = document.getElementById('adminLeadsContainer');
+            try {
+                const snapshot = await getDocs(collection(db, "surveys"));
+                container.innerHTML = snapshot.empty ? '<p style="color:#888;">No surveys yet.</p>' : '';
+                
+                let totalSurveys = 0, todaySurveys = 0; let designersSet = new Set();
+                const todayStr = new Date().toLocaleDateString();
+
+                snapshot.forEach(doc => {
+                    const data = doc.data(), inputs = data.data.inputs || {}, dDate = data.updatedAt ? new Date(data.updatedAt.toDate()).toLocaleDateString() : 'N/A';
+                    totalSurveys++; designersSet.add(data.userId); if (dDate === todayStr) todaySurveys++;
+
+                    container.innerHTML += `
+                        <div class="admin-lead-card" style="background:#2a2a2a; padding:15px; border-radius:8px; border-left:4px solid #ff9800; display:flex; justify-content:space-between; margin-bottom:10px;">
+                            <div>
+                                <h3 style="margin:0 0 5px 0; color:#fff;">${data.clientName || 'Unnamed'} <span style="font-size:0.8rem; color:#ff9800;">${inputs.postCode || ''}</span></h3>
+                                <p style="margin:0; color:#aaa; font-size:0.85rem;">Build: ${inputs.buildType || 'TBC'} | Size: ${inputs.proposedSize || 'TBC'}</p>
+                                <p style="margin:5px 0 0 0; color:#888; font-size:0.8rem;">Date Saved: ${dDate}</p>
+                            </div>
+                        </div>`;
+                });
+                document.getElementById('statTotal').innerText = totalSurveys;
+                document.getElementById('statDesigners').innerText = designersSet.size;
+                document.getElementById('statToday').innerText = todaySurveys;
+            } catch (error) { console.error(error); }
+        }
+
+        document.getElementById('adminSearch')?.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            document.querySelectorAll('.admin-lead-card').forEach(card => { card.style.display = card.innerText.toLowerCase().includes(term) ? 'flex' : 'none'; });
+        });
+
+        document.getElementById('adminExportBtn')?.addEventListener('click', async () => {
+            if(window.showToast) window.showToast("Compiling Report...", false);
+            try {
+                const snapshot = await getDocs(collection(db, "surveys"));
+                let csv = "Date Saved,Designer ID,Client Name,Postcode,Build Type,Proposed Size\n";
+                snapshot.forEach(doc => {
+                    const data = doc.data(), inputs = data.data.inputs || {};
+                    const date = data.updatedAt ? new Date(data.updatedAt.toDate()).toLocaleDateString() : 'N/A';
+                    csv += `"${date}","${data.userId}","${data.clientName || ''}","${inputs.postCode || ''}","${inputs.buildType || ''}","${inputs.proposedSize || ''}"\n`;
+                });
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Survey_Leads_Report.csv`; a.click();
+                if(window.showToast) window.showToast("CSV Downloaded!", true);
+            } catch (err) { console.error(err); if(window.showToast) window.showToast("Export Failed", false); }
+        });
+    </script>
+    <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("Pinnacle V5 Sniper Injector Running...");
+
+    // --- 0. SILENT WORKFLOW DEFAULTS ---
+    setTimeout(() => {
+        const nameInp = document.getElementById('customerName') || document.getElementById('input-client-name');
+        if(nameInp && !nameInp.value) nameInp.value = "Mr. Dall";
+        const roofInp = document.getElementById('roofType') || document.getElementById('input-roof-type');
+        if(roofInp) roofInp.value = "Edwardian roof";
+    }, 500);
+
+    // --- 1. INJECT SYNC BUTTONS ---
+    const pdfBtn = document.getElementById('generateCustomerPdfBtn') || document.getElementById('generateInternalPdfBtn');
+    if(pdfBtn) {
+        const container = document.createElement('div');
+        container.style.cssText = "display:flex; gap:10px; margin-top:15px; justify-content:center; flex-wrap:wrap; width:100%;";
+        container.innerHTML = `
+            <button id="btn-legacy-dash" style="background:#1A1A1A; color:#0dcaf0; border:1px solid #0dcaf0; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">📋 Copy to CRM</button>
+            <button id="btn-sync-v3" style="background:#10b981; color:white; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">☁️ Sync to V3 Vault</button>
+        `;
+        pdfBtn.parentNode.insertBefore(container, pdfBtn.nextSibling);
     }
 
-    document.getElementById('generateInternalPdfBtn')?.addEventListener('click', () => generateSurvey(false));
-    document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', () => generateSurvey(true));
-        // ADD THE NEW PORTAL LOGIC RIGHT HERE
-    document.getElementById('copyPortalLinkBtn')?.addEventListener('click', () => {
-        const baseUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'portal.html'; 
-        navigator.clipboard.writeText(baseUrl).then(() => {
-            window.showToast("Portal Link Copied! Send to customer.", true);
+    // --- 2. BUILD SNIPER MODAL UI ---
+    const modal = document.createElement('div');
+    modal.id = 'sniper-modal';
+    modal.style.cssText = "display:none; position:fixed; inset:0; z-index:999999; background:#0b1118; font-family:system-ui, sans-serif; touch-action:none;";
+    modal.innerHTML = `
+        <div id="sniper-viewport" style="position:absolute; inset:0; overflow:hidden;">
+            <div id="sniper-container" style="transform-origin:0 0; position:absolute; will-change:transform;">
+                <canvas id="sniper-base" style="display:block;"></canvas>
+                <canvas id="sniper-vectors" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+                <canvas id="sniper-ghost" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+            </div>
+            
+            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); pointer-events:none; z-index:50;">
+                <div style="position:absolute; width:44px; height:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+                <div style="position:absolute; height:44px; width:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+                <div style="position:absolute; width:4px; height:4px; background:#fff; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+            </div>
+
+            <div style="position:absolute; inset:0; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:20px; padding-bottom:env(safe-area-inset-bottom, 30px); padding-top:env(safe-area-inset-top, 20px);">
+                <div style="display:flex; justify-content:space-between; pointer-events:auto;">
+                    <button id="sniper-cancel" style="background:rgba(0,0,0,0.8); color:white; border:1px solid #444; padding:12px 24px; border-radius:8px; font-weight:bold;">Cancel</button>
+                    <button id="sniper-save" style="background:#10b981; color:white; border:none; padding:12px 24px; border-radius:8px; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.4);">Save Blueprint</button>
+                </div>
+                
+                <div style="pointer-events:auto; display:flex; flex-direction:column; gap:15px;">
+                    <div style="align-self:flex-end; display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:6px;">
+                        <div class="nudge" data-x="0" data-y="-2" style="grid-column:2; grid-row:1; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↑</div>
+                        <div class="nudge" data-x="-2" data-y="0" style="grid-column:1; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">←</div>
+                        <div class="nudge" data-x="2" data-y="0" style="grid-column:3; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">→</div>
+                        <div class="nudge" data-x="0" data-y="2" style="grid-column:2; grid-row:3; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↓</div>
+                    </div>
+                    <button id="sniper-action" style="width:100%; padding:20px; background:#0dcaf0; border:none; border-radius:12px; font-size:18px; font-weight:900; text-transform:uppercase; box-shadow:0 6px 20px rgba(13,202,240,0.3);">🎯 Place Anchor</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // --- 3. DYNAMIC RESOLUTION & THICKNESS MATH ---
+    const S = {
+        activeSuffix: null, scale: 1, offsetX: 0, offsetY: 0,
+        isDragging: false, lastTouch: {x:0, y:0}, initialPinch: null,
+        anchor: null, vectors: [], dashboardLogs: []
+    };
+
+    const vp = document.getElementById('sniper-viewport');
+    const container = document.getElementById('sniper-container');
+    const baseCanvas = document.getElementById('sniper-base');
+    const baseCtx = baseCanvas.getContext('2d');
+    const vecCanvas = document.getElementById('sniper-vectors');
+    const vecCtx = vecCanvas.getContext('2d');
+    const ghostCanvas = document.getElementById('sniper-ghost');
+    const ghostCtx = ghostCanvas.getContext('2d');
+    const actionBtn = document.getElementById('sniper-action');
+
+    // This guarantees the lines stay physically thin no matter how deep you zoom
+    function renderVectors() {
+        vecCtx.clearRect(0,0, vecCanvas.width, vecCanvas.height);
+        const lw = 4 / S.scale; 
+        const fs = 24 / S.scale;
+        const pad = 10 / S.scale;
+
+        S.vectors.forEach(v => {
+            vecCtx.beginPath(); vecCtx.moveTo(v.x1, v.y1); vecCtx.lineTo(v.x2, v.y2);
+            vecCtx.lineWidth = lw; vecCtx.strokeStyle = '#0dcaf0'; vecCtx.stroke();
+            if(v.text) {
+                const mx = (v.x1 + v.x2)/2; const my = (v.y1 + v.y2)/2;
+                vecCtx.fillStyle = '#1A1A1A';
+                vecCtx.font = `bold ${fs}px sans-serif`;
+                const tw = vecCtx.measureText(v.text).width;
+                vecCtx.fillRect(mx - tw/2 - pad, my - fs, tw + pad*2, fs + pad*2);
+                vecCtx.fillStyle = '#0dcaf0'; vecCtx.textAlign = 'center'; vecCtx.textBaseline = 'middle';
+                vecCtx.fillText(v.text, mx, my);
+            }
+        });
+    }
+
+    function updateTransform() {
+        container.style.transform = `translate(${S.offsetX}px, ${S.offsetY}px) scale(${S.scale})`;
+        renderVectors(); // Redraw instantly to adjust thickness during zoom
+        
+        ghostCtx.clearRect(0,0, ghostCanvas.width, ghostCanvas.height);
+        if(S.anchor) {
+            const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
+            ghostCtx.beginPath(); ghostCtx.moveTo(S.anchor.x, S.anchor.y); ghostCtx.lineTo(cur.x, cur.y);
+            ghostCtx.lineWidth = 4 / S.scale; ghostCtx.strokeStyle = '#0dcaf0'; 
+            ghostCtx.setLineDash([15/S.scale, 15/S.scale]); ghostCtx.stroke(); ghostCtx.setLineDash([]);
+        }
+    }
+
+    // Touch Engine (Pan & Pinch)
+    vp.addEventListener('touchstart', e => {
+        if(e.target.closest('button') || e.target.closest('.nudge')) return;
+        e.preventDefault();
+        if(e.touches.length === 1) { S.isDragging = true; S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; }
+        else if(e.touches.length === 2) { S.isDragging = false; S.initialPinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
+    }, {passive:false});
+
+    vp.addEventListener('touchmove', e => {
+        if(e.target.closest('button') || e.target.closest('.nudge')) return;
+        e.preventDefault();
+        if(e.touches.length === 1 && S.isDragging) {
+            S.offsetX += e.touches[0].clientX - S.lastTouch.x; S.offsetY += e.touches[0].clientY - S.lastTouch.y;
+            S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; updateTransform();
+        } else if(e.touches.length === 2 && S.initialPinch) {
+            const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            const oldScale = S.scale; S.scale *= (dist / S.initialPinch);
+            if(S.scale < 0.1) S.scale = 0.1; if(S.scale > 15) S.scale = 15;
+            const cx = window.innerWidth/2; const cy = window.innerHeight/2;
+            S.offsetX = cx - ((cx - S.offsetX) / oldScale * S.scale); S.offsetY = cy - ((cy - S.offsetY) / oldScale * S.scale);
+            S.initialPinch = dist; updateTransform();
+        }
+    }, {passive:false});
+
+    vp.addEventListener('touchend', e => { if(e.touches.length < 2) S.initialPinch = null; if(e.touches.length === 0) S.isDragging = false; });
+
+    // D-Pad Logic
+    document.querySelectorAll('.nudge').forEach(btn => {
+        btn.addEventListener('touchstart', e => {
+            e.preventDefault();
+            S.offsetX -= parseInt(btn.dataset.x) * S.scale; S.offsetY -= parseInt(btn.dataset.y) * S.scale; updateTransform();
         });
     });
+
+    // Anchor & Measurement Commit
+    actionBtn.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
+        if(!S.anchor) {
+            S.anchor = cur; actionBtn.innerText = "✅ Confirm Endpoint"; actionBtn.style.background = "#10b981"; updateTransform();
+        } else {
+            const measurement = prompt("Enter Measurement (e.g., 2400mm):");
+            if(measurement) {
+                S.vectors.push({ x1: S.anchor.x, y1: S.anchor.y, x2: cur.x, y2: cur.y, text: measurement });
+                S.dashboardLogs.push(`${S.activeSuffix} Elevation: ${measurement}`);
+            }
+            S.anchor = null; actionBtn.innerText = "🎯 Place Anchor"; actionBtn.style.background = "#0dcaf0"; updateTransform();
+        }
+    });
+
+    // --- 4. HOOK INTO EXISTING FILE UPLOADS ---
+    ['Front', 'Side', 'Rear', 'Drainage'].forEach(suffix => {
+        const input = document.getElementById(`photo-${suffix.toLowerCase()}`);
+        if(input) {
+            const editBtn = document.createElement('button');
+            editBtn.innerText = "🎯 Precision Edit Blueprint";
+            editBtn.style.cssText = "width:100%; padding:14px; border-radius:8px; background:#0dcaf0; color:black; font-weight:900; border:none; margin-top:10px; display:none; cursor:pointer;";
+            input.parentNode.appendChild(editBtn);
+
+            input.addEventListener('change', e => {
+                if(e.target.files.length > 0) editBtn.style.display = 'block';
+            });
+
+            editBtn.addEventListener('click', e => {
+                e.preventDefault();
+                S.activeSuffix = suffix;
+                const file = input.files[0];
+                if(!file) return;
+
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    // Pulling TRUE 4k natural width directly from the file to prevent tiny renders
+                    const w = img.naturalWidth; const h = img.naturalHeight;
+                    baseCanvas.width = w; baseCanvas.height = h;
+                    vecCanvas.width = w; vecCanvas.height = h;
+                    ghostCanvas.width = w; ghostCanvas.height = h;
+                    
+                    baseCtx.drawImage(img, 0, 0);
+                    S.vectors = []; S.anchor = null; S.dashboardLogs = [];
+                    
+                    S.offsetX = (window.innerWidth - w)/2; S.offsetY = (window.innerHeight - h)/2;
+                    S.scale = Math.min(window.innerWidth/w, window.innerHeight/h) * 0.9;
+                    updateTransform();
+                    modal.style.display = 'block';
+                };
+                img.src = url;
+            });
+        }
+    });
+
+    // Save Logic & PDF Intercept
+    document.getElementById('sniper-cancel').onclick = () => modal.style.display = 'none';
+
+    document.getElementById('sniper-save').onclick = () => {
+        const comp = document.createElement('canvas'); comp.width = baseCanvas.width; comp.height = baseCanvas.height;
+        const ctx = comp.getContext('2d');
+        ctx.drawImage(baseCanvas, 0,0); ctx.drawImage(vecCanvas, 0,0);
+        
+        const b64 = comp.toDataURL('image/jpeg', 0.9);
+        const oldCanvas = document.getElementById(`canvas${S.activeSuffix}`);
+        if(oldCanvas) {
+            oldCanvas.setAttribute('data-sniper', b64);
+            const wrapper = oldCanvas.closest('.canvas-container') || oldCanvas.parentNode;
+            wrapper.style.display = 'none'; // Hide clunky Fabric UI completely
+            
+            const preview = document.createElement('img');
+            preview.src = b64;
+            preview.style.cssText = "width:100%; border-radius:8px; margin-top:10px; border:2px solid #10b981;";
+            wrapper.parentNode.appendChild(preview);
+        }
+        modal.style.display = 'none';
+        if(window.showToast) window.showToast("Blueprint Saved in High Res!", true);
+    };
+
+    const oldDataURL = HTMLCanvasElement.prototype.toDataURL;
+    HTMLCanvasElement.prototype.toDataURL = function(t, e) {
+        if(this.hasAttribute('data-sniper')) return this.getAttribute('data-sniper');
+        return oldDataURL.call(this, t, e);
+    };
+
+    // --- 5. CRM DASHBOARD & V3 VAULT EXPORT ---
+    document.getElementById('btn-legacy-dash')?.addEventListener('click', () => {
+        const client = document.getElementById('customerName')?.value || document.getElementById('input-client-name')?.value || 'Client';
+        const pc = document.getElementById('postCode')?.value || document.getElementById('input-postcode')?.value || '';
+        const notes = document.getElementById('customerNotes')?.value || '';
+        const vLogs = S.dashboardLogs.length > 0 ? S.dashboardLogs.join('\\n') : "No structural vectors recorded.";
+        
+        const txt = `=== DASHBOARD EXPORT ===\\nClient: ${client}\\nPostcode: ${pc}\\n\\n-- STRUCTURAL VECTORS --\\n${vLogs}\\n\\n-- NOTES --\\n${notes}\\n======================`;
+        navigator.clipboard.writeText(txt).then(() => { if(window.showToast) window.showToast("Copied for Dashboard!", true); });
+    });
+
+    document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
+        if(!window.db) { alert("Firebase is not initialized in this file."); return; }
+        if(window.showToast) window.showToast("Pushing to V3 Vault...", true);
+        try {
+            const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+            const fCv = document.getElementById('canvasFront');
+            const fImg = fCv && fCv.hasAttribute('data-sniper') ? fCv.getAttribute('data-sniper') : null;
+            
+            const docRef = await addDoc(collection(window.db, "surveys"), {
+                clientName: document.getElementById('customerName')?.value || 'Unnamed Client',
+                userId: "Designer",
+                updatedAt: serverTimestamp(),
+                data: {
+                    inputs: {
+                        postCode: document.getElementById('postCode')?.value || 'N/A',
+                        clientNum: document.getElementById('customerNumber')?.value || 'survey123',
+                        roofType: document.getElementById('roofType')?.value || 'Edwardian roof',
+                        _pipelineStatus: "1. Consultation & Survey"
+                    }
+                },
+                images: { frontElevation: fImg || null }
+            });
+            
+            const notes = document.getElementById('customerNotes')?.value;
+            if(notes) await addDoc(collection(window.db, `surveys/${docRef.id}/internalNotes`), { content: notes, visibility: 'external', timestamp: serverTimestamp() });
+            
+            if(window.showToast) window.showToast("Successfully Synced to V3 Vault!", true);
+        } catch(e) { console.error(e); if(window.showToast) window.showToast("V3 Sync Failed", false); }
+    });
+
 });
+</script>
+    <script type="module">
+    // 1. DYNAMIC UNIFIED AUTH GATE
+    const authGate = document.createElement('div');
+    authGate.id = 'unifiedAuthGate';
+    authGate.style.cssText = 'position: fixed; inset: 0; background: #0b1118; z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: system-ui, sans-serif;';
+    authGate.innerHTML = `
+        <div style="background: #1E1E1E; padding: 40px; border-radius: 16px; border: 1px solid #333; width: 100%; max-width: 400px; text-align: center; box-sizing: border-box; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+            <h1 style="font-size: 28px; font-weight: 900; color: white; margin-bottom: 8px; margin-top: 0;">DESIGNER <span style="color: #0dcaf0;">LOGIN</span></h1>
+            <p style="color: #aaa; font-size: 14px; margin-bottom: 24px;">Unified Enterprise Authentication</p>
+            <input type="email" id="uniAuthEmail" placeholder="Designer Email" style="background: #1A1A1A; border: 1px solid #333; color: white; padding: 16px; border-radius: 8px; width: 100%; margin-bottom: 15px; box-sizing: border-box; outline: none;">
+            <input type="password" id="uniAuthPassword" placeholder="Password" style="background: #1A1A1A; border: 1px solid #333; color: white; padding: 16px; border-radius: 8px; width: 100%; margin-bottom: 15px; box-sizing: border-box; outline: none;">
+            <button id="uniBtnLogin" style="background: #0dcaf0; color: black; border: none; padding: 16px; border-radius: 8px; font-weight: 900; font-size: 16px; width: 100%; cursor: pointer; margin-bottom: 15px; text-transform: uppercase; transition: 0.2s;">Authenticate</button>
+            <p id="uniAuthError" style="color: #ef4444; font-size: 14px; display: none; font-weight: bold; margin: 0;">Invalid Credentials.</p>
+        </div>
+    `;
+    document.body.appendChild(authGate);
+
+    // 2. FIREBASE INITIALIZATION
+    import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const appConfig = {
+        apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", 
+        authDomain: "cohi-survey-engine.firebaseapp.com",
+        projectId: "cohi-survey-engine"
+    };
+
+    const app = !getApps().length ? initializeApp(appConfig) : getApp();
+    const auth = getAuth(app);
+    window.db = getFirestore(app);
+
+    // 3. SECURE THE GATE & PURGE OLD LOGIN
+    onAuthStateChanged(auth, (user) => {
+        const oldAuth = document.getElementById('authOverlay');
+        if(oldAuth) oldAuth.remove(); // Kill the old legacy login screen
+
+        if (user) {
+            authGate.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            const designerName = user.email.split('@')[0];
+            const nameInput = document.getElementById('input-designer') || document.getElementById('designerName') || document.getElementById('activeDesignerProfile');
+            if(nameInput) {
+                if(nameInput.tagName === 'INPUT') nameInput.value = designerName.charAt(0).toUpperCase() + designerName.slice(1);
+                else { nameInput.innerText = designerName.charAt(0).toUpperCase() + designerName.slice(1); nameInput.style.display = 'inline-block'; }
+            }
+        } else {
+            authGate.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    });
+
+    document.getElementById('uniBtnLogin').addEventListener('click', () => {
+        const email = document.getElementById('uniAuthEmail').value.trim();
+        const pass = document.getElementById('uniAuthPassword').value;
+        const err = document.getElementById('uniAuthError');
+        const btn = document.getElementById('uniBtnLogin');
+        if(!email || !pass) { err.innerText = "Enter credentials."; err.style.display = 'block'; return; }
+        btn.innerText = "AUTHENTICATING...";
+        signInWithEmailAndPassword(auth, email, pass).catch(error => {
+            err.innerText = "Invalid Credentials."; err.style.display = 'block'; btn.innerText = "AUTHENTICATE";
+        });
+    });
+
+    // 4. THE HUNTER-KILLER SNIPER ENGINE (LOCKED PRIORITY)
+    console.log("Pinnacle V8 Sniper Injector Running (Locked Priority)...");
+
+    const getVal = (id1, id2) => document.getElementById(id1)?.value || document.getElementById(id2)?.value || 'N/A';
+
+    setTimeout(() => {
+        const nameInp = document.getElementById('customerName') || document.getElementById('input-client-name');
+        if(nameInp && !nameInp.value) nameInp.value = "Mr. Dall";
+        const roofInp = document.getElementById('roofType') || document.getElementById('input-roof-type');
+        if(roofInp) roofInp.value = "Edwardian roof";
+    }, 500);
+
+    // --- THE UI ASSASSIN ---
+    setInterval(() => {
+        document.querySelectorAll('button').forEach(btn => {
+            const txt = btn.innerText.toLowerCase();
+            if (txt.includes('draw line') || txt.includes('add text') || txt.includes('undo') || txt.includes('clear')) {
+                btn.style.display = 'none';
+            }
+        });
+        document.querySelectorAll('.canvas-container').forEach(c => {
+            if(!c.classList.contains('sniper-cleared')) {
+                c.style.display = 'none';
+                c.classList.add('sniper-cleared');
+            }
+        });
+    }, 500);
+
+    // --- INJECT SYNC BUTTONS ---
+    const pdfBtn = document.getElementById('generateCustomerPdfBtn') || document.getElementById('generateInternalPdfBtn') || document.querySelector('button[id*="Pdf"]');
+    if(pdfBtn && !document.getElementById('btn-legacy-dash')) {
+        const container = document.createElement('div');
+        container.style.cssText = "display:flex; gap:10px; margin-top:15px; justify-content:center; flex-wrap:wrap; width:100%;";
+        container.innerHTML = `
+            <button id="btn-legacy-dash" style="background:#1A1A1A; color:#0dcaf0; border:1px solid #0dcaf0; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">📋 Copy to CRM</button>
+            <button id="btn-sync-v3" style="background:#10b981; color:white; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">☁️ Sync to V3 Vault</button>
+            <button id="btn-v3-dash" style="background:#4f46e5; color:white; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">Launch V3 Portal</button>
+        `;
+        pdfBtn.parentNode.insertBefore(container, pdfBtn.nextSibling);
+    }
+
+    // --- CRM EXPORT COMPILER ---
+    document.addEventListener('click', (e) => {
+        if(e.target.id === 'btn-legacy-dash') {
+            const client = getVal('customerName', 'input-client-name');
+            const pc = getVal('postCode', 'input-postcode');
+            const build = getVal('buildType', 'input-build-type');
+            const roof = getVal('roofType', 'input-roof-type');
+            const size = getVal('proposedSize', 'input-proposed-size');
+            const found = getVal('foundations', 'input-foundations');
+            const drain = getVal('drainage', 'input-drainage');
+            const brick = getVal('brickMatch', 'input-brick-match');
+            const notes = getVal('customerNotes', 'input-notes') || 'None';
+            
+            const vLogs = (window.sniperLogs && window.sniperLogs.length > 0) ? window.sniperLogs.join('\n') : "No structural vectors recorded.";
+            
+            const txt = `=== COHI CRM SURVEY EXPORT ===\nDate: ${new Date().toLocaleDateString()}\nClient: ${client}\nPostcode: ${pc}\n\n-- PROPERTY SPECIFICATIONS --\nBuild Category: ${build}\nRoof System: ${roof}\nFootprint: ${size} sqm\nFoundations: ${found}\nDrainage: ${drain}\nBrick Match: ${brick}\n\n-- STRUCTURAL VECTORS --\n${vLogs}\n\n-- SITE NOTES --\n${notes}\n==============================`;
+            
+            navigator.clipboard.writeText(txt).then(() => { if(window.showToast) window.showToast("Copied full payload to CRM!", true); });
+        }
+        if(e.target.id === 'btn-v3-dash') {
+            window.open('portal.html', '_blank');
+        }
+    });
+
+    // --- FIREBASE V3 SYNC ---
+    document.addEventListener('click', async (e) => {
+        if(e.target.id === 'btn-sync-v3') {
+            if(!window.db) { alert('Database not connected.'); return; }
+            if(window.showToast) window.showToast("Authenticating and Pushing to V3...", true);
+            try {
+                const fCv = document.getElementById('canvasFront');
+                const fImg = fCv && fCv.hasAttribute('data-sniper') ? fCv.getAttribute('data-sniper') : null;
+                
+                const docRef = await addDoc(collection(window.db, "surveys"), {
+                    clientName: getVal('customerName', 'input-client-name'),
+                    userId: getVal('input-designer', 'designerName') || 'Designer',
+                    updatedAt: serverTimestamp(),
+                    data: {
+                        inputs: {
+                            postCode: getVal('postCode', 'input-postcode'),
+                            clientNum: getVal('customerNumber', 'input-customer-num') || 'survey123',
+                            roofType: getVal('roofType', 'input-roof-type'),
+                            buildType: getVal('buildType', 'input-build-type'),
+                            proposedSize: getVal('proposedSize', 'input-proposed-size'),
+                            _pipelineStatus: "1. Consultation & Survey",
+                            _brand: getVal('companyBrand', 'input-brand') || 'CO Home Improvements'
+                        }
+                    },
+                    images: { frontElevation: fImg || null }
+                });
+                
+                const notes = getVal('customerNotes', 'input-notes');
+                if(notes && notes !== 'N/A') {
+                    await addDoc(collection(window.db, `surveys/${docRef.id}/internalNotes`), { content: notes, visibility: 'external', timestamp: serverTimestamp() });
+                }
+                if(window.showToast) window.showToast("Successfully Synced to V3 Vault!", true);
+            } catch(err) { console.error(err); if(window.showToast) window.showToast("V3 Sync Failed", false); }
+        }
+    });
+
+    // --- BUILD SNIPER MODAL UI ---
+    const modal = document.createElement('div');
+    modal.id = 'sniper-modal';
+    modal.style.cssText = "display:none; position:fixed; inset:0; z-index:999999; background:#0b1118; font-family:system-ui, sans-serif; touch-action:none;";
+    modal.innerHTML = `
+        <div id="sniper-viewport" style="position:absolute; inset:0; overflow:hidden;">
+            <div id="sniper-container" style="transform-origin:0 0; position:absolute; will-change:transform;">
+                <canvas id="sniper-base" style="display:block;"></canvas>
+                <canvas id="sniper-vectors" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+                <canvas id="sniper-ghost" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+            </div>
+            <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); pointer-events:none; z-index:50;">
+                <div style="position:absolute; width:44px; height:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+                <div style="position:absolute; height:44px; width:2px; background:#0dcaf0; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+                <div style="position:absolute; width:4px; height:4px; background:#fff; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 0 4px #000;"></div>
+            </div>
+            <div style="position:absolute; inset:0; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:20px; padding-bottom:env(safe-area-inset-bottom, 30px); padding-top:env(safe-area-inset-top, 20px);">
+                <div style="display:flex; justify-content:space-between; pointer-events:auto;">
+                    <button id="sniper-cancel" style="background:rgba(0,0,0,0.8); color:white; border:1px solid #444; padding:12px 24px; border-radius:8px; font-weight:bold;">Cancel</button>
+                    <button id="sniper-save" style="background:#10b981; color:white; border:none; padding:12px 24px; border-radius:8px; font-weight:bold; box-shadow:0 4px 10px rgba(16,185,129,0.4);">Save Blueprint</button>
+                </div>
+                <div style="pointer-events:auto; display:flex; flex-direction:column; gap:15px;">
+                    <div style="align-self:flex-end; display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:6px;">
+                        <div class="nudge" data-x="0" data-y="-2" style="grid-column:2; grid-row:1; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↑</div>
+                        <div class="nudge" data-x="-2" data-y="0" style="grid-column:1; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">←</div>
+                        <div class="nudge" data-x="2" data-y="0" style="grid-column:3; grid-row:2; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">→</div>
+                        <div class="nudge" data-x="0" data-y="2" style="grid-column:2; grid-row:3; background:rgba(20,20,20,0.9); border:1px solid #444; border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:24px;">↓</div>
+                    </div>
+                    <button id="sniper-action" style="width:100%; padding:20px; background:#0dcaf0; border:none; border-radius:12px; font-size:18px; font-weight:900; text-transform:uppercase; box-shadow:0 6px 20px rgba(13,202,240,0.3);">🎯 Place Anchor</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // --- DYNAMIC FILE INPUT HIJACKING (LOCKED PRIORITY) ---
+    window.sniperLogs = [];
+    const S = { activeSuffix: 'Front', scale: 1, offsetX: 0, offsetY: 0, isDragging: false, lastTouch: {x:0, y:0}, initialPinch: null, anchor: null, vectors: [] };
+    
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        if(input.dataset.hooked) return;
+        input.dataset.hooked = "true";
+        
+        const editBtn = document.createElement('button');
+        editBtn.innerHTML = "🎯 LAUNCH CROSSHAIR TOOL";
+        editBtn.style.cssText = "width:100%; padding:16px; border-radius:8px; background:#0dcaf0; color:black; font-weight:900; border:none; margin-top:15px; display:none; cursor:pointer; box-shadow:0 4px 15px rgba(13,202,240,0.4); text-transform:uppercase;";
+        input.parentNode.insertBefore(editBtn, input.nextSibling);
+
+        // CAPTURE PHASE LISTENER
+        input.addEventListener('change', (e) => {
+            if(e.target.files.length > 0) editBtn.style.display = 'block';
+        }, true);
+
+        editBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopImmediatePropagation(); // FORCE STOP OLD FABRIC.JS
+            
+            const container = input.closest('div, section, .border');
+            const oldCanvas = container ? container.querySelector('canvas') : null;
+            if(oldCanvas) S.activeSuffix = oldCanvas.id.replace('canvas', '') || 'Misc';
+
+            const file = input.files[0];
+            if(!file) return;
+
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                const baseCanvas = document.getElementById('sniper-base');
+                const vecCanvas = document.getElementById('sniper-vectors');
+                const ghostCanvas = document.getElementById('sniper-ghost');
+                const w = img.naturalWidth; const h = img.naturalHeight;
+                baseCanvas.width = vecCanvas.width = ghostCanvas.width = w;
+                baseCanvas.height = vecCanvas.height = ghostCanvas.height = h;
+                
+                baseCanvas.getContext('2d').drawImage(img, 0, 0);
+                S.vectors = []; S.anchor = null; 
+                S.offsetX = (window.innerWidth - w)/2; S.offsetY = (window.innerHeight - h)/2;
+                S.scale = Math.min(window.innerWidth/w, window.innerHeight/h) * 0.9;
+                
+                updateTransform();
+                document.getElementById('sniper-modal').style.display = 'block';
+            };
+            img.src = url;
+        }, true); // CAPTURE PHASE CLICK
+    });
+
+    // --- SNIPER ENGINE MATH ---
+    const vp = document.getElementById('sniper-viewport');
+    const container = document.getElementById('sniper-container');
+    const vecCtx = document.getElementById('sniper-vectors').getContext('2d');
+    const ghostCtx = document.getElementById('sniper-ghost').getContext('2d');
+    const actionBtn = document.getElementById('sniper-action');
+
+    function renderVectors() {
+        const cvs = document.getElementById('sniper-vectors');
+        vecCtx.clearRect(0,0, cvs.width, cvs.height);
+        const lw = 4 / S.scale; const fs = 24 / S.scale; const pad = 10 / S.scale;
+        S.vectors.forEach(v => {
+            vecCtx.beginPath(); vecCtx.moveTo(v.x1, v.y1); vecCtx.lineTo(v.x2, v.y2);
+            vecCtx.lineWidth = lw; vecCtx.strokeStyle = '#0dcaf0'; vecCtx.stroke();
+            if(v.text) {
+                const mx = (v.x1 + v.x2)/2; const my = (v.y1 + v.y2)/2;
+                vecCtx.fillStyle = '#1A1A1A'; vecCtx.font = `bold ${fs}px sans-serif`;
+                const tw = vecCtx.measureText(v.text).width;
+                vecCtx.fillRect(mx - tw/2 - pad, my - fs, tw + pad*2, fs + pad*2);
+                vecCtx.fillStyle = '#0dcaf0'; vecCtx.textAlign = 'center'; vecCtx.textBaseline = 'middle';
+                vecCtx.fillText(v.text, mx, my);
+            }
+        });
+    }
+
+    function updateTransform() {
+        container.style.transform = `translate(${S.offsetX}px, ${S.offsetY}px) scale(${S.scale})`;
+        renderVectors(); 
+        const gCvs = document.getElementById('sniper-ghost');
+        ghostCtx.clearRect(0,0, gCvs.width, gCvs.height);
+        if(S.anchor) {
+            const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
+            ghostCtx.beginPath(); ghostCtx.moveTo(S.anchor.x, S.anchor.y); ghostCtx.lineTo(cur.x, cur.y);
+            ghostCtx.lineWidth = 4 / S.scale; ghostCtx.strokeStyle = '#0dcaf0'; 
+            ghostCtx.setLineDash([15/S.scale, 15/S.scale]); ghostCtx.stroke(); ghostCtx.setLineDash([]);
+        }
+    }
+
+    vp.addEventListener('touchstart', e => {
+        if(e.target.closest('button') || e.target.closest('.nudge')) return;
+        e.preventDefault();
+        if(e.touches.length === 1) { S.isDragging = true; S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; }
+        else if(e.touches.length === 2) { S.isDragging = false; S.initialPinch = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
+    }, {passive:false});
+
+    vp.addEventListener('touchmove', e => {
+        if(e.target.closest('button') || e.target.closest('.nudge')) return;
+        e.preventDefault();
+        if(e.touches.length === 1 && S.isDragging) {
+            S.offsetX += e.touches[0].clientX - S.lastTouch.x; S.offsetY += e.touches[0].clientY - S.lastTouch.y;
+            S.lastTouch = {x: e.touches[0].clientX, y: e.touches[0].clientY}; updateTransform();
+        } else if(e.touches.length === 2 && S.initialPinch) {
+            const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            const oldScale = S.scale; S.scale *= (dist / S.initialPinch);
+            if(S.scale < 0.1) S.scale = 0.1; if(S.scale > 15) S.scale = 15;
+            const cx = window.innerWidth/2; const cy = window.innerHeight/2;
+            S.offsetX = cx - ((cx - S.offsetX) / oldScale * S.scale); S.offsetY = cy - ((cy - S.offsetY) / oldScale * S.scale);
+            S.initialPinch = dist; updateTransform();
+        }
+    }, {passive:false});
+
+    vp.addEventListener('touchend', e => { if(e.touches.length < 2) S.initialPinch = null; if(e.touches.length === 0) S.isDragging = false; });
+
+    document.querySelectorAll('.nudge').forEach(btn => {
+        btn.addEventListener('touchstart', e => { e.preventDefault(); S.offsetX -= parseInt(btn.dataset.x) * S.scale; S.offsetY -= parseInt(btn.dataset.y) * S.scale; updateTransform(); });
+    });
+
+    actionBtn.addEventListener('touchstart', e => {
+        e.preventDefault();
+        const cur = { x: (window.innerWidth/2 - S.offsetX)/S.scale, y: (window.innerHeight/2 - S.offsetY)/S.scale };
+        if(!S.anchor) {
+            S.anchor = cur; actionBtn.innerText = "✅ Confirm Endpoint"; actionBtn.style.background = "#10b981"; updateTransform();
+        } else {
+            const measurement = prompt("Enter Measurement (e.g., 2400mm):");
+            if(measurement) {
+                S.vectors.push({ x1: S.anchor.x, y1: S.anchor.y, x2: cur.x, y2: cur.y, text: measurement });
+                window.sniperLogs.push(`${S.activeSuffix} Elevation: ${measurement}`);
+            }
+            S.anchor = null; actionBtn.innerText = "🎯 Place Anchor"; actionBtn.style.background = "#0dcaf0"; updateTransform();
+        }
+    });
+
+    document.getElementById('sniper-cancel').onclick = () => document.getElementById('sniper-modal').style.display = 'none';
+
+    document.getElementById('sniper-save').onclick = () => {
+        const baseCanvas = document.getElementById('sniper-base');
+        const vCanvas = document.getElementById('sniper-vectors');
+        const comp = document.createElement('canvas'); comp.width = baseCanvas.width; comp.height = baseCanvas.height;
+        const ctx = comp.getContext('2d');
+        ctx.drawImage(baseCanvas, 0,0); ctx.drawImage(vCanvas, 0,0);
+        
+        const b64 = comp.toDataURL('image/jpeg', 0.9);
+        const targetCanvas = document.getElementById(`canvas${S.activeSuffix}`);
+        if(targetCanvas) {
+            targetCanvas.setAttribute('data-sniper', b64);
+            const wrapper = targetCanvas.closest('div');
+            let preview = wrapper.querySelector('.sniper-preview-img');
+            if(!preview) {
+                preview = document.createElement('img');
+                preview.className = 'sniper-preview-img';
+                preview.style.cssText = "width:100%; border-radius:8px; margin-top:10px; border:2px solid #0dcaf0;";
+                wrapper.appendChild(preview);
+            }
+            preview.src = b64;
+        }
+        document.getElementById('sniper-modal').style.display = 'none';
+        if(window.showToast) window.showToast("Blueprint Saved in High Res!", true);
+    };
+
+    const oldDataURL = HTMLCanvasElement.prototype.toDataURL;
+    HTMLCanvasElement.prototype.toDataURL = function(t, e) {
+        if(this.hasAttribute('data-sniper')) return this.getAttribute('data-sniper');
+        return oldDataURL.call(this, t, e);
+    };
+</script>
+</body>
+</html>
