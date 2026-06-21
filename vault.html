@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>COHI | Secure Concierge</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/ColladaLoader.js"></script>
+    
+    <style>
+        :root { 
+            --bg: #020617; 
+            --accent: #0dcaf0; 
+        }
+        body { 
+            background: var(--bg); 
+            color: white; 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass { 
+            background: rgba(15, 23, 42, 0.5); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255,255,255,0.1); 
+        }
+        .rag-pulse { 
+            animation: pulse 2s infinite; 
+        }
+        @keyframes pulse { 
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } 
+        }
+        
+        /* Custom Scrollbar for Chat */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen flex flex-col">
+
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 glass p-6 rounded-2xl gap-4">
+        <div>
+            <h2 class="text-[#0dcaf0] text-xs font-black tracking-widest uppercase mb-1">Yorkshire Windows | COHI</h2>
+            <h1 class="text-2xl md:text-3xl font-black">CLIENT VAULT: <span id="clientName">Loading...</span></h1>
+            <p id="ragStatus" class="text-sm font-bold mt-2 text-emerald-400 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 rag-pulse"></span>
+                RAG STATUS: AMBER (Awaiting Design)
+            </p>
+        </div>
+        <div id="countdown" class="text-left md:text-right bg-black/40 p-3 rounded-lg border border-slate-800">
+            <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">Time since last touch</p>
+            <p id="timeSince" class="text-xl font-mono text-cyan-400">00:00:00</p>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-grow">
+        
+        <div class="lg:col-span-2 glass rounded-2xl h-[500px] lg:h-auto min-h-[600px] relative overflow-hidden flex flex-col">
+            
+            <div id="vault-padlock" class="absolute inset-0 z-20 bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center transition-opacity duration-500">
+                <span class="text-6xl mb-6 drop-shadow-2xl">🔒</span>
+                <h2 class="text-3xl font-light text-white mb-2 tracking-wide">Vault Locked</h2>
+                <p class="text-gray-400 font-medium">Awaiting Designer Authorization</p>
+            </div>
+            
+            <div id="3d-viewport" class="w-full h-full cursor-move bg-[radial-gradient(circle_at_center,_#1e293b_0%,_#020617_100%)]"></div>
+            
+            <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent pointer-events-none flex justify-between items-end">
+                <span class="text-xs text-gray-400 tracking-widest uppercase">Interactive 360° Render</span>
+                <span class="text-xs text-[#0dcaf0] tracking-widest uppercase font-bold">Powered by UDesign</span>
+            </div>
+        </div>
+
+        <div class="space-y-6 flex flex-col">
+            
+            <div class="glass p-6 rounded-2xl text-center md:text-left relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-[#0dcaf0] opacity-5 rounded-full -mr-10 -mt-10 blur-xl"></div>
+                <h3 class="text-xs text-gray-500 font-bold tracking-widest uppercase mb-3">Project Value</h3>
+                <p id="quoteValue" class="text-4xl md:text-5xl font-black text-white drop-shadow-lg">£0.00</p>
+                
+                <div class="mt-6 pt-6 border-t border-slate-800/50">
+                    <button id="btnSign" class="w-full bg-[#0dcaf0] text-black font-black py-4 rounded-xl hover:bg-cyan-400 hover:scale-[1.02] transition-all shadow-[0_0_20px_rgba(13,202,240,0.2)] uppercase tracking-wide">
+                        Authorize & Sign Contract
+                    </button>
+                    <p class="text-center text-[10px] text-gray-600 mt-3 uppercase tracking-widest">Secured via Stripe</p>
+                </div>
+            </div>
+            
+            <div class="glass p-6 rounded-2xl flex-grow flex flex-col min-h-[350px]">
+                <h3 class="text-xs text-gray-500 font-bold tracking-widest uppercase mb-4 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-[#0dcaf0]"></span> Direct Line
+                </h3>
+                
+                <div id="chat-window" class="flex-grow overflow-y-auto mb-4 space-y-4 pr-2">
+                    <div class="text-center text-xs text-gray-600 my-4">Encrypted Connection Established</div>
+                </div>
+                
+                <div class="relative mt-auto">
+                    <input type="text" id="chat-input" class="w-full bg-slate-800/80 text-white p-4 pr-12 rounded-xl border border-slate-700 outline-none focus:border-[#0dcaf0] transition-colors placeholder-gray-500 shadow-inner" placeholder="Message Tom...">
+                    <button class="absolute right-3 top-1/2 -translate-y-1/2 text-[#0dcaf0] p-2 hover:text-cyan-300 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <script type="module" src="app_vault.js"></script>
+</body>
+</html>
