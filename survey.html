@@ -563,7 +563,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     
    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -576,7 +576,7 @@
             messagingSenderId: "208212115382",
             appId: "1:208212115382:web:db7d4276b194f89a274b17"
         };
-        const app = initializeApp(appConfig);
+        const app = !getApps().length ? initializeApp(appConfig) : getApp();
         const auth = getAuth(app); 
         const db = getFirestore(app);
         window.db = db; // Export for global access
