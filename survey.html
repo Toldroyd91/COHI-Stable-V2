@@ -541,6 +541,7 @@
                 <h2 id="pdfFocusTitle" style="font-size: 24px; margin: 0; font-weight: 800; text-transform: uppercase; color: #111;">Primary Build <span class="brand-text" style="color: #002f54;">Focus</span></h2>
                 <img class="dynamic-brand-logo" src="" style="max-width: 120px; max-height: 40px; object-fit: contain;">
             </div>
+            <script src="app.js"></script>
             
             <div style="background: #fafafa; height: auto; min-height: 350px; display: flex; justify-content: center; align-items: center; border-radius: 12px; border: 1px solid #ddd; position: relative; overflow: hidden; margin-bottom: 30px;">
                 <img class="dynamic-brand-logo" src="" style="position: absolute; width: 50%; opacity: 0.05; pointer-events: none;">
@@ -561,25 +562,28 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     
-    <script src="app.js"></script>
-
-    <script type="module">
+   <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        const app = initializeApp({
+        // --- 1. SINGLE FIREBASE INITIALIZATION ---
+        const appConfig = {
             apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0",
             authDomain: "cohi-survey-engine.firebaseapp.com",
             projectId: "cohi-survey-engine",
             storageBucket: "cohi-survey-engine.firebasestorage.app",
             messagingSenderId: "208212115382",
             appId: "1:208212115382:web:db7d4276b194f89a274b17"
-        });
-        const auth = getAuth(app); const db = getFirestore(app);
+        };
+        const app = initializeApp(appConfig);
+        const auth = getAuth(app); 
+        const db = getFirestore(app);
+        window.db = db; // Export for global access
 
-        document.getElementById('appVersionDisplay').innerText = "Engine Build: " + new Date(document.lastModified).toLocaleString();
+        document.getElementById('appVersionDisplay').innerText = "Engine Build: V13 Master";
 
+        // --- 2. CORE UI & AUTHENTICATION ---
         const authOverlay = document.getElementById('authOverlay');
         const designerApp = document.getElementById('designerApp');
         const adminDashboard = document.getElementById('adminDashboard');
@@ -609,38 +613,38 @@
                     const userData = userDoc.data(); window.currentUserProfile = userData;
                     
                     const brandFile = logoMap[userData.brand] || 'logo.png';
-                    logoBrand.src = brandFile;
+                    if(logoBrand) logoBrand.src = brandFile;
 
                     setTimeout(() => {
-                        logoCoh.classList.add('fade-out');
-                        logoBrand.classList.add('fade-in');
+                        if(logoCoh) logoCoh.classList.add('fade-out');
+                        if(logoBrand) logoBrand.classList.add('fade-in');
                     }, 500); 
 
                     setTimeout(() => {
-                        splash.style.opacity = '0';
-                        setTimeout(() => splash.style.display = 'none', 800);
-                        authOverlay.style.display = 'none';
+                        if(splash) { splash.style.opacity = '0'; setTimeout(() => splash.style.display = 'none', 800); }
+                        if(authOverlay) authOverlay.style.display = 'none';
 
                         if (userData.role === 'admin') {
-                            designerApp.style.display = 'none'; adminDashboard.style.display = 'block';
-                            activeProfileUI.innerHTML = `MANAGER HUB | ${userData.name}`; activeProfileUI.style.display = 'inline';
+                            if(designerApp) designerApp.style.display = 'none'; 
+                            if(adminDashboard) adminDashboard.style.display = 'block';
+                            if(activeProfileUI) { activeProfileUI.innerHTML = `MANAGER HUB | ${userData.name}`; activeProfileUI.style.display = 'inline'; }
                             fetchAdminLeads();
                         } else {
-                            adminDashboard.style.display = 'none'; designerApp.style.display = 'block';
-                            activeProfileUI.innerHTML = `${userData.brand} | ${userData.name}`; activeProfileUI.style.display = 'inline';
+                            if(adminDashboard) adminDashboard.style.display = 'none'; 
+                            if(designerApp) designerApp.style.display = 'block';
+                            if(activeProfileUI) { activeProfileUI.innerHTML = `${userData.brand} | ${userData.name}`; activeProfileUI.style.display = 'inline'; }
                             fetchCloudDrafts(user.uid);
                         }
                     }, 2200);
                 }
             } else { 
-                setTimeout(() => { logoCoh.classList.add('fade-out'); }, 500);
+                setTimeout(() => { if(logoCoh) logoCoh.classList.add('fade-out'); }, 500);
                 setTimeout(() => {
-                    splash.style.opacity = '0';
-                    setTimeout(() => splash.style.display = 'none', 800);
-                    authOverlay.style.display = 'flex'; 
-                    designerApp.style.display = 'none'; 
-                    adminDashboard.style.display = 'none'; 
-                    activeProfileUI.style.display = 'none'; 
+                    if(splash) { splash.style.opacity = '0'; setTimeout(() => splash.style.display = 'none', 800); }
+                    if(authOverlay) authOverlay.style.display = 'flex'; 
+                    if(designerApp) designerApp.style.display = 'none'; 
+                    if(adminDashboard) adminDashboard.style.display = 'none'; 
+                    if(activeProfileUI) activeProfileUI.style.display = 'none'; 
                 }, 1200);
             }
         });
@@ -658,72 +662,30 @@
         document.getElementById('loginBtn')?.addEventListener('click', () => signInWithEmailAndPassword(auth, document.getElementById('authEmail').value, document.getElementById('authPassword').value));
         document.getElementById('logoutBtn')?.addEventListener('click', () => { signOut(auth).then(() => { location.reload(); }); });
 
-        const getFormState = () => {
-            const data = {}; document.querySelectorAll('.form-group__input').forEach(el => { if (el.id && el.type !== 'file') data[el.id] = el.value; });
-            const canvases = {}; if (window.appCanvases) { for (let key in window.appCanvases) canvases[key] = window.appCanvases[key].toJSON(); }
-            return { inputs: data, canvases };
-        };
-
         const loadFormState = (payload) => {
             if (payload.inputs) { for (let key in payload.inputs) { const el = document.getElementById(key); if (el) el.value = payload.inputs[key]; } }
             if (payload.canvases && window.appCanvases) { for (let key in payload.canvases) if (window.appCanvases[key]) window.appCanvases[key].loadFromJSON(payload.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key])); }
-            ['misc', 'survey', 'access'].forEach(k => window.updatePhotoCount(k));
-            window.showToast("Survey Loaded");
+            ['misc', 'survey', 'access'].forEach(k => { if(window.updatePhotoCount) window.updatePhotoCount(k); });
+            if(window.showToast) window.showToast("Survey Loaded");
         };
-
-        let offlineQueue = false;
-        window.performCloudAutoSave = async () => {
-            if (!auth.currentUser) return;
-            const cName = document.getElementById('clientName').value.trim();
-            if (!cName) return; 
-
-            // --- V3 METADATA INJECTION ---
-            const metadata = {
-                _designerName: window.currentUserProfile?.name || 'Unassigned',
-                _pipelineStatus: 'Active Survey',
-                _lastContacted: Date.now(),
-                _brand: window.currentUserProfile?.brand || 'COHI'
-            };
-            // -----------------------------
-
-            const sId = cName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + auth.currentUser.uid.slice(-4);
-            const syncStatus = document.getElementById('syncStatus');
-            
-            if (!navigator.onLine) {
-                if(syncStatus) { syncStatus.innerText = "Offline - Queued"; syncStatus.style.color = "#ff4444"; }
-                offlineQueue = true; return;
-            }
-            if(syncStatus) { syncStatus.innerText = "Autosaving..."; syncStatus.style.color = "#ffc107"; }
-            
-            try {
-                // --- MERGE METADATA INTO THE SAVED OBJECT ---
-                await setDoc(doc(db, "surveys", sId), { 
-                    userId: auth.currentUser.uid, 
-                    clientName: cName, 
-                    data: { ...getFormState(), inputs: { ...getFormState().inputs, ...metadata } }, 
-                    updatedAt: serverTimestamp() 
-                });
-                if(syncStatus) { syncStatus.innerText = "Saved"; syncStatus.style.color = "#28a745"; }
-                offlineQueue = false;
-            } catch (error) { console.error(error); if(syncStatus) syncStatus.innerText = "Error Saving"; }
-        };
-
-        window.addEventListener('online', () => { window.showToast("Signal Restored. Syncing...", true); if(offlineQueue) window.performCloudAutoSave(); });
-        window.addEventListener('offline', () => { window.showToast("Dead Zone: Working Offline", false); const syncStatus = document.getElementById('syncStatus'); if(syncStatus) { syncStatus.innerText = "Offline Mode"; syncStatus.style.color = "#ff4444"; } });
 
         let currentDrafts = {};
         async function fetchCloudDrafts(uid) {
             const q = query(collection(db, "surveys"), where("userId", "==", uid));
             try {
                 const snap = await getDocs(q);
-                const select = document.getElementById('cloudDrafts'); select.innerHTML = '<option value="">Load Previous...</option>';
-                snap.forEach((doc) => { currentDrafts[doc.id] = doc.data(); select.innerHTML += `<option value="${doc.id}">${doc.data().clientName}</option>`; });
+                const select = document.getElementById('cloudDrafts'); 
+                if(select) {
+                    select.innerHTML = '<option value="">Load Previous...</option>';
+                    snap.forEach((doc) => { currentDrafts[doc.id] = doc.data(); select.innerHTML += `<option value="${doc.id}">${doc.data().clientName || doc.data().customerProfile?.leadName || 'Survey'}</option>`; });
+                }
             } catch (e) { console.error(e); }
         }
-        document.getElementById('loadCloudBtn')?.addEventListener('click', () => { const id = document.getElementById('cloudDrafts').value; if(id) loadFormState(currentDrafts[id].data); });
+        document.getElementById('loadCloudBtn')?.addEventListener('click', () => { const id = document.getElementById('cloudDrafts').value; if(id && currentDrafts[id]) loadFormState(currentDrafts[id].data || currentDrafts[id]); });
 
         async function fetchAdminLeads() {
             const container = document.getElementById('adminLeadsContainer');
+            if(!container) return;
             try {
                 const snapshot = await getDocs(collection(db, "surveys"));
                 container.innerHTML = snapshot.empty ? '<p style="color:#888;">No surveys yet.</p>' : '';
@@ -732,14 +694,21 @@
                 const todayStr = new Date().toLocaleDateString();
 
                 snapshot.forEach(doc => {
-                    const data = doc.data(), inputs = data.data.inputs || {}, dDate = data.updatedAt ? new Date(data.updatedAt.toDate()).toLocaleDateString() : 'N/A';
-                    totalSurveys++; designersSet.add(data.userId); if (dDate === todayStr) todaySurveys++;
+                    const data = doc.data();
+                    const clientName = data.clientName || data.customerProfile?.leadName || 'Unnamed';
+                    const postCode = data.data?.inputs?.postCode || data.customerProfile?.postcode || '';
+                    const buildType = data.data?.inputs?.buildType || data.technicalSurvey?.buildCategory || 'TBC';
+                    const propSize = data.data?.inputs?.proposedSize || data.technicalSurvey?.proposedSizeSQM || 'TBC';
+                    const userId = data.userId || data.customerProfile?.designerId || 'Unknown';
+                    const dDate = data.updatedAt ? new Date(data.updatedAt.toDate()).toLocaleDateString() : (data.timestamps?.updatedAt ? new Date(data.timestamps.updatedAt.toDate()).toLocaleDateString() : 'N/A');
+                    
+                    totalSurveys++; designersSet.add(userId); if (dDate === todayStr) todaySurveys++;
 
                     container.innerHTML += `
                         <div class="admin-lead-card" style="background:#2a2a2a; padding:15px; border-radius:8px; border-left:4px solid #ff9800; display:flex; justify-content:space-between; margin-bottom:10px;">
                             <div>
-                                <h3 style="margin:0 0 5px 0; color:#fff;">${data.clientName || 'Unnamed'} <span style="font-size:0.8rem; color:#ff9800;">${inputs.postCode || ''}</span></h3>
-                                <p style="margin:0; color:#aaa; font-size:0.85rem;">Build: ${inputs.buildType || 'TBC'} | Size: ${inputs.proposedSize || 'TBC'}</p>
+                                <h3 style="margin:0 0 5px 0; color:#fff;">${clientName} <span style="font-size:0.8rem; color:#ff9800;">${postCode}</span></h3>
+                                <p style="margin:0; color:#aaa; font-size:0.85rem;">Build: ${buildType} | Size: ${propSize}</p>
                                 <p style="margin:5px 0 0 0; color:#888; font-size:0.8rem;">Date Saved: ${dDate}</p>
                             </div>
                         </div>`;
@@ -761,59 +730,52 @@
                 const snapshot = await getDocs(collection(db, "surveys"));
                 let csv = "Date Saved,Designer ID,Client Name,Postcode,Build Type,Proposed Size\n";
                 snapshot.forEach(doc => {
-                    const data = doc.data(), inputs = data.data.inputs || {};
-                    const date = data.updatedAt ? new Date(data.updatedAt.toDate()).toLocaleDateString() : 'N/A';
-                    csv += `"${date}","${data.userId}","${data.clientName || ''}","${inputs.postCode || ''}","${inputs.buildType || ''}","${inputs.proposedSize || ''}"\n`;
+                    const data = doc.data();
+                    const clientName = data.clientName || data.customerProfile?.leadName || '';
+                    const postCode = data.data?.inputs?.postCode || data.customerProfile?.postcode || '';
+                    const buildType = data.data?.inputs?.buildType || data.technicalSurvey?.buildCategory || '';
+                    const propSize = data.data?.inputs?.proposedSize || data.technicalSurvey?.proposedSizeSQM || '';
+                    const userId = data.userId || data.customerProfile?.designerId || '';
+                    const date = data.updatedAt ? new Date(data.updatedAt.toDate()).toLocaleDateString() : (data.timestamps?.updatedAt ? new Date(data.timestamps.updatedAt.toDate()).toLocaleDateString() : 'N/A');
+                    
+                    csv += `"${date}","${userId}","${clientName}","${postCode}","${buildType}","${propSize}"\n`;
                 });
                 const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
                 const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Survey_Leads_Report.csv`; a.click();
                 if(window.showToast) window.showToast("CSV Downloaded!", true);
             } catch (err) { console.error(err); if(window.showToast) window.showToast("Export Failed", false); }
         });
-    </script>
-    <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 
-    <script type="module">
-        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        // Safely connect to Firebase without conflicting with your top script
-        const appConfig = { apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", authDomain: "cohi-survey-engine.firebaseapp.com", projectId: "cohi-survey-engine" };
-        const app = !getApps().length ? initializeApp(appConfig) : getApp();
-        const db = getFirestore(app);
+        // =====================================================================
+        // --- 3. PINNACLE V13: UNIFIED BRIDGE & SNIPER ENGINE ---
+        // =====================================================================
+        console.log("Pinnacle V13: Unified Engine & PDF Fix Active");
 
-        console.log("Pinnacle V12: Air-Gapped Sniper & Command Center Bridge Active");
+        const getValSafe = (id1, id2) => document.getElementById(id1)?.value || document.getElementById(id2)?.value || '';
 
-        const getVal = (id1, id2) => document.getElementById(id1)?.value || document.getElementById(id2)?.value || '';
-
-        // --- 1. UI ASSASSIN (Kill old Fabric.js tools) ---
+        // GENTLE UI ASSASSIN (Hides ONLY the buttons. Leaves canvas visible so PDF works!)
         setInterval(() => {
-            document.querySelectorAll('button').forEach(btn => {
-                const txt = btn.innerText.toLowerCase();
-                if (txt.includes('draw line') || txt.includes('add text') || txt.includes('undo') || txt.includes('clear')) btn.style.display = 'none';
-            });
-            document.querySelectorAll('.canvas-container').forEach(c => {
-                if(!c.classList.contains('sniper-cleared')) { c.style.display = 'none'; c.classList.add('sniper-cleared'); }
-            });
+            document.querySelectorAll('.canvas-controls').forEach(c => c.style.display = 'none');
         }, 500);
 
-        // --- 2. INJECT ENTERPRISE DASHBOARD BUTTONS ---
+        // INJECT ENTERPRISE DASHBOARD BUTTONS
         const pdfBtn = document.getElementById('generateCustomerPdfBtn') || document.getElementById('generateInternalPdfBtn') || document.querySelector('button[id*="Pdf"]');
         if(pdfBtn && !document.getElementById('btn-legacy-dash')) {
-            const container = document.createElement('div');
-            container.style.cssText = "display:flex; gap:10px; margin-top:15px; justify-content:center; flex-wrap:wrap; width:100%;";
-            container.innerHTML = `
+            const btnContainer = document.createElement('div');
+            btnContainer.style.cssText = "display:flex; gap:10px; margin-top:15px; justify-content:center; flex-wrap:wrap; width:100%;";
+            btnContainer.innerHTML = `
                 <button id="btn-legacy-dash" style="background:#1A1A1A; color:#0dcaf0; border:1px solid #0dcaf0; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">📋 Copy Payload</button>
                 <button id="btn-sync-v3" style="background:#10b981; color:white; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; cursor:pointer; box-shadow:0 4px 10px rgba(16,185,129,0.3);">☁️ Sync to Command Center</button>
             `;
-            pdfBtn.parentNode.insertBefore(container, pdfBtn.nextSibling);
+            pdfBtn.parentNode.insertBefore(btnContainer, pdfBtn.nextSibling);
         }
 
-        // --- 3. MASTER JSON DATA BRIDGE ---
+        // MASTER JSON DATA BRIDGE
         document.addEventListener('click', async (e) => {
             if(e.target.id === 'btn-legacy-dash') {
-                const client = getVal('clientName', 'customerName');
-                const txt = `=== COHI EXPORT ===\nClient: ${client}\nPostcode: ${getVal('postCode', 'input-postcode')}\nBuild: ${getVal('buildType', 'input-build-type')}\nVectors: ${(window.sniperLogs || []).join(', ')}`;
+                const client = getValSafe('clientName', 'customerName');
+                const txt = `=== COHI EXPORT ===\nClient: ${client}\nPostcode: ${getValSafe('postCode', 'input-postcode')}\nBuild: ${getValSafe('buildType', 'input-build-type')}\nVectors: ${(window.sniperLogs || []).join(', ')}`;
                 navigator.clipboard.writeText(txt).then(() => { if(window.showToast) window.showToast("Copied to Clipboard!", true); });
             }
             
@@ -827,22 +789,24 @@
                     const fImg = fCv && fCv.hasAttribute('data-sniper') ? fCv.getAttribute('data-sniper') : null;
                     
                     await addDoc(collection(db, "surveys"), {
+                        userId: auth.currentUser ? auth.currentUser.uid : "Designer",
+                        clientName: getValSafe('clientName', 'customerName') || 'Unnamed Lead',
                         pipelineStatus: "1. Survey Complete", 
                         customerProfile: {
-                            leadName: getVal('clientName', 'customerName') || 'Unnamed Lead',
-                            postcode: getVal('postCode', 'input-postcode') || 'N/A',
-                            vaultPIN: getVal('clientNum', 'customerNumber') || Math.floor(1000 + Math.random() * 9000).toString(),
-                            brandIdentity: getVal('regBrand', 'companyBrand') || "Yorkshire Windows",
+                            leadName: getValSafe('clientName', 'customerName') || 'Unnamed Lead',
+                            postcode: getValSafe('postCode', 'input-postcode') || 'N/A',
+                            vaultPIN: getValSafe('clientNum', 'customerNumber') || Math.floor(1000 + Math.random() * 9000).toString(),
+                            brandIdentity: getValSafe('regBrand', 'companyBrand') || "Yorkshire Windows",
                             designerId: window.currentUserProfile?.name || 'Tom'
                         },
                         technicalSurvey: {
-                            buildCategory: getVal('buildType', 'input-build-type') || 'Extension',
-                            roofSystem: getVal('roofType', 'input-roof-type') || 'Not Specified',
-                            proposedSizeSQM: getVal('proposedSize', 'input-proposed-size') || '',
-                            foundations: getVal('dpcDepth', 'input-foundations') || '',
-                            drainage: getVal('manholeExist', 'input-drainage') || '',
-                            brickMatch: getVal('houseMaterial', 'input-brick-match') || '',
-                            designerNotes: getVal('designerNotes', 'customerNotes') || ''
+                            buildCategory: getValSafe('buildType', 'input-build-type') || 'Extension',
+                            roofSystem: getValSafe('roofType', 'input-roof-type') || 'Not Specified',
+                            proposedSizeSQM: getValSafe('proposedSize', 'input-proposed-size') || '',
+                            foundations: getValSafe('dpcDepth', 'input-foundations') || '',
+                            drainage: getValSafe('manholeExist', 'input-drainage') || '',
+                            brickMatch: getValSafe('houseMaterial', 'input-brick-match') || '',
+                            designerNotes: getValSafe('designerNotes', 'customerNotes') || ''
                         },
                         rawAssets: {
                             frontElevationImage: fImg || null,
@@ -854,17 +818,17 @@
                     });
                     
                     if(window.showToast) window.showToast("Deployed to Command Center!", true);
-                    setTimeout(() => window.location.href = 'index.html', 1500); // Route back to Hub
+                    setTimeout(() => window.location.href = 'index.html', 1500);
 
                 } catch(err) { 
                     console.error(err); 
-                    if(window.showToast) window.showToast("Sync Failed - Check Network", false); 
+                    if(window.showToast) window.showToast("Sync Failed - Network Error", false); 
                     btn.innerText = "☁️ Sync to Command Center"; btn.disabled = false;
                 }
             }
         });
 
-        // --- 4. AIR-GAPPED SNIPER MODAL UI ---
+        // AIR-GAPPED SNIPER MODAL UI
         const modal = document.createElement('div');
         modal.id = 'sniper-modal';
         modal.style.cssText = "display:none; position:fixed; inset:0; z-index:999999; background:#0b1118; font-family:system-ui, sans-serif; touch-action:none;";
@@ -899,7 +863,7 @@
         `;
         document.body.appendChild(modal);
 
-        // --- 5. AIR-GAPPED FILE UPLOAD SYSTEM ---
+        // IMAGE COMPRESSOR & FILE UPLOAD SYSTEM
         window.sniperLogs = [];
         const S = { activeSuffix: 'Front', activeWrapper: null, scale: 1, offsetX: 0, offsetY: 0, isDragging: false, lastTouch: {x:0, y:0}, initialPinch: null, anchor: null, vectors: [] };
         
@@ -911,14 +875,24 @@
             const file = e.target.files[0]; if(!file) return;
             const img = new Image();
             img.onload = () => {
+                const MAX_DIM = 1200; // Limits 4K photos to 1200px max
+                let w = img.naturalWidth; 
+                let h = img.naturalHeight;
+                if (w > MAX_DIM || h > MAX_DIM) {
+                    const ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
+                    w = Math.round(w * ratio);
+                    h = Math.round(h * ratio);
+                }
+
                 const baseCanvas = document.getElementById('sniper-base');
                 const vecCanvas = document.getElementById('sniper-vectors');
                 const ghostCanvas = document.getElementById('sniper-ghost');
-                const w = img.naturalWidth; const h = img.naturalHeight;
+                
                 baseCanvas.width = vecCanvas.width = ghostCanvas.width = w;
                 baseCanvas.height = vecCanvas.height = ghostCanvas.height = h;
                 
-                baseCanvas.getContext('2d').drawImage(img, 0, 0);
+                baseCanvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                
                 S.vectors = []; S.anchor = null; 
                 S.offsetX = (window.innerWidth - w)/2; S.offsetY = (window.innerHeight - h)/2;
                 S.scale = Math.min(window.innerWidth/w, window.innerHeight/h) * 0.9;
@@ -953,7 +927,7 @@
             });
         }, 800);
 
-        // --- 6. SNIPER MATH & ANTI-BOUNCE GESTURES ---
+        // SNIPER MATH & ANTI-BOUNCE GESTURES
         const vp = document.getElementById('sniper-viewport');
         const container = document.getElementById('sniper-container');
         const vecCtx = document.getElementById('sniper-vectors').getContext('2d');
@@ -1044,7 +1018,8 @@
             const ctx = comp.getContext('2d');
             ctx.drawImage(baseCanvas, 0,0); ctx.drawImage(vCanvas, 0,0);
             
-            const b64 = comp.toDataURL('image/jpeg', 0.9);
+            const b64 = comp.toDataURL('image/jpeg', 0.6); // Massive compression applied!
+            
             if(S.activeWrapper) {
                 const targetCanvas = S.activeWrapper.querySelector('canvas') || document.getElementById(`canvas-${S.activeSuffix}`);
                 if(targetCanvas) { targetCanvas.setAttribute('data-sniper', b64); targetCanvas.style.display = 'none'; }
@@ -1059,6 +1034,13 @@
             document.getElementById('sniper-modal').style.display = 'none';
             if(window.showToast) window.showToast("Blueprint Saved in High Res!", true);
         };
+
+        const oldDataURL = HTMLCanvasElement.prototype.toDataURL;
+        HTMLCanvasElement.prototype.toDataURL = function(t, e) {
+            if(this.hasAttribute('data-sniper')) return this.getAttribute('data-sniper');
+            return oldDataURL.call(this, t, e);
+        };
     </script>
+    <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 </body>
 </html>
