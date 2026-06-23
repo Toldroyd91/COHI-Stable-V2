@@ -1,45 +1,31 @@
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// --- 1. INITIALIZATION ---
-const appConfig = {
-    apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0",
-    authDomain: "cohi-survey-engine.firebaseapp.com",
-    projectId: "cohi-survey-engine",
-    storageBucket: "cohi-survey-engine.firebasestorage.app",
-    messagingSenderId: "208212115382",
-    appId: "1:208212115382:web:db7d4276b194f89a274b17"
-};
-
+const appConfig = { apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", authDomain: "cohi-survey-engine.firebaseapp.com", projectId: "cohi-survey-engine", storageBucket: "cohi-survey-engine.firebasestorage.app", messagingSenderId: "208212115382", appId: "1:208212115382:web:db7d4276b194f89a274b17" };
 const app = !getApps().length ? initializeApp(appConfig) : getApp();
 const auth = getAuth(app); 
 const db = getFirestore(app);
 window.db = db;
 
-// Helper
+// Master helper
 const getValSafe = (id1, id2) => document.getElementById(id1)?.value || document.getElementById(id2)?.value || '';
 
-// --- 2. AUTHENTICATION & ROUTING ---
+// Track the active survey so we UPDATE instead of DUPLICATE
+let currentSurveyId = null;
+
+// Auth & Routing
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
-            const userData = userDoc.data(); window.currentUserProfile = userData;
-            
+            window.currentUserProfile = userDoc.data();
             setTimeout(() => {
                 const splash = document.getElementById('splashScreen');
                 if(splash) { splash.style.opacity = '0'; setTimeout(() => splash.style.display = 'none', 800); }
                 if(document.getElementById('authOverlay')) document.getElementById('authOverlay').style.display = 'none';
-
-                if (userData.role === 'admin') {
-                    if(document.getElementById('designerApp')) document.getElementById('designerApp').style.display = 'none'; 
-                    if(document.getElementById('adminDashboard')) document.getElementById('adminDashboard').style.display = 'block';
-                } else {
-                    if(document.getElementById('adminDashboard')) document.getElementById('adminDashboard').style.display = 'none'; 
-                    if(document.getElementById('designerApp')) document.getElementById('designerApp').style.display = 'block';
-                    fetchCloudDrafts(user.uid); // ONLY fetch this user's drafts
-                }
+                if(document.getElementById('designerApp')) document.getElementById('designerApp').style.display = 'block';
+                fetchCloudDrafts(user.uid);
             }, 1000);
         }
     } else { 
@@ -48,12 +34,25 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-document.getElementById('logoutBtn')?.addEventListener('click', () => { signOut(auth).then(() => { location.reload(); }); });
+document.getElementById('logoutBtn')?.addEventListener('click', () => signOut(auth).then(() => location.reload()));
 
-// --- 3. DATA FETCHING (SECURED) ---
+// Form State Scraper (Allows reloading the form exactly as it was)
+const getFormState = () => {
+    const data = {}; document.querySelectorAll('.form-group__input').forEach(el => { if (el.id && el.type !== 'file') data[el.id] = el.value; });
+    const canvases = {}; if (window.appCanvases) { for (let key in window.appCanvases) canvases[key] = window.appCanvases[key].toJSON(); }
+    return { inputs: data, canvases };
+};
+
+const loadFormState = (payload) => {
+    if (payload.inputs) { for (let key in payload.inputs) { const el = document.getElementById(key); if (el) el.value = payload.inputs[key]; } }
+    if (payload.canvases && window.appCanvases) { for (let key in payload.canvases) if (window.appCanvases[key]) window.appCanvases[key].loadFromJSON(payload.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key])); }
+    if(typeof window.updatePhotoCount === 'function') ['misc', 'survey', 'access'].forEach(k => window.updatePhotoCount(k));
+    if(window.showToast) window.showToast("Survey Loaded & Ready to Edit");
+};
+
+// Fetch & Load Drafts
 let currentDrafts = {};
 async function fetchCloudDrafts(uid) {
-    // SECURITY FIX: Only pull surveys where userId matches the logged-in user
     const q = query(collection(db, "surveys"), where("userId", "==", uid));
     try {
         const snap = await getDocs(q);
@@ -68,7 +67,16 @@ async function fetchCloudDrafts(uid) {
     } catch (e) { console.error("Draft Fetch Error:", e); }
 }
 
-// --- 4. COMMAND CENTER SYNC ---
+document.getElementById('loadCloudBtn')?.addEventListener('click', () => { 
+    const id = document.getElementById('cloudDrafts').value; 
+    if(id && currentDrafts[id]) {
+        currentSurveyId = id; // Lock to this ID to update it
+        const payload = currentDrafts[id].rawFormData || currentDrafts[id].data;
+        if(payload) loadFormState(payload);
+    }
+});
+
+// Command Center Sync
 document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-sync-v3');
     btn.innerText = "Syncing..."; btn.disabled = true;
@@ -77,14 +85,21 @@ document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
         const frontCanvas = document.getElementById('canvas-frontelevation') || document.getElementById('canvasFront');
         const fImg = frontCanvas && frontCanvas.hasAttribute('data-sniper') ? frontCanvas.getAttribute('data-sniper') : null;
         
-        await addDoc(collection(db, "surveys"), {
-            userId: auth.currentUser.uid, // Locks ownership to current user
+        // Generate PIN only if new
+        const existingPin = currentSurveyId && currentDrafts[currentSurveyId] ? currentDrafts[currentSurveyId].customerProfile?.vaultPIN : Math.floor(1000 + Math.random() * 9000).toString();
+        
+        // Target existing doc OR create a new one
+        const docRef = currentSurveyId ? doc(db, "surveys", currentSurveyId) : doc(collection(db, "surveys"));
+        
+        await setDoc(docRef, {
+            userId: auth.currentUser.uid,
             clientName: getValSafe('clientName', 'customerName') || 'Unnamed Lead',
-            pipelineStatus: "1. Pre-Quote", // Sets initial stage
+            pipelineStatus: "1. Pre-Quote",
+            rawFormData: getFormState(), // CRITICAL for reloading!
             customerProfile: {
                 leadName: getValSafe('clientName', 'customerName'),
                 postcode: getValSafe('postCode', 'input-postcode'),
-                vaultPIN: Math.floor(1000 + Math.random() * 9000).toString(), // Generates Vault PIN
+                vaultPIN: existingPin,
                 designerId: window.currentUserProfile?.name || 'Designer'
             },
             technicalSurvey: {
@@ -97,38 +112,39 @@ document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
                 frontElevationImage: fImg,
                 structuralVectors: window.sniperLogs || []
             },
-            // Empty structure for dashboard to fill later
-            uDesignBridge: { isUploaded: false, totalQuoteValue: null, quotePdfUrl: null, render3DUrl: null },
-            vaultTelemetry: { isUnlocked: false, totalOpens: 0, timeSpentMinutes: 0, heatmap: [] },
-            timestamps: { createdAt: serverTimestamp(), updatedAt: serverTimestamp() }
-        });
+            timestamps: { updatedAt: serverTimestamp() }
+        }, { merge: true }); // Merge prevents overwriting Vault Telemetry data!
+        
+        currentSurveyId = docRef.id; // Lock to this new ID
         
         btn.innerText = "✅ Deployed to Dashboard";
-        setTimeout(() => location.reload(), 2000);
+        if(window.showToast) window.showToast("Successfully Saved!", true);
+        setTimeout(() => { btn.innerText = "☁️ Sync to Command Center"; btn.disabled = false; }, 2000);
     } catch(err) { 
         console.error(err); 
         btn.innerText = "Sync Failed"; btn.disabled = false;
     }
 });
 
-// --- 5. PDF GENERATOR ---
+// PDF Generator Engine
 document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', async () => {
     const { jsPDF } = window.jspdf;
-    if (!jsPDF) return alert("PDF Engine loading...");
+    if (!jsPDF) return alert("PDF Engine loading... please try again.");
     
     const btn = document.getElementById('generateCustomerPdfBtn');
     btn.innerText = "Generating PDF..."; btn.disabled = true;
 
     try {
-        // Bind data to hidden template
-        document.querySelectorAll('.bind-name').forEach(el => el.innerText = getValSafe('clientName') || 'Customer');
-        document.querySelectorAll('.bind-address').forEach(el => el.innerText = getValSafe('postCode'));
+        // Bind data
+        document.querySelectorAll('.bind-name').forEach(el => el.innerText = getValSafe('clientName', 'customerName') || 'Customer');
+        document.querySelectorAll('.bind-address').forEach(el => el.innerText = getValSafe('postCode', 'input-postcode'));
         const pdprint = document.getElementById('pdfPrintDesigner');
         if (pdprint) pdprint.innerText = window.currentUserProfile?.name || 'Lead Designer';
 
-        document.getElementById('pdfBuildType').innerText = getValSafe('buildType');
-        document.getElementById('pdfProposedSize').innerText = getValSafe('proposedSize');
-        document.getElementById('pdfRoofType').innerText = getValSafe('roofType');
+        document.getElementById('pdfBuildType').innerText = getValSafe('buildType', 'input-build-type');
+        document.getElementById('pdfProposedSize').innerText = getValSafe('proposedSize', 'input-proposed-size');
+        document.getElementById('pdfRoofType').innerText = getValSafe('roofType', 'input-roof-type');
+        document.getElementById('pdfDesignerNotes').innerText = getValSafe('customerNotes', 'designerNotes') || 'No additional notes provided.';
         
         const template = document.getElementById('pdfTemplateInternal');
         template.style.display = 'block';
@@ -139,7 +155,7 @@ document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', asy
         const pages = template.querySelectorAll('.pdf-page');
 
         for (let i = 0; i < pages.length; i++) {
-            const canvas = await html2canvas(pages[i], { scale: 2 });
+            const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true });
             const imgData = canvas.toDataURL('image/jpeg', 0.9);
             if (i > 0) pdf.addPage();
             const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -147,12 +163,13 @@ document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', asy
             pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
         }
 
-        pdf.save(`${getValSafe('clientName')}_Survey.pdf`);
+        pdf.save(`${getValSafe('clientName', 'customerName') || 'Survey'}_Pack.pdf`);
         template.style.display = 'none';
 
         btn.innerText = "Designer Survey (Customer)"; btn.disabled = false;
     } catch (err) {
         console.error(err);
+        alert("Failed to generate PDF. Make sure all images are fully loaded.");
         btn.innerText = "Designer Survey (Customer)"; btn.disabled = false;
     }
 });
