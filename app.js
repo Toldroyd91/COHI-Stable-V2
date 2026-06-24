@@ -2,7 +2,14 @@ import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebase
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const appConfig = { apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", authDomain: "cohi-survey-engine.firebaseapp.com", projectId: "cohi-survey-engine", storageBucket: "cohi-survey-engine.firebasestorage.app", messagingSenderId: "208212115382", appId: "1:208212115382:web:db7d4276b194f89a274b17" };
+const appConfig = { 
+    apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", 
+    authDomain: "cohi-survey-engine.firebaseapp.com", 
+    projectId: "cohi-survey-engine", 
+    storageBucket: "cohi-survey-engine.firebasestorage.app", 
+    messagingSenderId: "208212115382", 
+    appId: "1:208212115382:web:db7d4276b194f89a274b17" 
+};
 const app = !getApps().length ? initializeApp(appConfig) : getApp();
 const auth = getAuth(app); 
 const db = getFirestore(app);
@@ -43,11 +50,21 @@ const getFormState = () => {
     return { inputs: data, canvases };
 };
 
+// Backwards-Compatible Load Engine
 const loadFormState = (payload) => {
-    if (payload.inputs) { for (let key in payload.inputs) { const el = document.getElementById(key); if (el) el.value = payload.inputs[key]; } }
-    if (payload.canvases && window.appCanvases) { for (let key in payload.canvases) if (window.appCanvases[key]) window.appCanvases[key].loadFromJSON(payload.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key])); }
+    if (!payload) return;
+    const dataToLoad = payload.inputs || payload;
+    for (let key in dataToLoad) { 
+        const el = document.getElementById(key); 
+        if (el && el.type !== 'file') el.value = dataToLoad[key]; 
+    }
+    if (payload.canvases && window.appCanvases) { 
+        for (let key in payload.canvases) {
+            if (window.appCanvases[key]) window.appCanvases[key].loadFromJSON(payload.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key])); 
+        }
+    }
     if(typeof window.updatePhotoCount === 'function') ['misc', 'survey', 'access'].forEach(k => window.updatePhotoCount(k));
-    if(window.showToast) window.showToast("Survey Loaded & Ready to Edit");
+    if(window.showToast) window.showToast("Survey Restored", true);
 };
 
 // Fetch & Load Drafts
@@ -70,9 +87,10 @@ async function fetchCloudDrafts(uid) {
 document.getElementById('loadCloudBtn')?.addEventListener('click', () => { 
     const id = document.getElementById('cloudDrafts').value; 
     if(id && currentDrafts[id]) {
-        currentSurveyId = id; // Lock to this ID to update it
-        const payload = currentDrafts[id].rawFormData || currentDrafts[id].data;
-        if(payload) loadFormState(payload);
+        currentSurveyId = id; 
+        const draft = currentDrafts[id];
+        const payload = draft.rawFormData || draft.data || draft;
+        loadFormState(payload);
     }
 });
 
@@ -85,17 +103,14 @@ document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
         const frontCanvas = document.getElementById('canvas-frontelevation') || document.getElementById('canvasFront');
         const fImg = frontCanvas && frontCanvas.hasAttribute('data-sniper') ? frontCanvas.getAttribute('data-sniper') : null;
         
-        // Generate PIN only if new
         const existingPin = currentSurveyId && currentDrafts[currentSurveyId] ? currentDrafts[currentSurveyId].customerProfile?.vaultPIN : Math.floor(1000 + Math.random() * 9000).toString();
-        
-        // Target existing doc OR create a new one
         const docRef = currentSurveyId ? doc(db, "surveys", currentSurveyId) : doc(collection(db, "surveys"));
         
         await setDoc(docRef, {
             userId: auth.currentUser.uid,
             clientName: getValSafe('clientName', 'customerName') || 'Unnamed Lead',
             pipelineStatus: "1. Pre-Quote",
-            rawFormData: getFormState(), // CRITICAL for reloading!
+            rawFormData: getFormState(), 
             customerProfile: {
                 leadName: getValSafe('clientName', 'customerName'),
                 postcode: getValSafe('postCode', 'input-postcode'),
@@ -115,8 +130,7 @@ document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
             timestamps: { updatedAt: serverTimestamp() }
         }, { merge: true }); 
         
-        currentSurveyId = docRef.id; // Lock to this new ID
-        
+        currentSurveyId = docRef.id; 
         btn.innerText = "✅ Deployed to Dashboard";
         if(window.showToast) window.showToast("Successfully Saved!", true);
         setTimeout(() => { btn.innerText = "☁️ Sync to Command Center"; btn.disabled = false; }, 2000);
@@ -126,24 +140,19 @@ document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
     }
 });
 
-// ==========================================
-// 5. RESTORED PDF ENGINE (Extracted from Original Files)
-// ==========================================
-
+// Bulletproof PDF Engine
 document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', async () => {
-    // 1. Initialize the correct JS constructor
     const jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
-    if (!jsPDF) return alert("PDF Engine is still loading. Please try again in a moment.");
+    if (!jsPDF) return alert("PDF Engine loading...");
     
     const btn = document.getElementById('generateCustomerPdfBtn');
     const originalText = btn.innerText;
-    btn.innerText = "Compiling PDF... (Please Wait)"; 
-    btn.disabled = true;
+    btn.innerText = "Compiling PDF..."; btn.disabled = true;
 
     try {
-        // 2. Transfer Text Data to the PDF Template
-        document.querySelectorAll('.bind-name').forEach(el => el.innerText = getValSafe('clientName', 'customerName') || 'Valued Customer');
-        document.querySelectorAll('.bind-address').forEach(el => el.innerText = getValSafe('postCode', 'input-postcode') || 'Address TBC');
+        // Text Mapping
+        document.querySelectorAll('.bind-name').forEach(el => el.innerText = getValSafe('clientName', 'customerName') || 'Customer');
+        document.querySelectorAll('.bind-address').forEach(el => el.innerText = getValSafe('postCode', 'input-postcode') || 'TBC');
         
         const pdprint = document.getElementById('pdfPrintDesigner');
         if (pdprint) pdprint.innerText = window.currentUserProfile?.name || 'Lead Designer';
@@ -160,42 +169,32 @@ document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', asy
             if (el) el.innerText = getValSafe(f.source[0], f.source[1]) || '-';
         });
 
-        // 3. CRITICAL RESTORATION: Transfer Drawing/Sniper Canvases to the PDF Template
-        const syncCanvasToPdf = (canvasId, imgId) => {
-            const canvas = document.getElementById(canvasId);
-            const pdfImg = document.getElementById(imgId);
-            if (canvas && pdfImg) {
-                // Use Sniper high-res if available, else standard canvas capture
-                if (canvas.hasAttribute('data-sniper')) {
-                    pdfImg.src = canvas.getAttribute('data-sniper');
-                } else {
-                    pdfImg.src = canvas.toDataURL('image/jpeg', 0.8);
-                }
+        // Image Mapping
+        const copyCanvas = (sourceId, targetImgId) => {
+            const canvas = document.getElementById(sourceId);
+            const img = document.getElementById(targetImgId);
+            if(canvas && img) {
+                img.src = canvas.hasAttribute('data-sniper') ? canvas.getAttribute('data-sniper') : canvas.toDataURL('image/jpeg', 0.8);
             }
         };
+        copyCanvas('canvas-frontelevation', 'pdfImgFront');
+        copyCanvas('canvas-rearelevation', 'pdfImgRear');
+        copyCanvas('canvas-side1', 'pdfImgSide1');
+        copyCanvas('canvas-side2', 'pdfImgSide2');
 
-        // Sync all possible views so the PDF displays the actual drawings
-        syncCanvasToPdf('canvas-frontelevation', 'pdfImgFront');
-        syncCanvasToPdf('canvas-rearelevation', 'pdfImgRear');
-        syncCanvasToPdf('canvas-side1', 'pdfImgSide1');
-        syncCanvasToPdf('canvas-side2', 'pdfImgSide2');
-        syncCanvasToPdf('canvas-roof', 'pdfImgRoof');
-
-        // 4. Reveal Template Safely to the Renderer
+        // Forced Viewport Rendering
         const template = document.getElementById('pdfTemplateInternal');
-        if (!template) throw new Error("PDF Template not found in HTML");
-        
         template.style.display = 'block';
-        template.style.position = 'fixed'; // Keeps it in the active viewport
+        template.style.position = 'absolute';
         template.style.top = '0px';
         template.style.left = '0px';
-        template.style.zIndex = '-9999';   // Hides it behind the app interface
-        template.style.opacity = '1';
+        template.style.width = '794px'; 
+        template.style.zIndex = '-9999'; 
+        template.style.background = '#ffffff';
 
-        // Brief pause to allow the DOM to render the injected images
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(r => setTimeout(r, 600));
 
-        // 5. Generate the Document
+        // Capture & Save
         const pdf = new jsPDF('p', 'pt', 'a4');
         const pages = template.querySelectorAll('.pdf-page');
 
@@ -203,8 +202,9 @@ document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', asy
             const canvas = await html2canvas(pages[i], { 
                 scale: 2, 
                 useCORS: true, 
-                logging: false,
-                backgroundColor: "#ffffff"
+                allowTaint: true,
+                backgroundColor: "#ffffff",
+                windowWidth: 794
             });
             
             const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -215,20 +215,14 @@ document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', asy
             pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
         }
 
-        // 6. Save File and Cleanup
-        const client = getValSafe('clientName', 'customerName') || 'Customer';
-        pdf.save(`${client}_Survey_Pack.pdf`);
-        
+        pdf.save(`${getValSafe('clientName', 'customerName') || 'Customer'}_Pack.pdf`);
         template.style.display = 'none';
-        btn.innerText = "✅ PDF Downloaded!";
+        btn.innerText = "✅ Downloaded!";
 
     } catch (err) {
-        console.error("PDF Extraction Error:", err);
-        alert("Failed to generate PDF. Make sure all files and libraries are fully loaded.");
+        console.error("PDF Error:", err);
+        alert("Failed to generate PDF. Make sure all images are loaded.");
     } finally {
-        setTimeout(() => {
-            btn.innerText = originalText; 
-            btn.disabled = false;
-        }, 3000);
+        setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 3000);
     }
 });
