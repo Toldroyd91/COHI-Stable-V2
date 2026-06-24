@@ -8,7 +8,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!window.html2canvas) { const s = document.createElement('script'); s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"; document.head.appendChild(s); }
 });
 
-const appConfig = { apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", authDomain: "cohi-survey-engine.firebaseapp.com", projectId: "cohi-survey-engine" };
+const appConfig = { apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", authDomain: "cohi-survey-engine.firebaseapp.com", projectId: "cohi-survey-engine", storageBucket: "cohi-survey-engine.firebasestorage.app", messagingSenderId: "208212115382", appId: "1:208212115382:web:db7d4276b194f89a274b17" };
 const app = !getApps().length ? initializeApp(appConfig) : getApp();
 const auth = getAuth(app); 
 const db = getFirestore(app);
@@ -43,10 +43,8 @@ onAuthStateChanged(auth, async (user) => {
 
 document.getElementById('logoutBtn')?.addEventListener('click', () => signOut(auth).then(() => location.reload()));
 
-// --- FIXED AGGRESSIVE DATA SCRAPER ---
 const getFormState = () => {
     const data = {}; 
-    // Grabs ALL inputs, selects, and textareas regardless of CSS class
     document.querySelectorAll('input:not([type="file"]):not([type="button"]), select, textarea').forEach(el => { 
         if (el.id) data[el.id] = el.value; 
     });
@@ -64,12 +62,14 @@ async function fetchCloudDrafts(uid) {
             select.innerHTML = '<option value="">Load Previous Survey...</option>';
             snap.forEach((doc) => { 
                 currentDrafts[doc.id] = doc.data(); 
-                select.innerHTML += `<option value="${doc.id}">${doc.data().clientName || doc.data().customerProfile?.leadName || 'Unnamed Lead'}</option>`; 
+                const displayName = doc.data().clientName || doc.data().customerProfile?.leadName || 'Unnamed Lead';
+                select.innerHTML += `<option value="${doc.id}">${displayName}</option>`; 
             });
         }
     } catch (e) { console.error("Draft Fetch Error:", e); }
 }
 
+// --- UNIVERSAL DATA LOADER (Handles V1 flat data & V2 nested data) ---
 document.getElementById('loadCloudBtn')?.addEventListener('click', () => { 
     const id = document.getElementById('cloudDrafts').value; 
     if(!id || !currentDrafts[id]) return;
@@ -77,24 +77,74 @@ document.getElementById('loadCloudBtn')?.addEventListener('click', () => {
     currentSurveyId = id; 
     const draft = currentDrafts[id];
     
-    // Aggressively target the payload wherever it is stored
-    const payload = draft.rawFormData?.inputs || draft.data?.inputs || draft;
-
-    for (let key in payload) { 
-        const el = document.getElementById(key); 
-        if (el && el.type !== 'file') el.value = payload[key]; 
+    // 1. Unpack modern nested structures
+    if (draft.customerProfile) {
+        if(document.getElementById('clientName')) document.getElementById('clientName').value = draft.customerProfile.leadName || '';
+        if(document.getElementById('customerName')) document.getElementById('customerName').value = draft.customerProfile.leadName || '';
+        if(document.getElementById('postCode')) document.getElementById('postCode').value = draft.customerProfile.postcode || '';
+        if(document.getElementById('input-postcode')) document.getElementById('input-postcode').value = draft.customerProfile.postcode || '';
     }
 
+    if (draft.technicalSurvey) {
+        const setV = (id1, id2, val) => {
+            if(document.getElementById(id1)) document.getElementById(id1).value = val || '';
+            if(document.getElementById(id2)) document.getElementById(id2).value = val || '';
+        };
+        setV('buildType', 'input-build-type', draft.technicalSurvey.buildCategory);
+        setV('roofType', 'input-roof-type', draft.technicalSurvey.roofSystem);
+        setV('proposedSize', 'input-proposed-size', draft.technicalSurvey.proposedSizeSQM);
+        setV('dpcDepth', 'input-foundations', draft.technicalSurvey.foundations);
+        setV('manholeExist', 'input-drainage', draft.technicalSurvey.drainage);
+        setV('houseMaterial', 'input-brick-match', draft.technicalSurvey.brickMatch);
+        setV('designerNotes', 'customerNotes', draft.technicalSurvey.designerNotes);
+    }
+
+    // 2. Unpack raw payload (Legacy or aggressive scrape data)
+    const payload = draft.rawFormData?.inputs || draft.data?.inputs || draft;
+    for (let key in payload) { 
+        if(typeof payload[key] === 'string' || typeof payload[key] === 'number') {
+            const el = document.getElementById(key); 
+            if (el && el.type !== 'file') el.value = payload[key]; 
+        }
+    }
+
+    // 3. Load Canvas Data
     if (draft.rawFormData?.canvases && window.appCanvases) { 
         for (let key in draft.rawFormData.canvases) {
             if (window.appCanvases[key]) window.appCanvases[key].loadFromJSON(draft.rawFormData.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key])); 
         }
     }
     
+    // 4. Load High-Res Sniper Vectors
+    if (draft.rawAssets?.structuralVectors && window.sniperLogs !== undefined) {
+        window.sniperLogs = draft.rawAssets.structuralVectors;
+    }
+    
+    // 5. Restore High-Res Images
+    if (draft.rawAssets?.frontElevationImage) {
+        const fImgCanvas = document.getElementById('canvas-frontelevation') || document.getElementById('canvasFront');
+        if (fImgCanvas) {
+            fImgCanvas.setAttribute('data-sniper', draft.rawAssets.frontElevationImage);
+            fImgCanvas.style.display = 'none';
+            const wrapper = fImgCanvas.closest('div');
+            if (wrapper) {
+                let preview = wrapper.querySelector('.sniper-preview-img');
+                if (!preview) {
+                    preview = document.createElement('img');
+                    preview.className = 'sniper-preview-img';
+                    preview.style.cssText = "width:100%; border-radius:8px; margin-top:10px; border:2px solid #0dcaf0;";
+                    wrapper.appendChild(preview);
+                }
+                preview.src = draft.rawAssets.frontElevationImage;
+            }
+        }
+    }
+
     if(typeof window.updatePhotoCount === 'function') ['misc', 'survey', 'access'].forEach(k => window.updatePhotoCount(k));
     if(window.showToast) window.showToast("Survey Restored", true);
 });
 
+// --- COMMAND CENTER SYNC ---
 document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-sync-v3');
     btn.innerText = "Syncing..."; btn.disabled = true;
@@ -109,25 +159,37 @@ document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
         await setDoc(docRef, {
             userId: auth.currentUser.uid,
             clientName: getValSafe('clientName', 'customerName') || 'Unnamed Lead',
-            pipelineStatus: "1. Pre-Quote",
-            rawFormData: getFormState(), // Uses the fixed aggressive scraper
+            pipelineStatus: currentDrafts[currentSurveyId]?.pipelineStatus || "1. Pre-Quote",
+            rawFormData: getFormState(), // Backwards compatibility flat payload
             customerProfile: {
                 leadName: getValSafe('clientName', 'customerName'),
                 postcode: getValSafe('postCode', 'input-postcode'),
-                vaultPIN: existingPin.toString(), // FORCES STRING TYPE
+                vaultPIN: String(existingPin).trim(), // Forces strict string matching
                 designerId: window.currentUserProfile?.name || 'Designer'
             },
             technicalSurvey: {
-                buildCategory: getValSafe('buildType', 'input-build-type'),
-                roofSystem: getValSafe('roofType', 'input-roof-type'),
-                proposedSizeSQM: getValSafe('proposedSize', 'input-proposed-size'),
-                designerNotes: getValSafe('designerNotes', 'customerNotes')
+                buildCategory: getValSafe('buildType', 'input-build-type') || 'Not Specified',
+                roofSystem: getValSafe('roofType', 'input-roof-type') || 'Not Specified',
+                proposedSizeSQM: getValSafe('proposedSize', 'input-proposed-size') || '',
+                foundations: getValSafe('dpcDepth', 'input-foundations') || '',
+                drainage: getValSafe('manholeExist', 'input-drainage') || '',
+                brickMatch: getValSafe('houseMaterial', 'input-brick-match') || '',
+                designerNotes: getValSafe('designerNotes', 'customerNotes') || ''
             },
-            rawAssets: { frontElevationImage: fImg, structuralVectors: window.sniperLogs || [] },
-            timestamps: { updatedAt: serverTimestamp() }
+            rawAssets: { 
+                frontElevationImage: fImg, 
+                structuralVectors: window.sniperLogs || [] 
+            },
+            // Preserve existing Vault Telemetry & Bridge data
+            uDesignBridge: currentDrafts[currentSurveyId]?.uDesignBridge || { isUploaded: false, totalQuoteValue: null, depositRequired: null, quotePdfUrl: null, render3DUrl: null },
+            vaultTelemetry: currentDrafts[currentSurveyId]?.vaultTelemetry || { isUnlocked: false, totalOpens: 0, timeSpentMinutes: 0, lastHovered: "Awaiting Initial Open" },
+            timestamps: { createdAt: currentDrafts[currentSurveyId]?.timestamps?.createdAt || serverTimestamp(), updatedAt: serverTimestamp() }
         }, { merge: true }); 
         
         currentSurveyId = docRef.id; 
+        // Update local cache
+        currentDrafts[currentSurveyId] = (await getDoc(docRef)).data();
+
         btn.innerText = "✅ Deployed to Dashboard";
         if(window.showToast) window.showToast("Successfully Saved!", true);
         setTimeout(() => { btn.innerText = "☁️ Sync to Command Center"; btn.disabled = false; }, 2000);
@@ -137,17 +199,22 @@ document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
     }
 });
 
-// --- PDF ENGINE ---
+// --- PDF ENGINE FIX ---
 document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', async () => {
     const jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
-    if (!jsPDF || !window.html2canvas) return alert("PDF Engine is initializing. Please wait 3 seconds and click again.");
+    if (!jsPDF || !window.html2canvas) return alert("PDF Engine is initializing. Please wait a few seconds and try again.");
     
     const btn = document.getElementById('generateCustomerPdfBtn');
     const originalText = btn.innerText;
     btn.innerText = "Compiling PDF..."; btn.disabled = true;
 
+    // Reset scroll to top. html2canvas will blank out the PDF if scrolled down!
+    window.scrollTo(0, 0);
+
     const template = document.getElementById('pdfTemplateInternal');
     try {
+        if (!template) throw new Error("PDF Template missing from HTML!");
+
         document.querySelectorAll('.bind-name').forEach(el => el.innerText = getValSafe('clientName', 'customerName') || 'Customer');
         document.querySelectorAll('.bind-address').forEach(el => el.innerText = getValSafe('postCode', 'input-postcode') || 'TBC');
         
@@ -178,23 +245,30 @@ document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', asy
         copyCanvas('canvas-side1', 'pdfImgSide1');
         copyCanvas('canvas-side2', 'pdfImgSide2');
 
-        if (!template) throw new Error("PDF Template missing!");
-        
+        // Reveal securely in viewport bounds to prevent html2canvas crashing
         template.style.display = 'block';
-        template.style.position = 'fixed'; 
+        template.style.position = 'absolute'; 
         template.style.top = '0px';
         template.style.left = '0px';
         template.style.width = '794px'; 
         template.style.zIndex = '-9999'; 
         template.style.background = '#ffffff';
 
+        // Wait for images to render
         await new Promise(r => setTimeout(r, 800));
 
         const pdf = new jsPDF('p', 'pt', 'a4');
         const pages = template.querySelectorAll('.pdf-page');
 
         for (let i = 0; i < pages.length; i++) {
-            const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff", windowWidth: 794 });
+            const canvas = await html2canvas(pages[i], { 
+                scale: 2, 
+                useCORS: true, 
+                allowTaint: true, 
+                backgroundColor: "#ffffff", 
+                windowWidth: 794,
+                scrollY: -window.scrollY // Compensates for scroll position shift
+            });
             const imgData = canvas.toDataURL('image/jpeg', 0.95);
             if (i > 0) pdf.addPage();
             const pdfWidth = pdf.internal.pageSize.getWidth();
