@@ -12,17 +12,25 @@ const urlParams = new URLSearchParams(window.location.search);
 const projectId = urlParams.get('id');
 
 window.unlockVault = async () => {
-    const pin = document.getElementById('vaultPinInput').value.trim();
-    if(!projectId) return alert("Invalid Secure Link. Contact your designer.");
+    const pinInput = document.getElementById('vaultPinInput').value;
+    if(!projectId) return alert("Invalid Secure Link. Please access via the dashboard link.");
     
     try {
         const docRef = doc(db, "surveys", projectId);
         const vaultDoc = await getDoc(docRef);
         
-        if(!vaultDoc.exists()) return alert("Secure document not found.");
+        if(!vaultDoc.exists()) {
+            console.error("No document found for ID:", projectId);
+            return alert("Secure document not found. The project may have been deleted.");
+        }
         const data = vaultDoc.data();
         
-        if(data.customerProfile?.vaultPIN !== pin) {
+        // BUG FIX: Forces both values into clean Strings to prevent Number mismatch
+        const storedPin = String(data.customerProfile?.vaultPIN || "").trim();
+        const enteredPin = String(pinInput).trim();
+
+        if(storedPin !== enteredPin) {
+            console.warn(`PIN Mismatch. Stored: ${storedPin}, Entered: ${enteredPin}`);
             return alert("Invalid PIN. Please check your text message.");
         }
 
@@ -32,8 +40,8 @@ window.unlockVault = async () => {
         await updateDoc(docRef, { "vaultTelemetry.totalOpens": increment(1), "vaultTelemetry.isUnlocked": true });
         renderVaultContent(data);
     } catch(e) {
-        console.error(e);
-        alert("Connection error securing the vault.");
+        console.error("Vault Connection Error:", e);
+        alert("Connection error securing the vault. Please check your internet connection.");
     }
 };
 
@@ -50,7 +58,7 @@ function renderVaultContent(data) {
 
     const renderContainer = document.getElementById('3dRenderContainer');
     if(renderContainer && data.uDesignBridge?.render3DUrl) {
-        renderContainer.innerHTML = `<img src="${data.uDesignBridge.render3DUrl}" style="width:100%; height:100%; object-fit:cover;" />`;
+        renderContainer.innerHTML = `<img src="${data.uDesignBridge.render3DUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:12px;" />`;
     }
 
     const quoteContainer = document.getElementById('quoteContainer');
