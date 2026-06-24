@@ -75,6 +75,7 @@ async function loadPipeline() {
                         <div>
                             <h4 class="text-xl font-black text-white">${clientName}</h4>
                             <span class="text-xs text-[#0dcaf0]">PIN: ${pin}</span>
+                            <span class="text-xs text-gray-500 ml-2">ID: ${id}</span>
                         </div>
                         <span class="status-badge">${status.split('.')[0]}</span>
                     </div>
