@@ -5,23 +5,25 @@ import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, s
 const appConfig = { 
     apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", 
     authDomain: "cohi-survey-engine.firebaseapp.com", 
-    projectId: "cohi-survey-engine", 
-    storageBucket: "cohi-survey-engine.firebasestorage.app", 
-    messagingSenderId: "208212115382", 
-    appId: "1:208212115382:web:db7d4276b194f89a274b17" 
+    projectId: "cohi-survey-engine" 
 };
 const app = !getApps().length ? initializeApp(appConfig) : getApp();
 const auth = getAuth(app); 
 const db = getFirestore(app);
 window.db = db;
 
-// Master helper
-const getValSafe = (id1, id2) => document.getElementById(id1)?.value || document.getElementById(id2)?.value || '';
+// Safe element getter
+const getValSafe = (id1, id2) => {
+    const el1 = document.getElementById(id1);
+    const el2 = document.getElementById(id2);
+    if(el1 && el1.value) return el1.value;
+    if(el2 && el2.value) return el2.value;
+    return '';
+};
 
-// Track the active survey so we UPDATE instead of DUPLICATE
 let currentSurveyId = null;
+let currentDrafts = {};
 
-// Auth & Routing
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         const userDoc = await getDoc(doc(db, "users", user.uid));
@@ -43,32 +45,13 @@ onAuthStateChanged(auth, async (user) => {
 
 document.getElementById('logoutBtn')?.addEventListener('click', () => signOut(auth).then(() => location.reload()));
 
-// Form State Scraper (Allows reloading the form exactly as it was)
 const getFormState = () => {
     const data = {}; document.querySelectorAll('.form-group__input').forEach(el => { if (el.id && el.type !== 'file') data[el.id] = el.value; });
     const canvases = {}; if (window.appCanvases) { for (let key in window.appCanvases) canvases[key] = window.appCanvases[key].toJSON(); }
     return { inputs: data, canvases };
 };
 
-// Backwards-Compatible Load Engine
-const loadFormState = (payload) => {
-    if (!payload) return;
-    const dataToLoad = payload.inputs || payload;
-    for (let key in dataToLoad) { 
-        const el = document.getElementById(key); 
-        if (el && el.type !== 'file') el.value = dataToLoad[key]; 
-    }
-    if (payload.canvases && window.appCanvases) { 
-        for (let key in payload.canvases) {
-            if (window.appCanvases[key]) window.appCanvases[key].loadFromJSON(payload.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key])); 
-        }
-    }
-    if(typeof window.updatePhotoCount === 'function') ['misc', 'survey', 'access'].forEach(k => window.updatePhotoCount(k));
-    if(window.showToast) window.showToast("Survey Restored", true);
-};
-
-// Fetch & Load Drafts
-let currentDrafts = {};
+// LOAD ENGINE FIX: Extracts data from old DB structure AND new DB structure
 async function fetchCloudDrafts(uid) {
     const q = query(collection(db, "surveys"), where("userId", "==", uid));
     try {
@@ -78,7 +61,7 @@ async function fetchCloudDrafts(uid) {
             select.innerHTML = '<option value="">Load Previous Survey...</option>';
             snap.forEach((doc) => { 
                 currentDrafts[doc.id] = doc.data(); 
-                select.innerHTML += `<option value="${doc.id}">${doc.data().clientName || 'Unnamed Lead'}</option>`; 
+                select.innerHTML += `<option value="${doc.id}">${doc.data().clientName || doc.data().customerProfile?.leadName || 'Unnamed Lead'}</option>`; 
             });
         }
     } catch (e) { console.error("Draft Fetch Error:", e); }
@@ -86,15 +69,29 @@ async function fetchCloudDrafts(uid) {
 
 document.getElementById('loadCloudBtn')?.addEventListener('click', () => { 
     const id = document.getElementById('cloudDrafts').value; 
-    if(id && currentDrafts[id]) {
-        currentSurveyId = id; 
-        const draft = currentDrafts[id];
-        const payload = draft.rawFormData || draft.data || draft;
-        loadFormState(payload);
+    if(!id || !currentDrafts[id]) return;
+    
+    currentSurveyId = id; 
+    const draft = currentDrafts[id];
+    
+    // Aggressively targets the payload wherever it is stored
+    const payload = draft.rawFormData?.inputs || draft.data?.inputs || draft;
+
+    for (let key in payload) { 
+        const el = document.getElementById(key); 
+        if (el && el.type !== 'file') el.value = payload[key]; 
     }
+
+    if (draft.rawFormData?.canvases && window.appCanvases) { 
+        for (let key in draft.rawFormData.canvases) {
+            if (window.appCanvases[key]) window.appCanvases[key].loadFromJSON(draft.rawFormData.canvases[key], window.appCanvases[key].renderAll.bind(window.appCanvases[key])); 
+        }
+    }
+    
+    if(typeof window.updatePhotoCount === 'function') ['misc', 'survey', 'access'].forEach(k => window.updatePhotoCount(k));
+    if(window.showToast) window.showToast("Survey Restored", true);
 });
 
-// Command Center Sync
 document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-sync-v3');
     btn.innerText = "Syncing..."; btn.disabled = true;
@@ -140,17 +137,18 @@ document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
     }
 });
 
-// Bulletproof PDF Engine
+// PDF ENGINE FIX
 document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', async () => {
     const jsPDF = window.jspdf ? window.jspdf.jsPDF : window.jsPDF;
     if (!jsPDF) return alert("PDF Engine loading...");
+    if (!window.html2canvas) return alert("html2canvas library is missing from your HTML!");
     
     const btn = document.getElementById('generateCustomerPdfBtn');
     const originalText = btn.innerText;
     btn.innerText = "Compiling PDF..."; btn.disabled = true;
 
+    const template = document.getElementById('pdfTemplateInternal');
     try {
-        // Text Mapping
         document.querySelectorAll('.bind-name').forEach(el => el.innerText = getValSafe('clientName', 'customerName') || 'Customer');
         document.querySelectorAll('.bind-address').forEach(el => el.innerText = getValSafe('postCode', 'input-postcode') || 'TBC');
         
@@ -163,18 +161,18 @@ document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', asy
             { source: ['roofType', 'input-roof-type'], target: 'pdfRoofType' },
             { source: ['designerNotes', 'customerNotes'], target: 'pdfDesignerNotes' }
         ];
-
         fields.forEach(f => {
             const el = document.getElementById(f.target);
             if (el) el.innerText = getValSafe(f.source[0], f.source[1]) || '-';
         });
 
-        // Image Mapping
         const copyCanvas = (sourceId, targetImgId) => {
             const canvas = document.getElementById(sourceId);
             const img = document.getElementById(targetImgId);
             if(canvas && img) {
-                img.src = canvas.hasAttribute('data-sniper') ? canvas.getAttribute('data-sniper') : canvas.toDataURL('image/jpeg', 0.8);
+                try {
+                    img.src = canvas.hasAttribute('data-sniper') ? canvas.getAttribute('data-sniper') : canvas.toDataURL('image/jpeg', 0.8);
+                } catch(e) { console.warn("Canvas export blocked.", e); }
             }
         };
         copyCanvas('canvas-frontelevation', 'pdfImgFront');
@@ -182,19 +180,19 @@ document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', asy
         copyCanvas('canvas-side1', 'pdfImgSide1');
         copyCanvas('canvas-side2', 'pdfImgSide2');
 
-        // Forced Viewport Rendering
-        const template = document.getElementById('pdfTemplateInternal');
+        if (!template) throw new Error("PDF Template not found in HTML!");
+        
+        // This MUST be absolute/fixed inside the viewport for the engine to read it
         template.style.display = 'block';
-        template.style.position = 'absolute';
+        template.style.position = 'fixed'; 
         template.style.top = '0px';
         template.style.left = '0px';
         template.style.width = '794px'; 
         template.style.zIndex = '-9999'; 
         template.style.background = '#ffffff';
 
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise(r => setTimeout(r, 800));
 
-        // Capture & Save
         const pdf = new jsPDF('p', 'pt', 'a4');
         const pages = template.querySelectorAll('.pdf-page');
 
@@ -221,7 +219,8 @@ document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', asy
 
     } catch (err) {
         console.error("PDF Error:", err);
-        alert("Failed to generate PDF. Make sure all images are loaded.");
+        alert("Failed to generate PDF. Check your console logs.");
+        if(template) template.style.display = 'none';
     } finally {
         setTimeout(() => { btn.innerText = originalText; btn.disabled = false; }, 3000);
     }
