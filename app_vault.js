@@ -38,8 +38,8 @@ window.unlockVault = async () => {
 };
 
 function renderVaultContent(data) {
-    document.getElementById('loginGate').style.display = 'none';
-    document.getElementById('vaultContent').style.display = 'block';
+    if(document.getElementById('loginGate')) document.getElementById('loginGate').style.display = 'none';
+    if(document.getElementById('vaultContent')) document.getElementById('vaultContent').style.display = 'block';
 
     if(document.getElementById('customerGreeting')) document.getElementById('customerGreeting').innerText = `Welcome, ${data.customerProfile?.leadName || 'Customer'}`;
     if(document.getElementById('vaultStatus')) document.getElementById('vaultStatus').innerText = `Stage: ${data.pipelineStatus || 'Reviewing Options'}`;
@@ -55,7 +55,7 @@ function renderVaultContent(data) {
 
     const quoteContainer = document.getElementById('quoteContainer');
     if(quoteContainer && data.uDesignBridge?.quotePdfUrl) {
-        quoteContainer.innerHTML = `<a href="${data.uDesignBridge.quotePdfUrl}" download="Project_Quote.pdf" class="luxury-btn w-full block p-4 text-center">⬇️ Download Official Quote</a>`;
+        quoteContainer.innerHTML = `<a href="${data.uDesignBridge.quotePdfUrl}" download="Project_Quote.pdf" class="luxury-btn w-full block p-4 text-center" style="background:#10b981; color:white; font-weight:bold; padding:15px; border-radius:8px; text-decoration:none;">⬇️ Download Official Quote</a>`;
     }
 }
 
