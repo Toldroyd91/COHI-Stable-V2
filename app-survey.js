@@ -74,19 +74,57 @@ document.getElementById('btn-sync-v3')?.addEventListener('click', async () => {
     }
 });
 
-// 3. PDF TRIGGER
+// 3. PDF TRIGGER (UPDATED WITH DATA, IMAGES, & PAMPHLETS)
 document.getElementById('generateCustomerPdfBtn')?.addEventListener('click', async () => {
     const btn = document.getElementById('generateCustomerPdfBtn');
-    btn.innerText = "Compiling..."; btn.disabled = true;
+    btn.innerText = "Compiling Pack..."; btn.disabled = true;
     
-    // Bind specific text to PDF template before export
+    // 3A. Force Text Data into the Hidden PDF Template
+    const mapToPDF = (inputId, pdfId) => {
+        const el = document.getElementById(pdfId);
+        if (el) el.innerText = document.getElementById(inputId)?.value || '-';
+    };
+    
     document.querySelectorAll('.bind-name').forEach(el => el.innerText = getVal('clientName', 'customerName'));
     document.querySelectorAll('.bind-address').forEach(el => el.innerText = getVal('postCode', 'input-postcode'));
     
+    mapToPDF('buildType', 'pdfBuildType');
+    mapToPDF('roofType', 'pdfRoofType');
+    mapToPDF('proposedSize', 'pdfProposedSize');
+    mapToPDF('designerNotes', 'pdfDesignerNotes');
+
+    // 3B. Force Canvas Drawings into the PDF Template
+    const syncImageToPDF = (canvasId, pdfImgId) => {
+        const canvas = document.getElementById(canvasId);
+        const pdfImg = document.getElementById(pdfImgId);
+        if (canvas && pdfImg) {
+            pdfImg.src = canvas.hasAttribute('data-sniper') ? canvas.getAttribute('data-sniper') : canvas.toDataURL('image/jpeg', 0.8);
+        }
+    };
+    syncImageToPDF('canvas-frontelevation', 'pdfImgFront');
+    syncImageToPDF('canvas-rearelevation', 'pdfImgRear');
+    syncImageToPDF('canvas-side1', 'pdfImgSide1');
+    syncImageToPDF('canvas-side2', 'pdfImgSide2');
+
+    // 3C. Pamphlet Logic (Checks if boxes are ticked, turns on hidden PDF pages)
+    const togglePamphlet = (checkboxId, pdfPageClass) => {
+        const isChecked = document.getElementById(checkboxId)?.checked;
+        const pdfPages = document.querySelectorAll(`.${pdfPageClass}`);
+        pdfPages.forEach(page => {
+            page.style.display = isChecked ? 'block' : 'none';
+        });
+    };
+    
+    // Make sure these IDs match your actual HTML checkboxes!
+    togglePamphlet('check-thermal', 'pdf-pamphlet-thermal');
+    togglePamphlet('check-roof', 'pdf-pamphlet-roof');
+    togglePamphlet('check-bifold', 'pdf-pamphlet-bifold');
+
+    // 3D. Generate the PDF
     await generateSurveyPDF(getVal('clientName', 'customerName'));
     
     btn.innerText = "✅ Downloaded";
-    setTimeout(() => { btn.innerText = "Designer Survey (Customer)"; btn.disabled = false; }, 3000);
+    setTimeout(() => { btn.innerText = "Export PDF Pack"; btn.disabled = false; }, 3000);
 });
 
 // Initialize
