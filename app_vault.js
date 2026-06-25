@@ -1,79 +1,64 @@
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, getDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { db, doc, getDoc, updateDoc, onSnapshot, collection, query, orderBy, addDoc, serverTimestamp } from './firebase-core.js';
 
-const appConfig = { apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", authDomain: "cohi-survey-engine.firebaseapp.com", projectId: "cohi-survey-engine" };
-const app = !getApps().length ? initializeApp(appConfig) : getApp();
-const db = getFirestore(app);
-
-let currentVaultId = null;
-let sessionStartTime = null;
-
-const urlParams = new URLSearchParams(window.location.search);
-const projectId = urlParams.get('id');
+let projectId = new URLSearchParams(window.location.search).get('id');
 
 window.unlockVault = async () => {
-    const pinInput = document.getElementById('vaultPinInput').value;
-    if(!projectId) return alert("Invalid Secure Link. Please access via the dashboard link.");
+    const pin = document.getElementById('vaultPinInput')?.value;
+    if(!projectId) projectId = prompt("Please enter your Project ID:");
     
-    try {
-        const docRef = doc(db, "surveys", projectId);
-        const vaultDoc = await getDoc(docRef);
-        
-        if(!vaultDoc.exists()) {
-            console.error("No document found for ID:", projectId);
-            return alert("Secure document not found. The project may have been deleted.");
-        }
-        const data = vaultDoc.data();
-        
-        // BUG FIX: Forces both values into clean Strings to prevent Number mismatch
-        const storedPin = String(data.customerProfile?.vaultPIN || "").trim();
-        const enteredPin = String(pinInput).trim();
-
-        if(storedPin !== enteredPin) {
-            console.warn(`PIN Mismatch. Stored: ${storedPin}, Entered: ${enteredPin}`);
-            return alert("Invalid PIN. Please check your text message.");
-        }
-
-        currentVaultId = projectId;
-        sessionStartTime = Date.now();
-        
-        await updateDoc(docRef, { "vaultTelemetry.totalOpens": increment(1), "vaultTelemetry.isUnlocked": true });
-        renderVaultContent(data);
-    } catch(e) {
-        console.error("Vault Connection Error:", e);
-        alert("Connection error securing the vault. Please check your internet connection.");
+    const docRef = doc(db, "surveys", projectId.trim());
+    const snap = await getDoc(docRef);
+    
+    if(!snap.exists() || String(snap.data().customerProfile?.vaultPIN) !== String(pin).trim()) {
+        return alert("Invalid PIN or Project ID.");
     }
+
+    // Ping telemetry for the Dashboard RAG system
+    await updateDoc(docRef, { "vaultTelemetry.lastActive": Date.now() });
+
+    document.getElementById('loginGate').style.display = 'none';
+    document.getElementById('vaultContent').style.display = 'block';
+
+    // 1. UI DATA BINDING
+    onSnapshot(docRef, (docSnap) => {
+        const data = docSnap.data();
+        document.getElementById('customerGreeting').innerText = `Welcome, ${data.customerProfile?.leadName || 'Customer'}`;
+        document.getElementById('vBuild').innerText = data.technicalSurvey?.buildCategory || 'TBC';
+        document.getElementById('vRoof').innerText = data.technicalSurvey?.roofSystem || 'TBC';
+        
+        const qc = document.getElementById('quoteContainer');
+        if(qc && data.uDesignBridge?.quotePdfUrl) {
+            qc.innerHTML = `<a href="${data.uDesignBridge.quotePdfUrl}" download class="bg-[#10b981] text-white p-4 rounded block text-center font-bold">⬇️ Download Official Quote</a>`;
+        }
+    });
+
+    // 2. CHAT ENGINE
+    const chatRef = collection(db, `surveys/${projectId}/messages`);
+    onSnapshot(query(chatRef, orderBy("timestamp", "asc")), (msgSnap) => {
+        const win = document.getElementById('chat-window');
+        if(!win) return;
+        win.innerHTML = '<div class="text-center text-xs text-gray-500 my-4">Secure Connection Established</div>';
+        
+        msgSnap.forEach(m => {
+            const d = m.data();
+            const isMe = d.sender === 'Customer';
+            win.innerHTML += `
+                <div class="mb-3 ${isMe ? 'text-right' : 'text-left'}">
+                    <span class="text-xs text-gray-400">${isMe ? 'You' : 'Designer'}</span>
+                    <div class="inline-block p-3 rounded-lg text-sm ${isMe ? 'bg-[#0dcaf0] text-black' : 'bg-slate-700 text-white'}">
+                        ${d.text}
+                    </div>
+                </div>
+            `;
+        });
+        win.scrollTop = win.scrollHeight;
+    });
+
+    document.getElementById('chat-input')?.addEventListener('keypress', async (e) => {
+        if(e.key === 'Enter' && e.target.value.trim()) {
+            await addDoc(chatRef, { sender: 'Customer', text: e.target.value.trim(), timestamp: serverTimestamp() });
+            await updateDoc(docRef, { "vaultTelemetry.lastActive": Date.now() }); // Keeps RAG Green
+            e.target.value = '';
+        }
+    });
 };
-
-function renderVaultContent(data) {
-    if(document.getElementById('loginGate')) document.getElementById('loginGate').style.display = 'none';
-    if(document.getElementById('vaultContent')) document.getElementById('vaultContent').style.display = 'block';
-
-    if(document.getElementById('customerGreeting')) document.getElementById('customerGreeting').innerText = `Welcome, ${data.customerProfile?.leadName || 'Customer'}`;
-    if(document.getElementById('vaultStatus')) document.getElementById('vaultStatus').innerText = `Stage: ${data.pipelineStatus || 'Reviewing Options'}`;
-
-    if(document.getElementById('vBuild')) document.getElementById('vBuild').innerText = data.technicalSurvey?.buildCategory || 'TBC';
-    if(document.getElementById('vRoof')) document.getElementById('vRoof').innerText = data.technicalSurvey?.roofSystem || 'TBC';
-    if(document.getElementById('vSize')) document.getElementById('vSize').innerText = data.technicalSurvey?.proposedSizeSQM || 'TBC';
-
-    const renderContainer = document.getElementById('3dRenderContainer');
-    if(renderContainer && data.uDesignBridge?.render3DUrl) {
-        renderContainer.innerHTML = `<img src="${data.uDesignBridge.render3DUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:12px;" />`;
-    }
-
-    const quoteContainer = document.getElementById('quoteContainer');
-    if(quoteContainer && data.uDesignBridge?.quotePdfUrl) {
-        quoteContainer.innerHTML = `<a href="${data.uDesignBridge.quotePdfUrl}" download="Project_Quote.pdf" class="luxury-btn w-full block p-4 text-center" style="background:#10b981; color:white; font-weight:bold; padding:15px; border-radius:8px; text-decoration:none;">⬇️ Download Official Quote</a>`;
-    }
-}
-
-window.addEventListener('beforeunload', () => {
-    if(currentVaultId && sessionStartTime) {
-        const timeSpentMins = Math.round((Date.now() - sessionStartTime) / 60000);
-        if(timeSpentMins > 0) {
-            navigator.sendBeacon(`https://firestore.googleapis.com/v1/projects/cohi-survey-engine/databases/(default)/documents/surveys/${currentVaultId}?updateMask=vaultTelemetry.timeSpentMinutes`, JSON.stringify({
-                fields: { "vaultTelemetry.timeSpentMinutes": { integerValue: timeSpentMins } }
-            }));
-        }
-    }
-});
