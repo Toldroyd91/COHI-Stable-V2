@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>COHI | Pre-Consultation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>body { background: #020617; color: white; font-family: system-ui; }</style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+    <div class="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 max-w-sm w-full">
+        <div class="text-4xl mb-4">📸</div>
+        <h2 class="text-xl font-bold mb-2">Welcome to COHI</h2>
+        <p class="text-sm text-gray-400 mb-6">To help Tom prepare for your design consultation, please snap a quick photo of your rear garden/elevation.</p>
+        
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+        <button onclick="document.getElementById('cameraInput').click()" id="btnSnap" class="w-full bg-[#10b981] text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/20 mb-4">
+            Open Camera
+        </button>
+        <p id="statusText" class="text-xs text-[#0dcaf0] font-bold hidden">Uploading securely to Vault...</p>
+    </div>
+
+    <script type="module">
+        import { db, doc, updateDoc } from './firebase-core.js';
+        
+        const projectId = new URLSearchParams(window.location.search).get('id');
+        const input = document.getElementById('cameraInput');
+        const btn = document.getElementById('btnSnap');
+        const status = document.getElementById('statusText');
+
+        input.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if(!file || !projectId) return alert("Invalid link or no photo taken.");
+            
+            btn.style.display = 'none';
+            status.classList.remove('hidden');
+
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('upload_preset', "crm_document_uploads"); // Your Cloudinary preset
+            
+            try {
+                const res = await fetch("https://api.cloudinary.com/v1_1/dqk1hz0f8/upload", { method: 'POST', body: fd });
+                const json = await res.json();
+                
+                // Injects straight into your Survey's Sniper Canvas
+                await updateDoc(doc(db, "surveys", projectId), { "rawAssets.frontElevationImage": json.secure_url });
+                
+                status.innerText = "✅ Photo Secured! See you soon.";
+                status.className = "text-emerald-400 text-sm font-bold block";
+            } catch (err) {
+                status.innerText = "Upload failed. Please try again.";
+                btn.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
