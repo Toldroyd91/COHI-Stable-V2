@@ -44,7 +44,8 @@ function calculateRAG(lastActiveMs) {
     return { color: 'text-rose-500', dot: '🔴', label: 'Going Cold' };
 }
 
-onSnapshot(query(collection(db, "surveys"), orderBy("timestamps.updatedAt", "desc")), (snapshot) => {
+onSnapshot(query(collection(db, "surveys")), (snapshot) => {
+
     if(!grid) return;
     grid.innerHTML = '';
     
