@@ -1,133 +1,72 @@
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, updateDoc, query, where, orderBy, limit, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { auth, db, collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from './firebase-core.js';
 
-const appConfig = { apiKey: "AIzaSyD-QrqKxjes9f1TgyJOffiQzSMRncf84L0", authDomain: "cohi-survey-engine.firebaseapp.com", projectId: "cohi-survey-engine" };
-const app = !getApps().length ? initializeApp(appConfig) : getApp();
-const auth = getAuth(app);
-const db = getFirestore(app);
+const grid = document.getElementById('pipelineGrid');
+const cloudinaryUrl = "https://api.cloudinary.com/v1_1/dqk1hz0f8/upload";
 
-const authGate = document.getElementById('authGate');
-const dashboardApp = document.getElementById('dashboardApp');
-
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        authGate.classList.add('hidden');
-        dashboardApp.classList.remove('hidden');
-        const name = user.email.split('@')[0];
-        document.getElementById('designerWelcome').innerText = `Welcome, ${name.charAt(0).toUpperCase() + name.slice(1)}`;
-        loadPipeline();
-    } else {
-        authGate.classList.remove('hidden');
-        dashboardApp.classList.add('hidden');
-    }
-});
-
-document.getElementById('btnLogin').addEventListener('click', () => {
-    const email = document.getElementById('authEmail').value.trim();
-    const pass = document.getElementById('authPassword').value;
-    if(!email || !pass) return document.getElementById('authError').classList.remove('hidden');
-    signInWithEmailAndPassword(auth, email, pass).catch(() => document.getElementById('authError').classList.remove('hidden'));
-});
-
-document.getElementById('btnLogout').addEventListener('click', () => signOut(auth));
-document.getElementById('btnRefresh').addEventListener('click', () => loadPipeline());
-
-async function loadPipeline() {
-    const grid = document.getElementById('pipelineGrid');
-    grid.innerHTML = '<div class="text-gray-500 text-sm animate-pulse">Syncing...</div>';
-
-    try {
-        const user = auth.currentUser;
-        if (!user) return;
-
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        const userData = userDoc.exists() ? userDoc.data() : { role: 'designer' };
-
-        let q = userData.role === 'admin' 
-            ? query(collection(db, "surveys"), orderBy("timestamps.updatedAt", "desc"), limit(50))
-            : query(collection(db, "surveys"), where("userId", "==", user.uid));
-
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            grid.innerHTML = '<div class="text-gray-500 col-span-3">No active projects found. Click "New Survey" to start.</div>';
-            return;
-        }
-
-        grid.innerHTML = '';
-        querySnapshot.forEach((documentSnapshot) => {
-            const data = documentSnapshot.data();
-            const id = documentSnapshot.id;
-            
-            const inputs = data.rawFormData?.inputs || data.data?.inputs || {};
-            const clientName = data.clientName || data.customerProfile?.leadName || 'Unknown Client';
-            const postCode = inputs.postCode || data.customerProfile?.postcode || 'No Postcode';
-            const status = data.pipelineStatus || inputs._pipelineStatus || '1. Consultation';
-            const vaultViews = data.vaultTelemetry?.totalOpens || 0;
-            const pin = data.customerProfile?.vaultPIN || 'N/A';
-
-            const card = document.createElement('div');
-            card.className = 'glass-card p-6 flex flex-col justify-between';
-            card.innerHTML = `
-                <div>
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <h4 class="text-xl font-black text-white">${clientName}</h4>
-                            <span class="text-xs text-[#0dcaf0]">PIN: ${pin}</span>
-                            <span class="text-xs text-gray-500 ml-2">ID: ${id}</span>
-                        </div>
-                        <span class="status-badge">${status.split('.')[0]}</span>
-                    </div>
-                    <div class="text-sm text-gray-400 mb-4">📍 ${postCode}</div>
-                    
-                    <div class="text-xs text-gray-500 mb-4 flex gap-4">
-                        <span>👁️ Vault Views: ${vaultViews}</span>
-                    </div>
-                </div>
-                
-                <div class="pt-4 border-t border-gray-800 flex flex-col gap-2 mt-2">
-                    <div class="flex gap-2 mb-2">
-                        <a href="survey.html?id=${id}" class="flex-1 bg-[#10b981] hover:bg-emerald-400 text-white text-xs py-2 rounded text-center font-bold transition shadow-lg shadow-emerald-500/20">✏️ Edit Survey</a>
-                        <a href="vault.html?id=${id}" target="_blank" class="flex-1 bg-[#0dcaf0] hover:bg-cyan-400 text-black text-xs py-2 rounded text-center font-bold transition shadow-lg shadow-cyan-500/20">🔒 View Vault</a>
-                    </div>
-
-                    <div class="flex gap-2">
-                        <input type="file" id="pdfUpload_${id}" accept=".pdf" class="hidden" onchange="window.handleUDesignUpload('${id}', this)">
-                        <button onclick="document.getElementById('pdfUpload_${id}').click()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white text-xs py-2 rounded transition border border-slate-700">📄 Quote</button>
-                        
-                        <input type="file" id="3dUpload_${id}" accept="image/*" class="hidden" onchange="window.handle3DUpload('${id}', this)">
-                        <button onclick="document.getElementById('3dUpload_${id}').click()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white text-xs py-2 rounded transition border border-slate-700">🖼️ 3D Render</button>
-                    </div>
-                </div>
-            `;
-            grid.appendChild(card);
-        });
-    } catch (error) {
-        console.error(error);
-        grid.innerHTML = '<div class="text-red-500 col-span-3 font-bold">Error connecting to Vault database. Please check console.</div>';
-    }
+function calculateRAG(lastActiveMs) {
+    if (!lastActiveMs) return { color: 'text-gray-500', dot: '⚪', label: 'No Interaction' };
+    const hoursSince = (Date.now() - lastActiveMs) / (1000 * 60 * 60);
+    if (hoursSince < 24) return { color: 'text-emerald-400', dot: '🟢', label: 'Highly Engaged' };
+    if (hoursSince < 72) return { color: 'text-amber-400', dot: '🟡', label: 'Action Required' };
+    return { color: 'text-rose-500', dot: '🔴', label: 'Going Cold' };
 }
 
-window.handleUDesignUpload = (docId, inputEl) => {
+onSnapshot(query(collection(db, "surveys"), orderBy("timestamps.updatedAt", "desc")), (snapshot) => {
+    if(!grid) return;
+    grid.innerHTML = '';
+    
+    snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const id = docSnap.id;
+        const rag = calculateRAG(data.vaultTelemetry?.lastActive);
+        
+        grid.innerHTML += `
+            <div class="glass-card p-6 flex flex-col justify-between border-l-4 ${rag.color.replace('text-', 'border-')}">
+                <div>
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="text-xl font-black text-white">${data.customerProfile?.leadName || 'Unnamed'}</h4>
+                        <span class="status-badge">${data.pipelineStatus || '1. Pre-Quote'}</span>
+                    </div>
+                    <div class="text-xs text-gray-400 mb-4">📍 ${data.customerProfile?.postcode || 'TBC'} | PIN: <span class="text-[#0dcaf0]">${data.customerProfile?.vaultPIN}</span></div>
+                    
+                    <div class="bg-slate-800/50 p-3 rounded-lg text-xs flex justify-between items-center mb-4">
+                        <span class="${rag.color} font-bold">${rag.dot} ${rag.label}</span>
+                        <span class="text-gray-400">👁️ Opens: ${data.vaultTelemetry?.opens || 0}</span>
+                        <button onclick="window.replyToClient('${id}')" class="text-[#0dcaf0] hover:text-white transition">💬 Fast Reply</button>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 mt-2">
+                    <a href="survey.html?id=${id}" class="flex-1 bg-[#10b981] text-white text-xs py-2 rounded text-center font-bold">✏️ Survey</a>
+                    <a href="vault.html?id=${id}" target="_blank" class="flex-1 bg-[#0dcaf0] text-black text-xs py-2 rounded text-center font-bold">🔒 Vault</a>
+                </div>
+                <div class="flex gap-2 mt-2">
+                    <input type="file" id="up_${id}" class="hidden" accept=".pdf" onchange="window.uploadQuote('${id}', this)">
+                    <button onclick="document.getElementById('up_${id}').click()" class="w-full bg-slate-700 hover:bg-slate-600 text-white text-xs py-2 rounded">📄 Upload PDF Quote</button>
+                </div>
+            </div>
+        `;
+    });
+});
+
+window.uploadQuote = async (id, inputEl) => {
     const file = inputEl.files[0];
     if(!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-        await updateDoc(doc(db, "surveys", docId), { "uDesignBridge.quotePdfUrl": reader.result, "uDesignBridge.isUploaded": true, pipelineStatus: "2. Quote Sent" });
-        alert("Quote Uploaded & Pipeline Updated!");
-        loadPipeline();
-    };
-    reader.readAsDataURL(file);
+    
+    inputEl.previousElementSibling.innerText = "Uploading...";
+    const fd = new FormData();
+    fd.append('file', file); fd.append('upload_preset', "crm_document_uploads");
+    
+    try {
+        const res = await fetch(cloudinaryUrl, { method: 'POST', body: fd });
+        const json = await res.json();
+        await updateDoc(doc(db, "surveys", id), { "uDesignBridge.quotePdfUrl": json.secure_url, pipelineStatus: "2. Quote Sent" });
+        alert("Quote officially securely deployed to client Vault!");
+    } catch(e) { alert("Upload failed."); }
 };
 
-window.handle3DUpload = (docId, inputEl) => {
-    const file = inputEl.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-        await updateDoc(doc(db, "surveys", docId), { "uDesignBridge.render3DUrl": reader.result });
-        alert("3D Render Pushed to Vault!");
-    };
-    reader.readAsDataURL(file);
+window.replyToClient = async (id) => {
+    const msg = prompt("Fast Reply to Customer (They will see this in their Vault):");
+    if(!msg) return;
+    await addDoc(collection(db, `surveys/${id}/messages`), { sender: 'Designer', text: msg, timestamp: serverTimestamp() });
 };
