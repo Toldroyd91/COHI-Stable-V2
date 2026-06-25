@@ -1,5 +1,38 @@
-import { auth, db, collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from './firebase-core.js';
+import { auth, db, collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, onAuthStateChanged, signInWithEmailAndPassword, signOut } from './firebase-core.js';
 
+// --- 1. THE AUTHENTICATION ENGINE (Restored) ---
+const authGate = document.getElementById('authGate');
+const dashboardApp = document.getElementById('dashboardApp');
+
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        if(authGate) authGate.classList.add('hidden');
+        if(dashboardApp) dashboardApp.classList.remove('hidden');
+        const name = user.email.split('@')[0];
+        if(document.getElementById('designerWelcome')) document.getElementById('designerWelcome').innerText = `Welcome, ${name.charAt(0).toUpperCase() + name.slice(1)}`;
+    } else {
+        if(authGate) authGate.classList.remove('hidden');
+        if(dashboardApp) dashboardApp.classList.add('hidden');
+    }
+});
+
+document.getElementById('btnLogin')?.addEventListener('click', () => {
+    const email = document.getElementById('authEmail')?.value.trim();
+    const pass = document.getElementById('authPassword')?.value;
+    if(!email || !pass) return alert("Please enter both email and password.");
+    
+    const btn = document.getElementById('btnLogin');
+    const ogText = btn.innerText; 
+    btn.innerText = "Authenticating...";
+    
+    signInWithEmailAndPassword(auth, email, pass)
+        .catch(err => alert("Login Failed: " + err.message))
+        .finally(() => btn.innerText = ogText);
+});
+
+document.getElementById('btnLogout')?.addEventListener('click', () => signOut(auth));
+
+// --- 2. PIPELINE & RAG ENGINE ---
 const grid = document.getElementById('pipelineGrid');
 const cloudinaryUrl = "https://api.cloudinary.com/v1_1/dqk1hz0f8/upload";
 
@@ -27,7 +60,7 @@ onSnapshot(query(collection(db, "surveys"), orderBy("timestamps.updatedAt", "des
                         <h4 class="text-xl font-black text-white">${data.customerProfile?.leadName || 'Unnamed'}</h4>
                         <span class="status-badge">${data.pipelineStatus || '1. Pre-Quote'}</span>
                     </div>
-                    <div class="text-xs text-gray-400 mb-4">📍 ${data.customerProfile?.postcode || 'TBC'} | PIN: <span class="text-[#0dcaf0]">${data.customerProfile?.vaultPIN}</span></div>
+                    <div class="text-xs text-gray-400 mb-4">📍 ${data.customerProfile?.postcode || 'TBC'} | PIN: <span class="text-[#0dcaf0]">${data.customerProfile?.vaultPIN || 'N/A'}</span></div>
                     
                     <div class="bg-slate-800/50 p-3 rounded-lg text-xs flex justify-between items-center mb-4">
                         <span class="${rag.color} font-bold">${rag.dot} ${rag.label}</span>
@@ -37,12 +70,12 @@ onSnapshot(query(collection(db, "surveys"), orderBy("timestamps.updatedAt", "des
                 </div>
 
                 <div class="flex gap-2 mt-2">
-                    <a href="survey.html?id=${id}" class="flex-1 bg-[#10b981] text-white text-xs py-2 rounded text-center font-bold">✏️ Survey</a>
-                    <a href="vault.html?id=${id}" target="_blank" class="flex-1 bg-[#0dcaf0] text-black text-xs py-2 rounded text-center font-bold">🔒 Vault</a>
+                    <a href="survey.html?id=${id}" class="flex-1 bg-[#10b981] hover:bg-emerald-400 text-white text-xs py-2 rounded text-center font-bold transition">✏️ Survey</a>
+                    <a href="vault.html?id=${id}" target="_blank" class="flex-1 bg-[#0dcaf0] hover:bg-cyan-400 text-black text-xs py-2 rounded text-center font-bold transition">🔒 Vault</a>
                 </div>
                 <div class="flex gap-2 mt-2">
                     <input type="file" id="up_${id}" class="hidden" accept=".pdf" onchange="window.uploadQuote('${id}', this)">
-                    <button onclick="document.getElementById('up_${id}').click()" class="w-full bg-slate-700 hover:bg-slate-600 text-white text-xs py-2 rounded">📄 Upload PDF Quote</button>
+                    <button onclick="document.getElementById('up_${id}').click()" class="w-full bg-slate-700 hover:bg-slate-600 text-white text-xs py-2 rounded transition">📄 Upload PDF Quote</button>
                 </div>
             </div>
         `;
@@ -62,7 +95,10 @@ window.uploadQuote = async (id, inputEl) => {
         const json = await res.json();
         await updateDoc(doc(db, "surveys", id), { "uDesignBridge.quotePdfUrl": json.secure_url, pipelineStatus: "2. Quote Sent" });
         alert("Quote officially securely deployed to client Vault!");
-    } catch(e) { alert("Upload failed."); }
+    } catch(e) { 
+        alert("Upload failed."); 
+        inputEl.previousElementSibling.innerText = "📄 Upload PDF Quote";
+    }
 };
 
 window.replyToClient = async (id) => {
