@@ -1,6 +1,6 @@
 import { auth, db, collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, serverTimestamp, onAuthStateChanged, signInWithEmailAndPassword, signOut } from './firebase-core.js';
 
-// --- 1. THE AUTHENTICATION ENGINE (Restored) ---
+// --- 1. AUTHENTICATION ENGINE ---
 const authGate = document.getElementById('authGate');
 const dashboardApp = document.getElementById('dashboardApp');
 
@@ -44,8 +44,8 @@ function calculateRAG(lastActiveMs) {
     return { color: 'text-rose-500', dot: '🔴', label: 'Going Cold' };
 }
 
-onSnapshot(query(collection(db, "surveys")), (snapshot) => {
-
+// Ensure your Firebase Index for timestamps.updatedAt is built for this to load!
+onSnapshot(query(collection(db, "surveys"), orderBy("timestamps.updatedAt", "desc")), (snapshot) => {
     if(!grid) return;
     grid.innerHTML = '';
     
@@ -58,14 +58,13 @@ onSnapshot(query(collection(db, "surveys")), (snapshot) => {
             <div class="glass-card p-6 flex flex-col justify-between border-l-4 ${rag.color.replace('text-', 'border-')}">
                 <div>
                     <div class="flex justify-between items-start mb-2">
-                        <h4 class="text-xl font-black text-white">${data.customerProfile?.leadName || 'Unnamed'}</h4>
+                        <h4 class="text-xl font-black text-white">${data.customerProfile?.leadName || 'Unnamed Lead'}</h4>
                         <span class="status-badge">${data.pipelineStatus || '1. Pre-Quote'}</span>
                     </div>
                     <div class="text-xs text-gray-400 mb-4">📍 ${data.customerProfile?.postcode || 'TBC'} | PIN: <span class="text-[#0dcaf0]">${data.customerProfile?.vaultPIN || 'N/A'}</span></div>
                     
                     <div class="bg-slate-800/50 p-3 rounded-lg text-xs flex justify-between items-center mb-4">
                         <span class="${rag.color} font-bold">${rag.dot} ${rag.label}</span>
-                        <span class="text-gray-400">👁️ Opens: ${data.vaultTelemetry?.opens || 0}</span>
                         <button onclick="window.replyToClient('${id}')" class="text-[#0dcaf0] hover:text-white transition">💬 Fast Reply</button>
                     </div>
                 </div>
@@ -83,27 +82,38 @@ onSnapshot(query(collection(db, "surveys")), (snapshot) => {
     });
 });
 
+// --- 3. CLOUDINARY UPLOAD & FAST REPLY ---
 window.uploadQuote = async (id, inputEl) => {
     const file = inputEl.files[0];
     if(!file) return;
     
-    inputEl.previousElementSibling.innerText = "Uploading...";
+    inputEl.previousElementSibling.innerText = "Uploading to Vault...";
     const fd = new FormData();
-    fd.append('file', file); fd.append('upload_preset', "crm_document_uploads");
+    fd.append('file', file); 
+    fd.append('upload_preset', "crm_document_uploads");
     
     try {
         const res = await fetch(cloudinaryUrl, { method: 'POST', body: fd });
         const json = await res.json();
-        await updateDoc(doc(db, "surveys", id), { "uDesignBridge.quotePdfUrl": json.secure_url, pipelineStatus: "2. Quote Sent" });
+        await updateDoc(doc(db, "surveys", id), { 
+            "uDesignBridge.quotePdfUrl": json.secure_url, 
+            pipelineStatus: "2. Quote Sent" 
+        });
         alert("Quote officially securely deployed to client Vault!");
     } catch(e) { 
-        alert("Upload failed."); 
+        console.error(e);
+        alert("Upload failed. Check console."); 
+    } finally {
         inputEl.previousElementSibling.innerText = "📄 Upload PDF Quote";
     }
 };
 
 window.replyToClient = async (id) => {
-    const msg = prompt("Fast Reply to Customer (They will see this in their Vault):");
+    const msg = prompt("Fast Reply to Customer (They will see this instantly in their Vault):");
     if(!msg) return;
-    await addDoc(collection(db, `surveys/${id}/messages`), { sender: 'Designer', text: msg, timestamp: serverTimestamp() });
+    await addDoc(collection(db, `surveys/${id}/messages`), { 
+        sender: 'Designer', 
+        text: msg, 
+        timestamp: serverTimestamp() 
+    });
 };
